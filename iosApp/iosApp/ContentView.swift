@@ -1,28 +1,42 @@
 import SwiftUI
+import WebKit
 import Shared
+import AVKit
 
 struct ContentView: View {
     @State private var showContent = false
-    var body: some View {
-        VStack {
-            Button("Click me!") {
-                withAnimation {
-                    showContent = !showContent
-                }
-            }
+    @State private var webView: WKWebView = WKWebView(frame: .zero)
+    @State private var player: AVPlayer? = nil
 
-            if showContent {
-                VStack(spacing: 16) {
-                    Image(systemName: "swift")
-                        .font(.system(size: 200))
-                        .foregroundColor(.accentColor)
-                    Text("SwiftUI: \(Greeting().greet())")
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
+    private var mediaLoader: P2PMediaLoader
+
+    init() {
+        let wkWebView = WKWebView(frame: .zero)
+        if #available(iOS 16.4, *) {
+            wkWebView.isInspectable = true
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding()
+        _webView = State(initialValue: wkWebView)
+        self.mediaLoader = P2PMediaLoader(platformWebView: PlatformWebView(webView: wkWebView))
+        self.mediaLoader.start()
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            VideoPlayer(player: player)
+                .frame(height: 300)
+                .onAppear {
+                    // Replace the URL string with your actual HLS stream URL.
+                    let manifestUrl = self.mediaLoader.getManifestUrl(manifestUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8")
+                    if let url = URL(string: manifestUrl) {
+                        player = AVPlayer(url: url)
+                        player?.play()
+                    }
+                }
+                .onDisappear {
+                    player?.pause()
+                    player = nil
+                }
+        }
     }
 }
 
