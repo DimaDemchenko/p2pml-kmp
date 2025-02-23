@@ -20,15 +20,15 @@ kotlin {
     }
 
     sourceSets {
-        androidMain.dependencies { implementation("io.ktor:ktor-client-okhttp:3.0.3") }
+        androidMain.dependencies { implementation("io.ktor:ktor-client-okhttp:3.1.0") }
 
-        iosMain.dependencies { implementation("io.ktor:ktor-client-darwin:3.0.3") }
+        iosMain.dependencies { implementation("io.ktor:ktor-client-darwin:3.1.0") }
 
         commonMain.dependencies {
             implementation(kotlin("stdlib"))
-            implementation("io.ktor:ktor-server-core:3.0.3")
-            implementation("io.ktor:ktor-server-cio:3.0.3")
-            implementation("io.ktor:ktor-client-core:3.0.3")
+            implementation("io.ktor:ktor-server-core:3.1.0")
+            implementation("io.ktor:ktor-server-cio:3.1.0")
+            implementation("io.ktor:ktor-client-core:3.1.0")
         }
     }
 }

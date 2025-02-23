@@ -1,24 +1,22 @@
 package com.novage.p2pml.parser.hlsPlaylistParser
 
+abstract class HlsPlaylist(val baseUri: String)
+
 class HlsMultivariantPlaylist(
     baseUri: String,
-    tags: List<String>,
     val variants: List<Variant>,
     val videos: List<Rendition>,
     val audios: List<Rendition>,
     val subtitles: List<Rendition>,
     val closedCaptions: List<Rendition>,
-    hasIndependentSegments: Boolean,
-    val variableDefinitions: Map<String, String>,
-) : HlsPlaylist(baseUri, tags, hasIndependentSegments) {}
+) : HlsPlaylist(baseUri)
 
 class HlsMediaPlaylist(
     baseUri: String,
-    val initializationSegment: Segment?,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
     val segments: List<Segment>,
-) : HlsPlaylist(baseUri, emptyList(), false) {}
+) : HlsPlaylist(baseUri)
 
 data class Variant(
     val url: String,
@@ -32,8 +30,25 @@ data class Rendition(val url: String?, val groupId: String, val name: String)
 
 data class Segment(
     val url: String,
+    val absoluteUrl: String,
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
-    val initializationSegment: Segment?,
-)
+) {
+    val byteRange: ByteRange?
+        get() =
+            if (byteRangeLength != -1L) {
+                ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1)
+            } else {
+                null
+            }
+
+    val runtimeUrl =
+        if (byteRange != null) {
+            "$absoluteUrl|${byteRange!!.start}-${byteRange!!.end}"
+        } else {
+            absoluteUrl
+        }
+}
+
+data class ByteRange(val start: Long, val end: Long)
