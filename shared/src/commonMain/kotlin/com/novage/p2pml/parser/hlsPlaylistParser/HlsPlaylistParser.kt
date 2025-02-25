@@ -68,6 +68,7 @@ class HlsPlaylistParser {
                 line = reader.readLine()
             }
         } catch (e: Exception) {
+            throw Exception("Failed to parse playlist: ${e.message}")
             // Ignore parsing errors.
         }
         throw Exception("Failed to parse playlist")
@@ -173,23 +174,26 @@ class HlsPlaylistParser {
                     val captionGroupId =
                         parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, variableDefinitions)
 
+                    var variantUrlInManifest = ""
                     val variantUri =
                         if (isIFrameOnlyVariant) {
-                            resolve(baseUri, parseStringAttr(line, REGEX_URI, variableDefinitions))
+                            variantUrlInManifest =
+                                parseStringAttr(line, REGEX_URI, variableDefinitions)
+                            resolve(baseUri, variantUrlInManifest)
                         } else {
                             if (!iterator.hasNext()) throw Exception("Unexpected end of variant")
 
                             val nextLine = iterator.next()
                             val replaced = replaceVariableReferences(nextLine, variableDefinitions)
+                            variantUrlInManifest = replaced
 
                             resolve(baseUri, replaced)
                         }
 
-                    // val relativeUrl = getRelativePath(baseUri, variantUri)
-
                     variants.add(
                         Variant(
                             url = variantUri,
+                            urlInManifest = variantUrlInManifest,
                             videoGroupId = videoGroupId,
                             audioGroupId = audioGroupId,
                             subtitleGroupId = subtitleGroupId,
@@ -209,13 +213,41 @@ class HlsPlaylistParser {
 
             when (type) {
                 TYPE_VIDEO ->
-                    videos.add(Rendition(url = resolvedUri, groupId = groupId, name = name))
+                    videos.add(
+                        Rendition(
+                            url = resolvedUri,
+                            urlInManifest = referenceUri,
+                            groupId = groupId,
+                            name = name,
+                        )
+                    )
                 TYPE_AUDIO ->
-                    audios.add(Rendition(url = resolvedUri, groupId = groupId, name = name))
+                    audios.add(
+                        Rendition(
+                            url = resolvedUri,
+                            urlInManifest = referenceUri,
+                            groupId = groupId,
+                            name = name,
+                        )
+                    )
                 TYPE_SUBTITLES ->
-                    subtitles.add(Rendition(url = resolvedUri, groupId = groupId, name = name))
+                    subtitles.add(
+                        Rendition(
+                            url = resolvedUri,
+                            urlInManifest = referenceUri,
+                            groupId = groupId,
+                            name = name,
+                        )
+                    )
                 TYPE_CLOSED_CAPTIONS ->
-                    closedCaptions.add(Rendition(url = resolvedUri, groupId = groupId, name = name))
+                    closedCaptions.add(
+                        Rendition(
+                            url = resolvedUri,
+                            urlInManifest = referenceUri,
+                            groupId = groupId,
+                            name = name,
+                        )
+                    )
             }
         }
 

@@ -1,5 +1,7 @@
 package com.novage.p2pml.parser.hlsPlaylistParser
 
+import kotlinx.serialization.Serializable
+
 abstract class HlsPlaylist(val baseUri: String)
 
 class HlsMultivariantPlaylist(
@@ -20,13 +22,19 @@ class HlsMediaPlaylist(
 
 data class Variant(
     val url: String,
+    val urlInManifest: String,
     val videoGroupId: String? = null,
     val audioGroupId: String? = null,
     val subtitleGroupId: String? = null,
     val captionGroupId: String? = null,
 )
 
-data class Rendition(val url: String?, val groupId: String, val name: String)
+data class Rendition(
+    val url: String?,
+    val urlInManifest: String?,
+    val groupId: String,
+    val name: String,
+)
 
 data class Segment(
     val url: String,
@@ -51,4 +59,4 @@ data class Segment(
         }
 }
 
-data class ByteRange(val start: Long, val end: Long)
+@Serializable data class ByteRange(val start: Long, val end: Long)

@@ -1,6 +1,7 @@
 package com.novage.p2pml
 
 import android.os.Build
+import android.util.Log
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
@@ -15,9 +16,10 @@ actual fun getPlatform(): Platform {
     val serverModule = ServerModule(onServerStarted = { println("Server started") })
     val hlsParser = HlsPlaylistParser()
     serverModule.start()
-    val manifestUrl =
-        "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8"
+    val manifestUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     val manifest = serverModule.fetchManifest(manifestUrl)
+
+    Log.d("Manifest", "Manifest: $manifest")
 
     val parsingTime = measureTimeMillis {
         try {

@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
 }
 
 kotlin {
@@ -26,6 +27,7 @@ kotlin {
 
         commonMain.dependencies {
             implementation(kotlin("stdlib"))
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
             implementation("io.ktor:ktor-server-core:3.1.0")
             implementation("io.ktor:ktor-server-cio:3.1.0")
             implementation("io.ktor:ktor-client-core:3.1.0")
