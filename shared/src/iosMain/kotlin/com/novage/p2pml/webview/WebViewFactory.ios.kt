@@ -5,7 +5,6 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRect
-import platform.Foundation.setValue
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
 

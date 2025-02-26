@@ -22,3 +22,11 @@ internal data class UpdateStreamParams(
     val removeSegmentsIds: List<String>,
     val isLive: Boolean,
 )
+
+/**
+ * Playback info
+ *
+ * @param currentPlayPosition current play position in seconds
+ * @param currentPlaySpeed current play speed
+ */
+@Serializable data class PlaybackInfo(val currentPlayPosition: Double, val currentPlaySpeed: Float)

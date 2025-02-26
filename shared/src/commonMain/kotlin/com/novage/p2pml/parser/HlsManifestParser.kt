@@ -7,6 +7,7 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
 import com.novage.p2pml.parser.hlsPlaylistParser.Segment
+import com.novage.p2pml.providers.PlaybackProvider
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -14,7 +15,7 @@ import kotlinx.coroutines.sync.withLock
 internal const val MAIN_STREAM = "main"
 internal const val SECONDARY_STREAM = "secondary"
 
-internal class HlsManifestParser {
+internal class HlsManifestParser(private val playbackProvider: PlaybackProvider) {
     private val parser = HlsPlaylistParser()
     private val mutex = Mutex()
 
@@ -26,6 +27,9 @@ internal class HlsManifestParser {
 
     private val currentVideoSegmentRuntimeIds = mutableSetOf<String>()
     private val currentAudioSegmentRuntimeIds = mutableSetOf<String>()
+
+    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String =
+        mutex.withLock { parseHlsManifest(manifestUrl, originalManifest) }
 
     private fun addCurrentSegmentRuntimeId(streamType: String, runtimeId: String) {
         when (streamType) {
@@ -128,9 +132,7 @@ internal class HlsManifestParser {
         mediaPlaylist: HlsMediaPlaylist,
     ): Double =
         if (isLive) {
-            // TODO: Implement this
-            // playbackProvider.getAbsolutePlaybackPosition(mediaPlaylist)
-            throw NotImplementedError("Not implemented")
+            playbackProvider.getAbsolutePlaybackPosition(mediaPlaylist)
         } else {
             0.0
         }
@@ -247,7 +249,10 @@ internal class HlsManifestParser {
                 ?: throw IllegalStateException("URL not found in manifest: $segment.url")
         val endIndex = startIndex + segmentUrlInManifest.length
 
-        manifestBuilder.replaceRange(startIndex, endIndex, newSegmentUrl)
+        // for some reason, replaceRange doesn't work in iOS
+        // manifestBuilder.replaceRange(startIndex, endIndex, newSegmentUrl)
+        manifestBuilder.deleteRange(startIndex, endIndex)
+        manifestBuilder.insert(startIndex, newSegmentUrl)
     }
 
     private fun processStream(
@@ -276,7 +281,10 @@ internal class HlsManifestParser {
 
         val endIndex = startIndex + streamUrlInManifest.length
 
-        updatedManifestBuilder.replaceRange(startIndex, endIndex, newUrl)
+        // for some reason, replaceRange doesn't work in iOS
+        // updatedManifestBuilder.replaceRange(startIndex, endIndex, newUrl)
+        updatedManifestBuilder.deleteRange(startIndex, endIndex)
+        updatedManifestBuilder.insert(startIndex, newUrl)
     }
 
     suspend fun reset() {

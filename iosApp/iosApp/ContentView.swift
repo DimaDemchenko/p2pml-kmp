@@ -7,17 +7,18 @@ struct ContentView: View {
     @State private var showContent = false
     @State private var webView: WKWebView = WKWebView(frame: .zero)
     @State private var player: AVPlayer? = nil
+    @State private var playerInfo: String = ""
 
     private var mediaLoader: P2PMediaLoader
 
     init() {
-        let wkWebView = WKWebView(frame: .zero)
-        if #available(iOS 16.4, *) {
-            wkWebView.isInspectable = true
-        }
-        _webView = State(initialValue: wkWebView)
-        self.mediaLoader = P2PMediaLoader(platformWebView: PlatformWebView(webView: wkWebView))
-        self.mediaLoader.start()
+         let wkWebView = WKWebView(frame: .zero)
+         if #available(iOS 16.4, *) {
+             wkWebView.isInspectable = true
+         }
+         _webView = State(initialValue: wkWebView)
+         self.mediaLoader = P2PMediaLoader(platformWebView: PlatformWebView(webView: wkWebView))
+         self.mediaLoader.start()
     }
 
     var body: some View {
@@ -26,7 +27,10 @@ struct ContentView: View {
                 .frame(height: 300)
                 .onAppear {
                     // Replace the URL string with your actual HLS stream URL.
-                    let manifestUrl = self.mediaLoader.getManifestUrl(manifestUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8")
+                    // let manifestUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+                    let manifest = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+                    let manifestUrl = mediaLoader.getManifestUrl(manifestUrl: manifest)
+                    //let manifestUrl = "http://127.0.0.1:8080/manifest/https%3A%2F%2Ffcc3ddae59ed.us-west-2.playback.live-video.net%2Fapi%2Fvideo%2Fv1%2Fus-west-2.893648527354.channel.DmumNckWFTqz.m3u8"
                     if let url = URL(string: manifestUrl) {
                         player = AVPlayer(url: url)
                         player?.play()
@@ -36,7 +40,30 @@ struct ContentView: View {
                     player?.pause()
                     player = nil
                 }
+
+            // Button to display current play position and playback speed.
+            Button("Show Player Info") {
+                if let player = player {
+                    // Get current time in seconds.
+                    let currentSeconds = CMTimeGetSeconds(player.currentTime())
+                    // Get current playback speed.
+                    let speed = player.rate
+                    playerInfo = String(format: "Current time: %.2f seconds, Speed: %.2f", currentSeconds, speed)
+                } else {
+                    playerInfo = "Player is not available."
+                }
+            }
+            .padding()
+            .background(Color.blue.opacity(0.8))
+            .foregroundColor(.white)
+            .cornerRadius(8)
+
+            // Display the player information.
+            Text(playerInfo)
+                .padding()
+                .multilineTextAlignment(.center)
         }
+        .padding()
     }
 }
 
