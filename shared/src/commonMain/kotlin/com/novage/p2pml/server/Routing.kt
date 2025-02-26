@@ -10,7 +10,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.Application
-import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
@@ -42,7 +41,6 @@ internal fun Route.registerManifestRoute(
         }
         try {
             val fetchResult = fetchManifest(httpClient, call, manifestUrl)
-            // TODO: PARSING MANIFEST
             val doesManifestExist = manifestParser.doesManifestExist(manifestUrl)
 
             if (!doesManifestExist) {
@@ -55,9 +53,10 @@ internal fun Route.registerManifestRoute(
                     fetchResult.manifestContent,
                     fetchResult.responseUrl,
                 )
-
+            println("Modified manifest: $modifiedManifest")
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
         } catch (ex: Exception) {
+            println("Error processing manifest: ${ex.message}")
             call.respondText(
                 "Error processing manifest",
                 status = HttpStatusCode.InternalServerError,
@@ -68,8 +67,8 @@ internal fun Route.registerManifestRoute(
 
 fun Route.registerSegmentRoute(httpClient: HttpClient) {
     get("/segment/{segmentUrl}") {
-        println("Received segment request")
         val encodedSegmentUrl = call.parameters["segmentUrl"]
+
         if (encodedSegmentUrl.isNullOrBlank()) {
             call.respondText("Missing segment URL", status = HttpStatusCode.BadRequest)
             return@get
@@ -84,12 +83,13 @@ fun Route.registerSegmentRoute(httpClient: HttpClient) {
             if (byteRange != null) {
                 call.respond(
                     object : OutgoingContent.ByteArrayContent() {
-                        override val contentType: ContentType = ContentType.Application.OctetStream
+                        override val contentType: ContentType = ContentType.parse("video/mp2t")
                         override val contentLength: Long = segmentBytes.size.toLong()
                         override val status: HttpStatusCode = HttpStatusCode.PartialContent
 
                         override fun bytes(): ByteArray = segmentBytes
-                    }
+                    },
+                    typeInfo = null,
                 )
             } else {
                 call.respondBytes(segmentBytes, ContentType.Application.OctetStream)

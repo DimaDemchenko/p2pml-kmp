@@ -5,7 +5,20 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
+import io.ktor.http.HttpHeaders
 import io.ktor.server.routing.RoutingCall
+
+internal val excludedHeaders =
+    setOf(
+        HttpHeaders.Host,
+        HttpHeaders.Connection,
+        HttpHeaders.TransferEncoding,
+        HttpHeaders.Expect,
+        HttpHeaders.Upgrade,
+        "Proxy-Connection",
+        "Keep-Alive",
+        HttpHeaders.AcceptEncoding,
+    )
 
 suspend fun fetchManifest(
     httpClient: HttpClient,
@@ -15,7 +28,7 @@ suspend fun fetchManifest(
     val response =
         httpClient.get(manifestUrl) {
             call.request.headers.forEach { key, values ->
-                if (!key.equals("Host", ignoreCase = true)) {
+                if (excludedHeaders.none { it.equals(key, ignoreCase = true) }) {
                     values.forEach { value -> headers.append(key, value) }
                 }
             }
@@ -28,14 +41,19 @@ suspend fun fetchManifest(
 }
 
 suspend fun fetchSegment(client: HttpClient, call: RoutingCall, segmentUrl: String): ByteArray {
+    val isByteRangeRequest =
+        call.request.headers.contains(HttpHeaders.Range) &&
+            call.request.headers[HttpHeaders.Range] != null
+
+    val filteredUrl = if (isByteRangeRequest) segmentUrl.substringBeforeLast("|") else segmentUrl
+
     val response =
-        client.get(segmentUrl) {
+        client.get(filteredUrl) {
             call.request.headers.forEach { key, values ->
-                if (!key.equals("Host", ignoreCase = true)) {
+                if (excludedHeaders.none { it.equals(key, ignoreCase = true) }) {
                     values.forEach { value -> headers.append(key, value) }
                 }
             }
         }
-
     return response.bodyAsBytes()
 }

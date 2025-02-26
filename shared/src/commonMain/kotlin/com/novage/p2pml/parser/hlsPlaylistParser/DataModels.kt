@@ -36,12 +36,15 @@ data class Rendition(
     val name: String,
 )
 
+data class InitializationSegment(val url: String, val absoluteUrl: String)
+
 data class Segment(
     val url: String,
     val absoluteUrl: String,
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
+    val initializationSegment: InitializationSegment?,
 ) {
     val byteRange: ByteRange?
         get() =

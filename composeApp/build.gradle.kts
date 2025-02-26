@@ -55,11 +55,12 @@ android {
 }
 
 dependencies {
+    implementation("androidx.media3:media3-exoplayer-hls:1.5.1")
+    implementation("androidx.media3:media3-exoplayer:1.5.1")
+    implementation("androidx.media3:media3-ui:1.5.1")
     debugImplementation(compose.uiTooling)
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("io.ktor:ktor-client-okhttp:3.1.0")
-    androidTestImplementation("androidx.media3:media3-exoplayer-hls:1.5.1")
-    androidTestImplementation("androidx.media3:media3-exoplayer:1.5.1")
 }

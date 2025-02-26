@@ -20,6 +20,7 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_DEFINE
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_DISCONTINUITY
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_DISCONTINUITY_SEQUENCE
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_ENDLIST
+import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_INIT_SEGMENT
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_I_FRAME_STREAM_INF
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_KEY
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA
@@ -68,9 +69,11 @@ class HlsPlaylistParser {
                 line = reader.readLine()
             }
         } catch (e: Exception) {
+            println("Failed to parse playlist: ${e.message}")
             throw Exception("Failed to parse playlist: ${e.message}")
             // Ignore parsing errors.
         }
+        println("Failed to parse playlist")
         throw Exception("Failed to parse playlist")
     }
 
@@ -79,6 +82,7 @@ class HlsPlaylistParser {
         var hasEndTag = false
         val segments = mutableListOf<Segment>()
         val variableDefinitions = mutableMapOf<String, String>()
+        var initializationSegment: InitializationSegment? = null
 
         var segmentDurationUs = 0L
         var segmentByteRangeOffset = 0L
@@ -108,6 +112,15 @@ class HlsPlaylistParser {
                         if (splitByteRange.size > 1)
                             segmentByteRangeOffset = splitByteRange[1].toLong()
                     }
+                    line.startsWith(TAG_INIT_SEGMENT) -> {
+                        val uri = parseStringAttr(line, REGEX_URI, variableDefinitions)
+
+                        initializationSegment =
+                            InitializationSegment(
+                                url = uri,
+                                absoluteUrl = resolve(playlistUri, uri),
+                            )
+                    }
                 }
             } else {
                 val segmentUri = replaceVariableReferences(line, variableDefinitions)
@@ -121,6 +134,7 @@ class HlsPlaylistParser {
                         byteRangeOffset = segmentByteRangeOffset,
                         byteRangeLength = segmentByteRangeLength,
                         durationUs = segmentDurationUs,
+                        initializationSegment = initializationSegment,
                     )
 
                 segments.add(segment)

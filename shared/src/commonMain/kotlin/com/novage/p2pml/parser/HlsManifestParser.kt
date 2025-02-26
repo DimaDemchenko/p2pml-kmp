@@ -6,6 +6,7 @@ import com.novage.p2pml.UpdateStreamParams
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
+import com.novage.p2pml.parser.hlsPlaylistParser.InitializationSegment
 import com.novage.p2pml.parser.hlsPlaylistParser.Segment
 import com.novage.p2pml.providers.PlaybackProvider
 import io.ktor.http.encodeURLParameter
@@ -108,7 +109,7 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
             replaceUrlInManifest(updatedManifestBuilder, rendition.urlInManifest, rendition.url)
         }
 
-        hlsPlaylist.subtitles.forEach { rendition ->
+        hlsPlaylist.closedCaptions.forEach { rendition ->
             if (rendition.url == null || rendition.urlInManifest == null) return@forEach
             if (rendition.url == rendition.urlInManifest) return@forEach
 
@@ -142,9 +143,9 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
         mediaPlaylist: HlsMediaPlaylist,
         originalManifest: String,
     ): String {
-        val mediaType =
-            streams.find { it.runtimeId == manifestUrl }?.type
-                ?: throw IllegalStateException("Stream type not found for manifest: $manifestUrl")
+
+        // If there is no master manifest, the stream type is MAIN_STREAM
+        val mediaType = streams.find { it.runtimeId == manifestUrl }?.type ?: MAIN_STREAM
 
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
@@ -152,11 +153,15 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
 
         val segmentsToRemove = removeObsoleteSegments(manifestUrl, newMediaSequence)
         val segmentsToAdd = mutableListOf<RuntimeSegment>()
+        val initializationSegments = mutableSetOf<InitializationSegment>()
 
         val initialStartTime = getInitialStartTime(isStreamLive, mediaPlaylist)
 
         clearCurrentSegmentRuntimeIds(mediaType)
         mediaPlaylist.segments.forEachIndexed { index, segment ->
+            if (segment.initializationSegment != null)
+                initializationSegments.add(segment.initializationSegment)
+
             val segmentIndex = index + newMediaSequence
 
             addCurrentSegmentRuntimeId(mediaType, segment.runtimeUrl)
@@ -165,6 +170,12 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
             val newSegment = addNewSegment(manifestUrl, segmentIndex, initialStartTime, segment)
 
             if (newSegment != null) segmentsToAdd.add(newSegment)
+        }
+
+        initializationSegments.forEach { segment ->
+            if (segment.url == segment.absoluteUrl) return@forEach
+
+            replaceUrlInManifest(updatedManifestBuilder, segment.url, segment.absoluteUrl)
         }
 
         updateStreamData(manifestUrl, segmentsToAdd, segmentsToRemove, isStreamLive)
