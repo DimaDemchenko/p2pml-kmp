@@ -28,7 +28,7 @@ struct ContentView: View {
                 .onAppear {
                     // Replace the URL string with your actual HLS stream URL.
                     // let manifestUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-                    let manifest = "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8"
+                    let manifest = "https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8"
                     let manifestUrl = mediaLoader.getManifestUrl(manifestUrl: manifest)
                     //let manifestUrl = "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8"
                     if let url = URL(string: manifestUrl) {

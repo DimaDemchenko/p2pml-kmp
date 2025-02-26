@@ -12,6 +12,7 @@ import com.novage.p2pml.providers.PlaybackProvider
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 
 internal const val MAIN_STREAM = "main"
 internal const val SECONDARY_STREAM = "secondary"
@@ -297,6 +298,16 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
         updatedManifestBuilder.deleteRange(startIndex, endIndex)
         updatedManifestBuilder.insert(startIndex, newUrl)
     }
+
+    suspend fun getUpdateStreamParamsJson(variantUrl: String): String? {
+        mutex.withLock {
+            val updateStream = updateStreamParams[variantUrl] ?: return null
+
+            return Json.encodeToString(updateStream)
+        }
+    }
+
+    suspend fun getStreamsJson(): String = mutex.withLock { Json.encodeToString(streams) }
 
     suspend fun reset() {
         mutex.withLock {

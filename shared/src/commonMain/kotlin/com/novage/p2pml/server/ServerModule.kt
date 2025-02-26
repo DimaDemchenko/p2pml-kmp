@@ -19,6 +19,7 @@ internal class ServerModule(
         null
     private var client = createHttpClient()
     private var hlsManifestParser = HlsManifestParser(playbackProvider)
+    private var manifestHandler = ManifestHandler(hlsManifestParser) { println("Manifest changed") }
 
     fun start(port: Int = 8080) {
         if (server != null) return
@@ -26,7 +27,7 @@ internal class ServerModule(
         try {
             server =
                 embeddedServer(CIO, port) {
-                        configureRoutes(client, hlsManifestParser)
+                        configureRoutes(client, manifestHandler)
                         subscribeToServerStarted(this)
                     }
                     .start(wait = false)

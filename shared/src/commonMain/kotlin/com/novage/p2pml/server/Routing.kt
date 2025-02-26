@@ -1,6 +1,5 @@
 package com.novage.p2pml.server
 
-import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.parser.decodeBase64Url
 import com.novage.p2pml.resources.INDEX_HTML
 import com.novage.p2pml.resources.P2PML_CORE_JS
@@ -18,42 +17,32 @@ import io.ktor.server.routing.routing
 
 data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
 
-internal fun Application.configureRoutes(client: HttpClient, manifestParser: HlsManifestParser) {
+internal fun Application.configureRoutes(client: HttpClient, manifestHandler: ManifestHandler) {
     routing {
-        registerManifestRoute(client, manifestParser)
+        registerManifestRoute(client, manifestHandler)
         registerSegmentRoute(client)
         registerStaticRoute()
         registerStaticJsRoute()
     }
 }
 
-internal fun Route.registerManifestRoute(
-    httpClient: HttpClient,
-    manifestParser: HlsManifestParser,
-) {
+internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestHandler: ManifestHandler) {
     get("/manifest/{manifestUrl}") {
-        println("Received manifest request")
         val manifestUrl = call.parameters["manifestUrl"]
 
         if (manifestUrl.isNullOrBlank()) {
             call.respondText("Missing manifest URL", status = HttpStatusCode.BadRequest)
             return@get
         }
+
         try {
             val fetchResult = fetchManifest(httpClient, call, manifestUrl)
-            val doesManifestExist = manifestParser.doesManifestExist(manifestUrl)
-
-            if (!doesManifestExist) {
-                // reset()
-                // onManifestChanged()
-            }
-
             val modifiedManifest =
-                manifestParser.getModifiedManifest(
-                    fetchResult.manifestContent,
+                manifestHandler.getModifiedManifest(
                     fetchResult.responseUrl,
+                    fetchResult.manifestContent,
                 )
-            println("Modified manifest: $modifiedManifest")
+
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
         } catch (ex: Exception) {
             println("Error processing manifest: ${ex.message}")
@@ -103,10 +92,10 @@ fun Route.registerSegmentRoute(httpClient: HttpClient) {
     }
 }
 
-fun Route.registerStaticRoute() {
+internal fun Route.registerStaticRoute() {
     get("/static/") { call.respondText(INDEX_HTML, ContentType.Text.Html) }
 }
 
-fun Route.registerStaticJsRoute() {
+internal fun Route.registerStaticJsRoute() {
     get("/static/js") { call.respondText(P2PML_CORE_JS, ContentType.Application.JavaScript) }
 }

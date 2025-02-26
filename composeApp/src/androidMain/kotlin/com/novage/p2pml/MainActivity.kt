@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
 
         val manifestUrl =
             p2pMediaLoader.getManifestUrl(
-                "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8"
+                "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8"
             )
 
         val mediaSource =
