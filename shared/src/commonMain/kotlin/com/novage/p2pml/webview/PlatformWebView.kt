@@ -11,9 +11,5 @@ interface PlatformWebView {
 
     fun evaluateJavascript(script: String, callback: ((String) -> Unit)?)
 
-    fun addJavaScriptInterface(`object`: Any, name: String)
-
-    fun removeJavascriptInterface(name: String)
-
     fun destroy()
 }

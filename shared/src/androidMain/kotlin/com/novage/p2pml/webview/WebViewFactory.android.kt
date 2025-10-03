@@ -18,14 +18,6 @@ class AndroidWebView(private val webView: WebView) : PlatformWebView {
         TODO("Not yet implemented")
     }
 
-    override fun addJavaScriptInterface(`object`: Any, name: String) {
-        TODO("Not yet implemented")
-    }
-
-    override fun removeJavascriptInterface(name: String) {
-        TODO("Not yet implemented")
-    }
-
     override fun destroy() {
         TODO("Not yet implemented")
     }
