@@ -1,11 +1,13 @@
 package com.novage.p2pml.server
 
 import com.novage.p2pml.parser.HlsManifestParser
+import com.novage.p2pml.webview.WebViewManager
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class ManifestHandler(
     private val parser: HlsManifestParser,
+    private val webViewManager: WebViewManager,
     private val onManifestChanged: suspend () -> Unit,
 ) {
     private var isInitialManifestProcessed = false
@@ -40,15 +42,15 @@ internal class ManifestHandler(
 
             if (needsInitialSetup) {
                 val streamsJson = parser.getStreamsJson()
-                // TODO: Implement WebViewManager
-                //  webViewManager.sendInitialMessage()
-                //  webViewManager.setManifestUrl(manifestUrl)
-                //  webViewManager.sendAllStreams(streamsJson)
 
-                // updateStreamJson?.let { webViewManager.sendStream(it) }
+                // webViewManager.sendInitialMessage()
+                webViewManager.setManifestUrl(manifestUrl)
+                webViewManager.sendAllStreams(streamsJson)
+
+                updateStreamJson?.let { webViewManager.sendStream(it) }
             } else {
-                // updateStreamJson?.let { json -> webViewManager.sendStream(json) }
-                //    ?: throw Exception("updateStreamJson is null")
+                updateStreamJson?.let { json -> webViewManager.sendStream(json) }
+                    ?: throw Exception("updateStreamJson is null")
             }
         } catch (e: Exception) {
             // Log.e(TAG, "Unexpected error occurred: ${e.message}")

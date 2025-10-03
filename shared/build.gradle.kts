@@ -27,6 +27,7 @@ kotlin {
 
         commonMain.dependencies {
             implementation(kotlin("stdlib"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
             implementation("io.ktor:ktor-utils:3.1.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
             implementation("io.ktor:ktor-server-core:3.1.0")

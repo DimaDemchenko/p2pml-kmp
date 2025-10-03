@@ -3,6 +3,7 @@ package com.novage.p2pml.server
 import com.novage.p2pml.httpClient.createHttpClient
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
+import com.novage.p2pml.webview.WebViewManager
 import io.ktor.client.request.get
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
@@ -13,13 +14,16 @@ import io.ktor.server.engine.embeddedServer
 
 internal class ServerModule(
     playbackProvider: PlaybackProvider,
+    webViewManager: WebViewManager,
     private val onServerStarted: () -> Unit,
 ) {
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
         null
     private var client = createHttpClient()
     private var hlsManifestParser = HlsManifestParser(playbackProvider)
-    private var manifestHandler = ManifestHandler(hlsManifestParser) { println("Manifest changed") }
+    private var manifestHandler =
+        ManifestHandler(hlsManifestParser, webViewManager) { println("Manifest changed") }
+    private var segmentHandler = SegmentHandler(webViewManager)
 
     fun start(port: Int = 8080) {
         if (server != null) return
@@ -27,12 +31,13 @@ internal class ServerModule(
         try {
             server =
                 embeddedServer(CIO, port) {
-                        configureRoutes(client, manifestHandler)
+                        configureRoutes(client, manifestHandler, hlsManifestParser, segmentHandler)
                         subscribeToServerStarted(this)
                     }
                     .start(wait = false)
         } catch (e: Exception) {
             val message = e.message ?: "Failed to start server on port $port"
+            // onServerStarted Error
         }
     }
 

@@ -27,6 +27,7 @@ internal data class UpdateStreamParams(
  * Playback info
  *
  * @param currentPlayPosition current play position in seconds
- * @param currentPlaySpeed current play speed
+ * @param currentPlaybackSpeed current play speed
  */
-@Serializable data class PlaybackInfo(val currentPlayPosition: Double, val currentPlaySpeed: Float)
+@Serializable
+data class PlaybackInfo(val currentPlayPosition: Double, val currentPlaybackSpeed: Float)
