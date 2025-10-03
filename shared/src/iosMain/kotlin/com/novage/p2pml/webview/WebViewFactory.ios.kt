@@ -31,12 +31,6 @@ actual class PlatformWebViewFactory actual constructor(private val context: Plat
 }
 
 class IOSWebView(private val webView: WKWebView) : PlatformWebView {
-
-    init {
-        val config = WKWebViewConfiguration()
-        // config.userContentController().addScriptMessageHandler(name = "p2pml")
-    }
-
     override fun loadUrl(url: String) {
         val nsUrl = platform.Foundation.NSURL(string = url)
         val request = platform.Foundation.NSURLRequest(nsUrl)
@@ -45,21 +39,7 @@ class IOSWebView(private val webView: WKWebView) : PlatformWebView {
     }
 
     override fun evaluateJavascript(script: String, callback: ((String) -> Unit)?) {
-        webView.evaluateJavaScript(script) { _, error ->
-            if (error != null) {
-                println("Error evaluating JavaScript: $error")
-            }
-        }
-    }
-
-    override fun addJavaScriptInterface(`object`: Any, name: String) {
-        // TODO: Implement JavaScript interface addition.
-
-    }
-
-    override fun removeJavascriptInterface(name: String) {
-        // TODO: Implement JavaScript interface removal.
-        throw NotImplementedError("Not yet implemented")
+        webView.evaluateJavaScript(script, null)
     }
 
     override fun destroy() {

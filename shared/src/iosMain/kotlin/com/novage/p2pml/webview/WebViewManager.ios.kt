@@ -9,10 +9,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import platform.WebKit.WKWebView
 
 actual class WebViewManagerImpl(
-    private val webView: WKWebView,
+    private val webView: PlatformWebView,
     private val playbackProvider: PlaybackProvider,
     private val coroutine: CoroutineScope,
 ) : WebViewManager {
@@ -20,10 +19,7 @@ actual class WebViewManagerImpl(
     private var playbackInfoJob: Job? = null
 
     override fun loadUrl(url: String) {
-        val nsUrl = platform.Foundation.NSURL(string = url)
-        val request = platform.Foundation.NSURLRequest(nsUrl)
-
-        webView.loadRequest(request)
+        webView.loadUrl(url)
     }
 
     private fun startPlaybackInfoUpdate() {
@@ -59,7 +55,7 @@ actual class WebViewManagerImpl(
 
     private suspend fun sendPlaybackInfo(playbackInfoJson: String) {
         withContext(Dispatchers.Main) {
-            webView.evaluateJavaScript(
+            webView.evaluateJavascript(
                 "javascript:window.p2p.updatePlaybackInfo('$playbackInfoJson');",
                 null,
             )
@@ -68,7 +64,7 @@ actual class WebViewManagerImpl(
 
     override suspend fun setManifestUrl(manifestUrl: String) {
         withContext(Dispatchers.Main) {
-            webView.evaluateJavaScript(
+            webView.evaluateJavascript(
                 "javascript:window.p2p.setManifestUrl('$manifestUrl');",
                 null,
             )
@@ -77,7 +73,7 @@ actual class WebViewManagerImpl(
 
     override suspend fun sendAllStreams(streamsJson: String) {
         withContext(Dispatchers.Main) {
-            webView.evaluateJavaScript(
+            webView.evaluateJavascript(
                 "javascript:window.p2p.parseAllStreams('$streamsJson');",
                 null,
             )
@@ -86,7 +82,7 @@ actual class WebViewManagerImpl(
 
     override suspend fun sendStream(streamJson: String) {
         withContext(Dispatchers.Main) {
-            webView.evaluateJavaScript("javascript:window.p2p.parseStream('$streamJson');", null)
+            webView.evaluateJavascript("javascript:window.p2p.parseStream('$streamJson');", null)
         }
     }
 
@@ -94,7 +90,7 @@ actual class WebViewManagerImpl(
         withContext(Dispatchers.Main) {
             startPlaybackInfoUpdate()
 
-            webView.evaluateJavaScript(
+            webView.evaluateJavascript(
                 "javascript:window.p2p.processSegmentRequest('$segmentUrl');",
                 null,
             )
@@ -103,7 +99,7 @@ actual class WebViewManagerImpl(
 
     override suspend fun initCoreEngine(coreConfigJson: String) {
         withContext(Dispatchers.Main) {
-            webView.evaluateJavaScript("javascript:window.p2p.initP2P('$coreConfigJson');", null)
+            webView.evaluateJavascript("javascript:window.p2p.initP2P('$coreConfigJson');", null)
         }
     }
 }

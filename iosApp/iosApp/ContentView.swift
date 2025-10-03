@@ -56,10 +56,10 @@ struct ContentView: View {
                 .onAppear {
 
                     // 2) Setup a sample HLS stream (BipBop) and start playback
-                    let manifest = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+                    let manifest = "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8"
                     let manifestUrl = self.mediaLoader.getManifestUrl(manifestUrl: manifest)
                     // wait 6 seconds before starting the player
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
                             if let url = URL(string: manifestUrl) {
                                 let newPlayer = AVPlayer(url: url)
                                 self.startMediaLoader()

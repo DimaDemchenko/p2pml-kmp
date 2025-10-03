@@ -2,6 +2,7 @@ package com.novage.p2pml
 
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.server.ServerModule
+import com.novage.p2pml.webview.IOSWebView
 import com.novage.p2pml.webview.WebViewManagerImpl
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
@@ -17,7 +18,7 @@ actual class PlatformWebView(val webView: WKWebView)
 
 actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
 
-    var iosWebView: WebViewManagerImpl? = null
+    private var iosWebViewManager: WebViewManagerImpl? = null
 
     private var serverModule: ServerModule? = null
     private var defaultPlaybackProvider: DefaultPlaybackProvider? = null
@@ -36,15 +37,15 @@ actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
         userController.addScriptMessageHandler(scriptMessageHandler, "onWebViewLoaded")
 
         val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)
-        val iosWebView =
-            WebViewManagerImpl(platformWebView.webView, playbackProvider, coroutineScope)
 
-        this.iosWebView = iosWebView
+        val iosWebView = IOSWebView(platformWebView.webView)
+        iosWebViewManager = WebViewManagerImpl(iosWebView, playbackProvider, coroutineScope)
+
         defaultPlaybackProvider = playbackProvider
         serverModule =
             ServerModule(
                 playbackProvider = playbackProvider,
-                webViewManager = iosWebView,
+                webViewManager = iosWebViewManager!!,
                 onServerStarted = { onServerStarted() },
             )
 
@@ -52,11 +53,11 @@ actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
     }
 
     private fun onServerStarted() {
-        iosWebView?.loadUrl("http://127.0.0.1:8080/static/")
+        iosWebViewManager?.loadUrl("http://127.0.0.1:8080/static/")
     }
 
     private fun onWebViewLoaded() {
-        coroutineScope.launch { iosWebView?.initCoreEngine("{}") }
+        coroutineScope.launch { iosWebViewManager?.initCoreEngine("{}") }
     }
 }
 
