@@ -1,28 +1,48 @@
 package com.novage.p2pml
 
+import com.novage.p2pml.eventEmitter.*
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.webview.IOSWebView
+import com.novage.p2pml.webview.WebViewEventDispatcher
 import com.novage.p2pml.webview.WebViewManagerImpl
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import platform.WebKit.WKScriptMessage
-import platform.WebKit.WKScriptMessageHandlerProtocol
-import platform.WebKit.WKUserContentController
 import platform.WebKit.WKWebView
-import platform.darwin.NSObject
 
 actual class PlatformWebView(val webView: WKWebView)
 
 actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
+
+    private val eventEmitter = EventEmitter()
 
     private var iosWebViewManager: WebViewManagerImpl? = null
 
     private var serverModule: ServerModule? = null
     private var defaultPlaybackProvider: DefaultPlaybackProvider? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    /**
+     * Adds an event listener to the P2P engine.
+     *
+     * @param event Event type to listen for
+     * @param listener Callback function to invoke when the event occurs
+     */
+    fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
+        eventEmitter.addEventListener(event, listener)
+    }
+
+    /**
+     * Removes an event listener from the P2P engine.
+     *
+     * @param event Event type to remove the listener from
+     * @param listener Callback function to remove
+     */
+    fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
+        eventEmitter.removeEventListener(event, listener)
+    }
 
     fun getManifestUrl(manifestUrl: String): String {
         val encodedManifest = manifestUrl.encodeURLParameter()
@@ -32,9 +52,9 @@ actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
         val userController = platformWebView.webView.configuration.userContentController
-        val scriptMessageHandler = MyScriptMessageHandler { _ -> onWebViewLoaded() }
+        val scriptMessageHandler = WebViewEventDispatcher(eventEmitter) { onWebViewLoaded() }
 
-        userController.addScriptMessageHandler(scriptMessageHandler, "onWebViewLoaded")
+        userController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
 
         val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)
 
@@ -58,18 +78,5 @@ actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
 
     private fun onWebViewLoaded() {
         coroutineScope.launch { iosWebViewManager?.initCoreEngine("{}") }
-    }
-}
-
-class MyScriptMessageHandler(private val onMessageReceived: (String) -> Unit) :
-    NSObject(), WKScriptMessageHandlerProtocol {
-
-    override fun userContentController(
-        userContentController: WKUserContentController,
-        didReceiveScriptMessage: WKScriptMessage,
-    ) {
-        val messageBody = didReceiveScriptMessage.body.toString()
-
-        onMessageReceived(messageBody)
     }
 }
