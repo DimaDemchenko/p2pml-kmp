@@ -64,7 +64,8 @@ class IOSWebView(private val webView: WKWebView) : PlatformWebView {
     }
 
     override fun destroy() {
-        // TODO: Implement cleanup.
-        throw NotImplementedError("Not yet implemented")
+        webView.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
+        webView.stopLoading()
+        webView.removeFromSuperview()
     }
 }
