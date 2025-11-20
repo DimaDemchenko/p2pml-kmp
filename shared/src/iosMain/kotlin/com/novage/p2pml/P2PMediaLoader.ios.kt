@@ -3,18 +3,15 @@ package com.novage.p2pml
 import com.novage.p2pml.eventEmitter.*
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.server.ServerModule
-import com.novage.p2pml.webview.IOSWebView
-import com.novage.p2pml.webview.WebViewEventDispatcher
+import com.novage.p2pml.webview.PlatformContext
+import com.novage.p2pml.webview.PlatformWebViewFactory
 import com.novage.p2pml.webview.WebViewManagerImpl
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import platform.WebKit.WKWebView
 
-actual class PlatformWebView(val webView: WKWebView)
-
-actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
+actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
     private val eventEmitter = EventEmitter()
 
@@ -51,15 +48,13 @@ actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
     }
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        val userController = platformWebView.webView.configuration.userContentController
-        val scriptMessageHandler = WebViewEventDispatcher(eventEmitter) { onWebViewLoaded() }
+        val platformWebViewFactory = PlatformWebViewFactory(PlatformContext())
 
-        userController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
-
+        val platformWebView =
+            platformWebViewFactory.createWebView(eventEmitter) { onWebViewLoaded() }
         val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)
 
-        val iosWebView = IOSWebView(platformWebView.webView)
-        iosWebViewManager = WebViewManagerImpl(iosWebView, playbackProvider, coroutineScope)
+        iosWebViewManager = WebViewManagerImpl(platformWebView, playbackProvider, coroutineScope)
 
         defaultPlaybackProvider = playbackProvider
         serverModule =
@@ -77,6 +72,9 @@ actual class P2PMediaLoader(private var platformWebView: PlatformWebView) {
     }
 
     private fun onWebViewLoaded() {
-        coroutineScope.launch { iosWebViewManager?.initCoreEngine("{}") }
+        coroutineScope.launch {
+            iosWebViewManager?.initCoreEngine("{}")
+            onP2PReadyCallback()
+        }
     }
 }

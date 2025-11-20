@@ -1,9 +1,11 @@
 package com.novage.p2pml.webview
 
+import com.novage.p2pml.eventEmitter.EventEmitter
+
 expect class PlatformContext
 
 expect class PlatformWebViewFactory(context: PlatformContext) {
-    fun createWebView(): PlatformWebView
+    fun createWebView(eventEmitter: EventEmitter, onWebviewLoaded: () -> Unit): PlatformWebView
 }
 
 interface PlatformWebView {
