@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var isP2PReady = false
 
     private let sampleManifest =
-        "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8"
+        "https://cdn.bitmovin.com/content/demos/4k/38e843e0-1998-11e9-8a92-c734cd79b4dc/video_25000000.m3u8"
 
     private func startMediaLoader(_ loader: P2PMediaLoader) {
         loader.start(getPlaybackInfo: {
