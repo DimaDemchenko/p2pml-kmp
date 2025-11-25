@@ -25,4 +25,8 @@ class EventEmitter {
     fun removeAllListeners() {
         listeners.clear()
     }
+
+    fun getSubscribedEventNames(): List<String> {
+        return listeners.filterValues { it.isNotEmpty() }.keys.map { it.eventName }
+    }
 }
