@@ -102,4 +102,22 @@ actual class WebViewManagerImpl(
             webView.evaluateJavascript("javascript:window.p2p.initP2P('$coreConfigJson');", null)
         }
     }
+
+    override suspend fun subscribeToP2PEvent(eventName: String) {
+        withContext(Dispatchers.Main) {
+            webView.evaluateJavascript(
+                "javascript:window.p2p.subscribeToEvent('$eventName');",
+                null,
+            )
+        }
+    }
+
+    override suspend fun unsubscribeFromP2PEvent(eventName: String) {
+        withContext(Dispatchers.Main) {
+            webView.evaluateJavascript(
+                "javascript:window.p2p.unsubscribeFromEvent('$eventName');",
+                null,
+            )
+        }
+    }
 }

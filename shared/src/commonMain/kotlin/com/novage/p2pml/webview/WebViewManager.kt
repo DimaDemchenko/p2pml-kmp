@@ -14,6 +14,10 @@ interface WebViewManager {
     suspend fun requestSegmentBytes(segmentUrl: String)
 
     suspend fun initCoreEngine(coreConfigJson: String)
+
+    suspend fun subscribeToP2PEvent(eventName: String)
+
+    suspend fun unsubscribeFromP2PEvent(eventName: String)
 }
 
 expect class WebViewManagerImpl : WebViewManager

@@ -74,6 +74,12 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     private fun onWebViewLoaded() {
         coroutineScope.launch {
             iosWebViewManager?.initCoreEngine("{}")
+
+            val subscribedEvents = eventEmitter.getSubscribedEventNames()
+            subscribedEvents.forEach { eventName ->
+                iosWebViewManager?.subscribeToP2PEvent(eventName)
+            }
+
             onP2PReadyCallback()
         }
     }

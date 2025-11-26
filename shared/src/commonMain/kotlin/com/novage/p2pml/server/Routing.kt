@@ -128,7 +128,7 @@ internal fun Route.registerSegmentRoute(
                 return@get
             }
 
-            println("↑↑↑↑ Requesting segment from P2P network $segmentUrl")
+            println("↑↑↑↑ Requesting segment from webview network $segmentUrl")
             val deferredSegmentBytes =
                 segmentHandler.registerSegmentRequest(segmentUrl)
                     ?: throw SegmentAlreadyRequested("Segment already requested")

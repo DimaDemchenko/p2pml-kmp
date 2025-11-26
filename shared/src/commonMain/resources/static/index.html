@@ -14,6 +14,49 @@
         import { Core } from "p2p-media-loader-core";
 
         class P2P {
+          constructor() {
+            this.eventHandlers = new Map();
+          }
+
+          subscribeToEvent(eventName) {
+            if (this.eventHandlers.has(eventName)) {
+                return;
+            }
+
+            const handler = (...args) => {
+                sendToIos(eventName, this.formatEventPayload(eventName, args));
+            };
+
+            this.eventHandlers.set(eventName, handler);
+
+            this.core.addEventListener(eventName, handler);
+          }
+
+          unsubscribeFromEvent(eventName) {
+            const handler = this.eventHandlers.get(eventName);
+            if (!handler) return;
+
+            this.core.removeEventListener(eventName, handler);
+            this.eventHandlers.delete(eventName);
+          }
+
+          formatEventPayload(eventName, args) {
+            switch (eventName) {
+              case "onChunkDownloaded":
+                return { bytesLength: args[0], downloadSource: args[1], peerId: args[2] };
+              case "onChunkUploaded":
+                return { bytesLength: args[0], peerId: args[1] };
+              case "onTrackerError":
+              case "onTrackerWarning":
+                return {
+                    streamType: args[0].streamType,
+                    error: { message: args[0].error.message, stack: args[0].error.stack }
+                };
+              default:
+                return args[0];
+            }
+          }
+
           initP2P(coreConfigJson) {
             if (!coreConfigJson) {
               this.createP2PEngine();
@@ -41,75 +84,6 @@
               this.destroyP2PEngine();
             }
             this.core = new Core(this.coreConfig ?? {});
-
-            this.core.addEventListener(
-              "onChunkDownloaded",
-              (bytesLength, downloadSource, peerId) => {
-                sendToIos("onChunkDownloaded", {
-                  bytesLength,
-                  downloadSource,
-                  peerId,
-                });
-              }
-            );
-
-            this.core.addEventListener(
-              "onChunkUploaded",
-              (bytesLength, peerId) => {
-                sendToIos("onChunkUploaded", {
-                  bytesLength,
-                  peerId,
-                });
-              }
-            );
-
-            this.core.addEventListener("onSegmentLoaded", (params) => {
-              sendToIos("onSegmentLoaded", params);
-            });
-
-            this.core.addEventListener("onSegmentError", (params) => {
-              sendToIos("onSegmentError", params);
-            });
-
-            this.core.addEventListener("onSegmentAbort", (params) => {
-              sendToIos("onSegmentAbort", params);
-            });
-
-            this.core.addEventListener("onSegmentStart", (params) => {
-              sendToIos("onSegmentStart", params);
-            });
-
-            this.core.addEventListener("onPeerConnect", (params) => {
-              sendToiOS("onPeerConnect", params);
-            });
-
-            this.core.addEventListener("onPeerClose", (params) => {
-              sendToIos("onPeerClose", params);
-            });
-
-            this.core.addEventListener("onPeerError", (params) => {
-              sendToIos("onPeerError", params);
-            });
-
-            this.core.addEventListener("onTrackerError", (params) => {
-              sendToIos("onTrackerError", {
-                streamType: params.streamType,
-                error: {
-                  message: params.error.message,
-                  stack: params.error.stack,
-                },
-              });
-            });
-
-            this.core.addEventListener("onTrackerWarning", (params) => {
-              sendToIos("onTrackerWarning", {
-                streamType: params.streamType,
-                warning: {
-                  message: params.warning.message,
-                  stack: params.warning.stack,
-                },
-              });
-            });
           }
 
           parseAllStreams(jsonData) {
