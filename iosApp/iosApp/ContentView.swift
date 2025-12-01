@@ -11,6 +11,8 @@ struct ContentView: View {
     @State private var statusObserver: AnyCancellable? = nil
     @State private var isP2PReady = false
 
+    @State private var eventSubscriptions: [Shared.Cancellable] = []
+
     private let sampleManifest =
         "https://cdn.bitmovin.com/content/demos/4k/38e843e0-1998-11e9-8a92-c734cd79b4dc/video_25000000.m3u8"
 
@@ -31,28 +33,35 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 20) {
             VideoPlayer(player: player)
-                .frame(height: 300)
-                .onAppear {
-                    var loader: P2PMediaLoader! = nil
+            .frame(height: 300)
+            .onAppear {
+                var loader: P2PMediaLoader! = nil
 
-                    loader = P2PMediaLoader(onP2PReadyCallback: {
-                       self.isP2PReady = true
+                loader = P2PMediaLoader(onP2PReadyCallback: {
+                    self.isP2PReady = true
 
-                       self.createPlayer(with: loader)
-                       self.player?.play()
-                    })
+                    self.createPlayer(with: loader)
+                    self.player?.play()
+                })
 
-                    startMediaLoader(loader)
-                    self.mediaLoader = loader
+                self.setupListeners(for: loader)
+
+                startMediaLoader(loader)
+                self.mediaLoader = loader
+            }
+            .onDisappear {
+                eventSubscriptions.forEach {
+                    $0.cancel()
                 }
-                .onDisappear {
-                    player?.pause()
-                    player = nil
-                    statusObserver?.cancel()
-                    statusObserver = nil
-                    mediaLoader = nil
-                    isP2PReady = false
-                }
+                eventSubscriptions.removeAll()
+
+                player?.pause()
+                player = nil
+                statusObserver?.cancel()
+                statusObserver = nil
+                mediaLoader = nil
+                isP2PReady = false
+            }
 
             Button("Show Player Info") {
                 if let player = player {
@@ -83,6 +92,28 @@ struct ContentView: View {
             }
         }
         .padding()
+    }
+
+    private func setupListeners(for loader: P2PMediaLoader) {
+        eventSubscriptions.append(loader.observeSegmentLoaded { details in
+            print("Segment loaded: \(details.bytesLength) bytes from \(details.downloadSource)")
+        })
+
+        eventSubscriptions.append(loader.observePeerConnect { details in
+            print("Peer Connected: \(details.peerId)")
+        })
+
+        eventSubscriptions.append(loader.observeSegmentError { details in
+            print("Segment Error: \(details.error)")
+        })
+
+        eventSubscriptions.append(loader.observeChunkDownloaded { details in
+            if let peerId = details.peerId {
+                print("Chunk from peer \(peerId): \(details.bytesLength) bytes")
+            } else {
+                print("Chunk from CDN: \(details.bytesLength) bytes")
+            }
+        })
     }
 
     private func createPlayer(with loader: P2PMediaLoader) {

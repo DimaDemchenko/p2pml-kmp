@@ -21,26 +21,6 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     private var defaultPlaybackProvider: DefaultPlaybackProvider? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
-    /**
-     * Adds an event listener to the P2P engine.
-     *
-     * @param event Event type to listen for
-     * @param listener Callback function to invoke when the event occurs
-     */
-    fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
-        eventEmitter.addEventListener(event, listener)
-    }
-
-    /**
-     * Removes an event listener from the P2P engine.
-     *
-     * @param event Event type to remove the listener from
-     * @param listener Callback function to remove
-     */
-    fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
-        eventEmitter.removeEventListener(event, listener)
-    }
-
     fun getManifestUrl(manifestUrl: String): String {
         val encodedManifest = manifestUrl.encodeURLParameter()
 
@@ -81,6 +61,47 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
             }
 
             onP2PReadyCallback()
+        }
+    }
+
+    fun observeSegmentLoaded(block: (SegmentLoadDetails) -> Unit) =
+        bind(CoreEventMap.OnSegmentLoaded, block)
+
+    fun observeSegmentStart(block: (SegmentStartDetails) -> Unit) =
+        bind(CoreEventMap.OnSegmentStart, block)
+
+    fun observeSegmentError(block: (SegmentErrorDetails) -> Unit) =
+        bind(CoreEventMap.OnSegmentError, block)
+
+    fun observeSegmentAbort(block: (SegmentAbortDetails) -> Unit) =
+        bind(CoreEventMap.OnSegmentAbort, block)
+
+    fun observePeerConnect(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerConnect, block)
+
+    fun observePeerClose(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerClose, block)
+
+    fun observePeerError(block: (PeerErrorDetails) -> Unit) = bind(CoreEventMap.OnPeerError, block)
+
+    fun observeChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) =
+        bind(CoreEventMap.OnChunkDownloaded, block)
+
+    fun observeChunkUploaded(block: (ChunkUploadedDetails) -> Unit) =
+        bind(CoreEventMap.OnChunkUploaded, block)
+
+    fun observeTrackerError(block: (TrackerErrorDetails) -> Unit) =
+        bind(CoreEventMap.OnTrackerError, block)
+
+    fun observeTrackerWarning(block: (TrackerWarningDetails) -> Unit) =
+        bind(CoreEventMap.OnTrackerWarning, block)
+
+    private fun <T> bind(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
+        val listener = EventListener<T> { block(it) }
+        eventEmitter.addEventListener(event, listener)
+
+        return object : Cancellable {
+            override fun cancel() {
+                eventEmitter.removeEventListener(event, listener)
+            }
         }
     }
 }
