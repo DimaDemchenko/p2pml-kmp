@@ -1,187 +1,207 @@
 <!DOCTYPE html>
-<html lang="">
-<head>
-    <title>WebView Example</title>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>P2P Media Loader KMP</title>
     <script type="importmap">
-        {
-          "imports": {
-            "p2p-media-loader-core": "./js"
-          }
+      {
+        "imports": {
+          "p2p-media-loader-core": "./js"
         }
+      }
     </script>
 
     <script type="module">
-        import { Core } from "p2p-media-loader-core";
+      import { Core } from "p2p-media-loader-core";
 
-        class P2P {
-          constructor() {
-            this.eventHandlers = new Map();
+      class NativeBridge {
+        constructor() {
+          this.platform = this.detectPlatform();
+        }
+
+        detectPlatform() {
+          if (
+            window.webkit &&
+            window.webkit.messageHandlers &&
+            window.webkit.messageHandlers.p2pml
+          ) {
+            return "ios";
+          } else if (window.P2PMLAndroid) {
+            return "android";
+          }
+          return "unknown";
+        }
+
+        sendMessage(type, payload = {}) {
+          const message = { type, payload };
+
+          switch (this.platform) {
+            case "ios":
+              window.webkit.messageHandlers.p2pml.postMessage(message);
+              break;
+            case "android":
+              window.P2PMLAndroid.postMessage(JSON.stringify(message));
+              break;
+            default:
+              console.warn(`[Bridge] Platform unknown. Message lost: ${type}`);
+          }
+        }
+      }
+
+      class P2P {
+        constructor(bridge) {
+          this.bridge = bridge;
+          this.eventHandlers = new Map();
+          this.uploadUrl = "http://127.0.0.1:8080/segment-upload";
+        }
+
+        initP2P(coreConfigJson, uploadBaseUrl) {
+          if (uploadBaseUrl) {
+            this.uploadUrl = uploadBaseUrl;
           }
 
-          subscribeToEvent(eventName) {
-            if (this.eventHandlers.has(eventName)) {
-                return;
-            }
+          this.coreConfig = coreConfigJson ? JSON.parse(coreConfigJson) : {};
+          this.createP2PEngine();
+        }
 
-            const handler = (...args) => {
-                sendToIos(eventName, this.formatEventPayload(eventName, args));
-            };
+        createP2PEngine() {
+          if (this.core) this.destroyP2PEngine();
 
-            this.eventHandlers.set(eventName, handler);
+          this.core = new Core(this.coreConfig);
+        }
 
-            this.core.addEventListener(eventName, handler);
-          }
+        destroyP2PEngine() {
+          if (!this.core) return;
 
-          unsubscribeFromEvent(eventName) {
-            const handler = this.eventHandlers.get(eventName);
-            if (!handler) return;
+          this.core.destroy();
+          this.core = null;
+        }
 
-            this.core.removeEventListener(eventName, handler);
-            this.eventHandlers.delete(eventName);
-          }
+        applyDynamicP2PCoreConfig(dynamicCoreConfigJson) {
+          if (!this.core || !dynamicCoreConfigJson) return;
+          this.core.applyDynamicConfig(JSON.parse(dynamicCoreConfigJson));
+        }
 
-          formatEventPayload(eventName, args) {
-            switch (eventName) {
-              case "onChunkDownloaded":
-                return { bytesLength: args[0], downloadSource: args[1], peerId: args[2] };
-              case "onChunkUploaded":
-                return { bytesLength: args[0], peerId: args[1] };
-              case "onTrackerError":
-              case "onTrackerWarning":
-                return {
-                    streamType: args[0].streamType,
-                    error: { message: args[0].error.message, stack: args[0].error.stack }
-                };
-              default:
-                return args[0];
-            }
-          }
+        subscribeToEvent(eventName) {
+          if (this.eventHandlers.has(eventName)) return;
 
-          initP2P(coreConfigJson) {
-            if (!coreConfigJson) {
-              this.createP2PEngine();
-              return;
-            }
+          const handler = (...args) => {
+            const payload = this.formatEventPayload(eventName, args);
+            this.bridge.sendMessage(eventName, payload);
+          };
 
-            this.coreConfig = JSON.parse(coreConfigJson);
-            this.createP2PEngine();
-          }
+          this.eventHandlers.set(eventName, handler);
+          this.core.addEventListener(eventName, handler);
+        }
 
-          applyDynamicP2PCoreConfig(dynamicCoreConfigJson) {
-            if (!dynamicCoreConfigJson) return;
+        unsubscribeFromEvent(eventName) {
+          const handler = this.eventHandlers.get(eventName);
+          if (!handler || !this.core) return;
 
-            const dynamicConfig = JSON.parse(dynamicCoreConfigJson);
-            this.core.applyDynamicConfig(dynamicConfig);
-          }
+          this.core.removeEventListener(eventName, handler);
+          this.eventHandlers.delete(eventName);
+        }
 
-          destroyP2PEngine() {
-            this.core.destroy();
-            this.core = null;
-          }
-
-          createP2PEngine() {
-            if (this.core) {
-              this.destroyP2PEngine();
-            }
-            this.core = new Core(this.coreConfig ?? {});
-          }
-
-          parseAllStreams(jsonData) {
-            const streams = JSON.parse(jsonData);
-
-            for (const stream of streams) {
-              this.core.addStreamIfNoneExists(stream);
-            }
-          }
-
-          parseStream(jsonData) {
-            const playlist = JSON.parse(jsonData);
-            const { streamRuntimeId, addSegments, removeSegmentsIds, isLive } =
-              playlist;
-
-            this.core.updateStream(
-              streamRuntimeId,
-              addSegments,
-              removeSegmentsIds
-            );
-            this.core.setIsLive(isLive);
-          }
-
-          async processSegmentRequest(segmentUrl) {
-            const onSuccess = (response) => {
-              try {
-                fetch(
-                  `http://127.0.0.1:8080/segment-upload?segmentId=${segmentUrl}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/octet-stream" },
-                    body: response.data,
-                  }
-                );
-                // const copyData = new ArrayBuffer(response.data.byteLength);
-                // new Uint8Array(copyData).set(new Uint8Array(response.data));
-                // this.port.postMessage(`${requestId}`);
-                // this.port.postMessage(copyData, [copyData]);
-              } catch (e) {
-                console.error(e);
-                //this.port.postMessage(`Error:${requestId}:failed|${segmentUrl}`);
-              }
-            };
-
-            const onError = (error) => {
-              fetch(
-                `http://127.0.0.1:8080/segment-upload?segmentId=${segmentUrl}&error=${error.type}`,
-                {
-                  method: "POST",
-                }
-              );
-            };
-
-            try {
-              await this.core.loadSegment(segmentUrl, {
-                onSuccess,
-                onError,
-              });
-            } catch (e) {
-              fetch(
-                `http://127.0.0.1:8080/segment-upload?segmentId=${segmentUrl}&error=not_found`,
-                {
-                  method: "POST",
-                }
-              );
-            }
-          }
-
-          setManifestUrl(manifestUrl) {
-            this.core.setManifestResponseUrl(manifestUrl);
-          }
-
-          updatePlaybackInfo(playbackInfoJson) {
-            const playbackInfo = JSON.parse(playbackInfoJson);
-            const { currentPlayPosition, currentPlaybackSpeed } = playbackInfo;
-            this.core.updatePlayback(currentPlayPosition, currentPlaybackSpeed);
+        formatEventPayload(eventName, args) {
+          switch (eventName) {
+            case "onChunkDownloaded":
+              return {
+                bytesLength: args[0],
+                downloadSource: args[1],
+                peerId: args[2],
+              };
+            case "onChunkUploaded":
+              return { bytesLength: args[0], peerId: args[1] };
+            case "onTrackerError":
+            case "onTrackerWarning":
+              return {
+                streamType: args[0].streamType,
+                error: {
+                  message: args[0].error.message,
+                  stack: args[0].error.stack,
+                },
+              };
+            default:
+              return args[0];
           }
         }
 
-        const sendToIos = (type, payload) => {
-          if (window.webkit?.messageHandlers?.p2pml) {
-            window.webkit.messageHandlers.p2pml.postMessage({
-              type,
-              payload,
-            });
+        parseAllStreams(jsonData) {
+          if (!this.core) return;
+
+          const streams = JSON.parse(jsonData);
+          for (const stream of streams) {
+            this.core.addStreamIfNoneExists(stream);
           }
-        };
+        }
 
-        document.addEventListener("DOMContentLoaded", () => {
-          const p2p = new P2P();
-          window.p2p = p2p;
+        parseStream(jsonData) {
+          if (!this.core) return;
 
-          if (window.webkit) {
-            sendToIos("onWebViewLoaded");
-          } else Android.onWebViewLoaded();
-        });
+          const playlist = JSON.parse(jsonData);
+          const { streamRuntimeId, addSegments, removeSegmentsIds, isLive } =
+            playlist;
+
+          this.core.updateStream(
+            streamRuntimeId,
+            addSegments,
+            removeSegmentsIds
+          );
+          this.core.setIsLive(isLive);
+        }
+
+        setManifestUrl(manifestUrl) {
+          if (!this.core) return;
+          this.core.setManifestResponseUrl(manifestUrl);
+        }
+
+        updatePlaybackInfo(playbackInfoJson) {
+          if (!this.core) return;
+
+          const { currentPlayPosition, currentPlaybackSpeed } =
+            JSON.parse(playbackInfoJson);
+          this.core.updatePlayback(currentPlayPosition, currentPlaybackSpeed);
+        }
+
+        async processSegmentRequest(segmentUrl) {
+          const uploadToKtor = (status, body = null, errorType = null) => {
+            let url = `${this.uploadUrl}?segmentId=${encodeURIComponent(
+              segmentUrl
+            )}`;
+            if (errorType) url += `&error=${errorType}`;
+
+            const options = { method: "POST" };
+            if (body) {
+              options.headers = { "Content-Type": "application/octet-stream" };
+              options.body = body;
+            }
+
+            fetch(url, options).catch((e) =>
+              console.error("Ktor Upload Failed", e)
+            );
+          };
+
+          try {
+            await this.core.loadSegment(segmentUrl, {
+              onSuccess: (response) => uploadToKtor("success", response.data),
+              onError: (error) => uploadToKtor("error", null, error.type),
+            });
+          } catch (e) {
+            uploadToKtor("error", null, "not_found");
+          }
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const bridge = new NativeBridge();
+        const p2p = new P2P(bridge);
+
+        window.p2p = p2p;
+        console.log("document loaded");
+        bridge.sendMessage("onWebViewLoaded");
+      });
     </script>
-</head>
-
-<body></body>
+  </head>
+  <body></body>
 </html>
