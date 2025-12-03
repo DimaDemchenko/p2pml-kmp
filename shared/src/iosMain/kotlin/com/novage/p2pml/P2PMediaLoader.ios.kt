@@ -36,14 +36,15 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
         val platformWebView =
             platformWebViewFactory.createWebView(eventEmitter) { onWebViewLoaded() }
         val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)
-
-        iosWebViewManager = WebViewManagerImpl(platformWebView, playbackProvider, coroutineScope)
+        val webViewManager =
+            WebViewManagerImpl(platformWebView, playbackProvider, coroutineScope)
 
         defaultPlaybackProvider = playbackProvider
+        iosWebViewManager = webViewManager
         serverModule =
             ServerModule(
                 playbackProvider = playbackProvider,
-                webViewManager = iosWebViewManager!!,
+                webViewManager = webViewManager,
                 onServerStarted = { onServerStarted() },
             )
 
