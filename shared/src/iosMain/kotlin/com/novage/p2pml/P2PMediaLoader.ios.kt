@@ -7,6 +7,7 @@ import com.novage.p2pml.webview.PlatformContext
 import com.novage.p2pml.webview.PlatformWebViewFactory
 import com.novage.p2pml.webview.WebViewManagerImpl
 import io.ktor.http.encodeURLParameter
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,6 +21,8 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     private var serverModule: ServerModule? = null
     private var defaultPlaybackProvider: DefaultPlaybackProvider? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    private val isEngineReady = atomic(false)
 
     fun getManifestUrl(manifestUrl: String): String {
         val encodedManifest = manifestUrl.encodeURLParameter()
@@ -60,6 +63,7 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
                 iosWebViewManager?.subscribeToP2PEvent(eventName)
             }
 
+            isEngineReady.value = true
             onP2PReadyCallback()
         }
     }
@@ -96,11 +100,24 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
     private fun <T> bind(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
         val listener = EventListener<T> { block(it) }
+        val initialCount = eventEmitter.getListenerCount(event)
+
         eventEmitter.addEventListener(event, listener)
+
+        if (isEngineReady.value && initialCount == 0) {
+            coroutineScope.launch { iosWebViewManager?.subscribeToP2PEvent(event.eventName) }
+        }
 
         return object : Cancellable {
             override fun cancel() {
                 eventEmitter.removeEventListener(event, listener)
+
+                val remainingCount = eventEmitter.getListenerCount(event)
+                if (isEngineReady.value && remainingCount == 0) {
+                    coroutineScope.launch {
+                        iosWebViewManager?.unsubscribeFromP2PEvent(event.eventName)
+                    }
+                }
             }
         }
     }

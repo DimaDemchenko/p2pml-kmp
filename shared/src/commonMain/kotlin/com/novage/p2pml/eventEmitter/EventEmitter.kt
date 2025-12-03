@@ -13,7 +13,13 @@ class EventEmitter {
     }
 
     fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
-        listeners[event]?.remove(listener)
+        listeners[event]?.let { list ->
+            list.remove(listener)
+
+            if (list.isEmpty()) {
+                listeners.remove(event)
+            }
+        }
     }
 
     fun <T> emit(event: CoreEventMap<T>, data: T) {
@@ -28,5 +34,9 @@ class EventEmitter {
 
     fun getSubscribedEventNames(): List<String> {
         return listeners.filterValues { it.isNotEmpty() }.keys.map { it.eventName }
+    }
+
+    fun <T> getListenerCount(event: CoreEventMap<T>): Int {
+        return listeners[event]?.size ?: 0
     }
 }
