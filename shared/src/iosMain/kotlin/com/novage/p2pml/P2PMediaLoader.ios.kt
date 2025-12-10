@@ -1,27 +1,20 @@
 package com.novage.p2pml
 
+import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.eventEmitter.*
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.server.ServerModule
-import com.novage.p2pml.webview.PlatformContext
-import com.novage.p2pml.webview.PlatformWebViewFactory
-import com.novage.p2pml.webview.WebViewManagerImpl
+import com.novage.p2pml.webview.IosWebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
     private val eventEmitter = EventEmitter()
-
-    private var iosWebViewManager: WebViewManagerImpl? = null
-
+    private var engineManager: P2PEngine? = null
     private var serverModule: ServerModule? = null
     private var defaultPlaybackProvider: DefaultPlaybackProvider? = null
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
-
     private val isEngineReady = atomic(false)
 
     fun getManifestUrl(manifestUrl: String): String {
@@ -31,20 +24,18 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     }
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        val platformWebViewFactory = PlatformWebViewFactory(PlatformContext())
-
+        val webViewFactory = IosWebViewFactory()
         val platformWebView =
-            platformWebViewFactory.createWebView(eventEmitter) { onWebViewLoaded() }
+            webViewFactory.createHeadlessWebView(eventEmitter) { onWebViewLoaded() }
         val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)
-        val webViewManager =
-            WebViewManagerImpl(platformWebView, playbackProvider, coroutineScope)
+        val engine = P2PEngineManager(platformWebView, playbackProvider)
 
         defaultPlaybackProvider = playbackProvider
-        iosWebViewManager = webViewManager
+        engineManager = engine
         serverModule =
             ServerModule(
                 playbackProvider = playbackProvider,
-                webViewManager = webViewManager,
+                engineManager = engine,
                 onServerStarted = { onServerStarted() },
             )
 
@@ -52,21 +43,19 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     }
 
     private fun onServerStarted() {
-        iosWebViewManager?.loadUrl("http://127.0.0.1:8080/static/")
+        engineManager?.loadUrl("http://127.0.0.1:8080/static/")
     }
 
     private fun onWebViewLoaded() {
-        coroutineScope.launch {
-            iosWebViewManager?.initCoreEngine("{}")
+        engineManager?.initCoreEngine("{}")
 
-            val subscribedEvents = eventEmitter.getSubscribedEventNames()
-            subscribedEvents.forEach { eventName ->
-                iosWebViewManager?.subscribeToP2PEvent(eventName)
-            }
-
-            isEngineReady.value = true
-            onP2PReadyCallback()
+        val subscribedEvents = eventEmitter.getSubscribedEventNames()
+        subscribedEvents.forEach { eventName ->
+            engineManager?.subscribeToP2PEvent(eventName)
         }
+
+        isEngineReady.value = true
+        onP2PReadyCallback()
     }
 
     fun observeSegmentLoaded(block: (SegmentLoadDetails) -> Unit) =
@@ -106,7 +95,7 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
         eventEmitter.addEventListener(event, listener)
 
         if (isEngineReady.value && initialCount == 0) {
-            coroutineScope.launch { iosWebViewManager?.subscribeToP2PEvent(event.eventName) }
+            engineManager?.subscribeToP2PEvent(event.eventName)
         }
 
         return object : Cancellable {
@@ -115,9 +104,7 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
                 val remainingCount = eventEmitter.getListenerCount(event)
                 if (isEngineReady.value && remainingCount == 0) {
-                    coroutineScope.launch {
-                        iosWebViewManager?.unsubscribeFromP2PEvent(event.eventName)
-                    }
+                    engineManager?.unsubscribeFromP2PEvent(event.eventName)
                 }
             }
         }

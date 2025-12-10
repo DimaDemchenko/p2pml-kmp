@@ -1,11 +1,11 @@
 package com.novage.p2pml.server
 
-import com.novage.p2pml.webview.WebViewManager
+import com.novage.p2pml.engine.P2PEngine
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class SegmentHandler(private val webViewManager: WebViewManager) {
+class SegmentHandler(private val engineManager: P2PEngine) {
     private val mutex = Mutex()
 
     private val deferredSegments = mutableMapOf<String, CompletableDeferred<ByteArray>>()
@@ -17,7 +17,7 @@ class SegmentHandler(private val webViewManager: WebViewManager) {
             val deferred = CompletableDeferred<ByteArray>()
             deferredSegments[segmentUrl] = deferred
 
-            webViewManager.requestSegmentBytes(segmentUrl)
+            engineManager.requestSegmentBytes(segmentUrl)
 
             return deferred
         }

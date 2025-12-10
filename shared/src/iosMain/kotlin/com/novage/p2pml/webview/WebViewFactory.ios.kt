@@ -2,70 +2,92 @@ package com.novage.p2pml.webview
 
 import com.novage.p2pml.eventEmitter.EventEmitter
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.readValue
-import platform.CoreGraphics.CGRect
+import platform.CoreGraphics.CGRectZero
+import platform.Foundation.NSURL
+import platform.Foundation.NSURLRequest
 import platform.Foundation.setValue
 import platform.WebKit.WKPreferences
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 
-actual class PlatformContext
-
-actual class PlatformWebViewFactory actual constructor(private val context: PlatformContext) {
-    @OptIn(ExperimentalForeignApi::class)
-    actual fun createWebView(
+class IosWebViewFactory : WebViewFactory {
+    override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
-        onWebviewLoaded: () -> Unit,
-    ): PlatformWebView {
+        onWebviewLoaded: () -> Unit
+    ): HeadlessWebView {
+        return IosHeadlessWebView(eventEmitter, onWebviewLoaded)
+    }
+}
+
+private class IosHeadlessWebView(
+    private val eventEmitter: EventEmitter,
+    private val onWebviewLoaded: () -> Unit
+) : HeadlessWebView {
+    private var webView: WKWebView? = null
+
+    init {
+        dispatch_async(dispatch_get_main_queue()) {
+            initWebView()
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun initWebView() {
         val configuration = WKWebViewConfiguration()
-        val userController = configuration.userContentController
 
         val scriptMessageHandler = WebViewEventDispatcher(eventEmitter) { onWebviewLoaded() }
-        userController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
+        configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
 
         val preferences = WKPreferences()
         preferences.setValue(true, forKey = "developerExtrasEnabled")
         configuration.preferences = preferences
 
-        val frame = memScoped {
-            alloc<CGRect>()
-                .apply {
-                    origin.x = 0.0
-                    origin.y = 0.0
-                    size.width = 0.0
-                    size.height = 0.0
-                }
-                .readValue()
-        }
+        val frame = CGRectZero.readValue()
 
-        val webView = WKWebView(frame = frame, configuration = configuration)
+        val wkWebView = WKWebView(frame = frame, configuration = configuration)
+        wkWebView.hidden = true
+        wkWebView.userInteractionEnabled = false
+        wkWebView.inspectable = true
 
-        // Make webView hidden but functional
-        webView.hidden = true
-        webView.userInteractionEnabled = false
-        webView.inspectable = true
-
-        return IOSWebView(webView)
+        this.webView = wkWebView
     }
-}
 
-class IOSWebView(private val webView: WKWebView) : PlatformWebView {
     override fun loadUrl(url: String) {
-        val nsUrl = platform.Foundation.NSURL(string = url)
-        val request = platform.Foundation.NSURLRequest(nsUrl)
+        dispatch_async(dispatch_get_main_queue()) {
+            val view = webView ?: return@dispatch_async
 
-        webView.loadRequest(request)
+            val nsUrl = NSURL.URLWithString(url) ?: return@dispatch_async
+            val request = NSURLRequest.requestWithURL(nsUrl)
+            view.loadRequest(request)
+        }
     }
 
-    override fun evaluateJavascript(script: String, callback: ((String) -> Unit)?) {
-        webView.evaluateJavaScript(script, null)
+    override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
+        dispatch_async(dispatch_get_main_queue()) {
+            val view = webView ?: return@dispatch_async
+
+            view.evaluateJavaScript(script) { result, error ->
+                if (error == null && result is String) {
+                    callback?.invoke(result)
+                } else {
+                    callback?.invoke(null)
+                }
+            }
+        }
     }
 
     override fun destroy() {
-        webView.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
-        webView.stopLoading()
-        webView.removeFromSuperview()
+        dispatch_async(dispatch_get_main_queue()) {
+            val view = webView ?: return@dispatch_async
+
+            view.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
+            view.stopLoading()
+            view.removeFromSuperview()
+
+            webView = null
+        }
     }
 }

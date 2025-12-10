@@ -3,8 +3,7 @@ package com.novage.p2pml.server
 import com.novage.p2pml.httpClient.createHttpClient
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
-import com.novage.p2pml.webview.WebViewManager
-import io.ktor.client.request.get
+import com.novage.p2pml.engine.P2PEngine
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
 import io.ktor.server.cio.CIO
@@ -14,7 +13,7 @@ import io.ktor.server.engine.embeddedServer
 
 internal class ServerModule(
     playbackProvider: PlaybackProvider,
-    webViewManager: WebViewManager,
+    engineManager: P2PEngine,
     private val onServerStarted: () -> Unit,
 ) {
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
@@ -22,8 +21,8 @@ internal class ServerModule(
     private var client = createHttpClient()
     private var hlsManifestParser = HlsManifestParser(playbackProvider)
     private var manifestHandler =
-        ManifestHandler(hlsManifestParser, webViewManager) { println("Manifest changed") }
-    private var segmentHandler = SegmentHandler(webViewManager)
+        ManifestHandler(hlsManifestParser, engineManager) { println("Manifest changed") }
+    private var segmentHandler = SegmentHandler(engineManager)
 
     fun start(port: Int = 8080) {
         if (server != null) return
