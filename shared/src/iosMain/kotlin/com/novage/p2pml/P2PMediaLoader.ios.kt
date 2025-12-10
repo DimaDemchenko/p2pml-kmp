@@ -42,6 +42,18 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
         serverModule?.start()
     }
 
+    fun release() {
+        engineManager?.destroy()
+        engineManager = null
+
+        serverModule?.stop()
+        serverModule = null
+
+        eventEmitter.removeAllListeners()
+
+        isEngineReady.value = false
+    }
+
     private fun onServerStarted() {
         engineManager?.loadUrl("http://127.0.0.1:8080/static/")
     }

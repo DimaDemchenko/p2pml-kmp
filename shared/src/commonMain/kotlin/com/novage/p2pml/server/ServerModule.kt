@@ -43,4 +43,15 @@ internal class ServerModule(
     private fun subscribeToServerStarted(application: Application) {
         application.monitor.subscribe(ApplicationStarted) { onServerStarted() }
     }
+
+    fun stop() {
+        server?.stop(gracePeriodMillis = 100, timeoutMillis = 500)
+        server = null
+
+        try {
+            client.close()
+        } catch (e: Exception) {
+            println("Error closing HTTP client: ${e.message}")
+        }
+    }
 }
