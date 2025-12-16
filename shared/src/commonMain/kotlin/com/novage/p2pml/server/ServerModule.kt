@@ -10,6 +10,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
+import kotlinx.coroutines.runBlocking
 
 internal class ServerModule(
     playbackProvider: PlaybackProvider,
@@ -45,6 +46,11 @@ internal class ServerModule(
     }
 
     fun stop() {
+        runBlocking {
+            segmentHandler.reset()
+            manifestHandler.reset()
+        }
+
         server?.stop(gracePeriodMillis = 100, timeoutMillis = 500)
         server = null
 

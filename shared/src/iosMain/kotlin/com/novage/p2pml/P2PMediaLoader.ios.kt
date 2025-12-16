@@ -8,6 +8,7 @@ import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.webview.IosWebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.runBlocking
 
 actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
@@ -50,7 +51,7 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
         serverModule = null
 
         eventEmitter.removeAllListeners()
-
+        runBlocking { defaultPlaybackProvider?.resetData() }
         isEngineReady.value = false
     }
 

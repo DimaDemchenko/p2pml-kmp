@@ -57,7 +57,7 @@ internal class ManifestHandler(
         }
     }
 
-    private suspend fun reset() {
+    suspend fun reset() {
         mutex.withLock { isInitialManifestProcessed = false }
     }
 }
