@@ -9,6 +9,7 @@ interface P2PEngine {
     fun sendStream(streamJson: String)
     fun sendAllStreams(streamsJson: String)
     fun setManifestUrl(manifestUrl: String)
+    fun applyDynamicConfig(dynamicConfigJson: String)
 
     fun subscribeToP2PEvent(eventName: String)
     fun unsubscribeFromP2PEvent(eventName: String)

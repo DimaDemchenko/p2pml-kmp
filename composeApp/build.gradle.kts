@@ -18,6 +18,9 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation("androidx.media3:media3-exoplayer:1.8.0")
+            implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
+            implementation("androidx.compose.material3:material3:1.4.0")
         }
         commonMain.dependencies {
             implementation(compose.runtime)

@@ -1,59 +1,49 @@
 package com.novage.p2pml
 
 import android.os.Bundle
+import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.ui.PlayerView
-
+import com.novage.p2pml.ui.ExoPlayerScreen
+import com.novage.p2pml.viewmodel.ExoPlayerViewModel
+@UnstableApi
 class MainActivity : ComponentActivity() {
-    private lateinit var player: ExoPlayer
-    private lateinit var p2pMediaLoader: P2PMediaLoader
+    private val viewModel: ExoPlayerViewModel by lazy {
+        ExoPlayerViewModel(application)
+    }
 
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        p2pMediaLoader = P2PMediaLoader()
-        p2pMediaLoader.start()
-
-        val manifestUrl =
-            p2pMediaLoader.getManifestUrl(
-                "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8"
-            )
-
-        val mediaSource =
-            HlsMediaSource.Factory(DefaultHttpDataSource.Factory())
-                .createMediaSource(MediaItem.fromUri(manifestUrl))
-        player =
-            ExoPlayer.Builder(this).build().apply {
-                setMediaSource(mediaSource)
-                playWhenReady = true
-            }
-
         super.onCreate(savedInstanceState)
-        setContent { ExoPlayerScreen(player) }
-    }
-}
 
-@Composable
-fun ExoPlayerScreen(player: ExoPlayer) {
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { context ->
-            PlayerView(context).apply {
-                // Set the player instance
-                this.player = player
-                // Optionally enable playback controls
-                useController = true
-            }
-        },
-    )
+        // Enable debugging of WebView to see P2PML logs
+        WebView.setWebContentsDebuggingEnabled(true)
+
+        viewModel.setupP2PML()
+
+        setContent {
+            val isLoading by viewModel.loadingState.collectAsState()
+            val stats by viewModel.p2pStats.collectAsState()
+            ExoPlayerScreen(player = viewModel.player, videoTitle = "Test Stream", isLoading, stats)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewModel.updateP2PConfig(isP2PDisabled = true)
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        viewModel.updateP2PConfig(isP2PDisabled = false)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel.releasePlayer()
+    }
 }

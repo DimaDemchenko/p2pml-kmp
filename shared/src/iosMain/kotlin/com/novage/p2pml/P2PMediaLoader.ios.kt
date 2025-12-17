@@ -10,7 +10,7 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.runBlocking
 
-actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
+class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
     private val eventEmitter = EventEmitter()
     private var engineManager: P2PEngine? = null
@@ -44,13 +44,14 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     }
 
     fun release() {
+        eventEmitter.removeAllListeners()
+
         engineManager?.destroy()
         engineManager = null
 
         serverModule?.stop()
         serverModule = null
 
-        eventEmitter.removeAllListeners()
         runBlocking { defaultPlaybackProvider?.resetData() }
         isEngineReady.value = false
     }
@@ -103,11 +104,11 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
     private fun <T> bind(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
         val listener = EventListener<T> { block(it) }
-        val initialCount = eventEmitter.getListenerCount(event)
+        val isFirstListener = !eventEmitter.hasListeners(event)
 
         eventEmitter.addEventListener(event, listener)
 
-        if (isEngineReady.value && initialCount == 0) {
+        if (isEngineReady.value && isFirstListener) {
             engineManager?.subscribeToP2PEvent(event.eventName)
         }
 
@@ -115,8 +116,8 @@ actual class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
             override fun cancel() {
                 eventEmitter.removeEventListener(event, listener)
 
-                val remainingCount = eventEmitter.getListenerCount(event)
-                if (isEngineReady.value && remainingCount == 0) {
+                val isNowEmpty = !eventEmitter.hasListeners(event)
+                if (isEngineReady.value && isNowEmpty) {
                     engineManager?.unsubscribeFromP2PEvent(event.eventName)
                 }
             }

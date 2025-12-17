@@ -21,30 +21,47 @@
         }
 
         detectPlatform() {
-          if (
-            window.webkit &&
-            window.webkit.messageHandlers &&
-            window.webkit.messageHandlers.p2pml
-          ) {
-            return "ios";
-          } else if (window.P2PMLAndroid) {
-            return "android";
-          }
+          if (window.P2PMLAndroid) return "android";
+          if (window.webkit?.messageHandlers?.p2pml) return "ios";
           return "unknown";
         }
 
-        sendMessage(type, payload = {}) {
-          const message = { type, payload };
+        sendChunkDownloaded(bytesLength, downloadSource, peerId) {
+          if (this.platform === "android") {
+            window.P2PMLAndroid.onChunkDownloaded(
+              bytesLength,
+              downloadSource,
+              peerId
+            );
+          } else if (this.platform === "ios") {
+            this.postToIos("onChunkDownloaded", {
+              bytesLength,
+              downloadSource,
+              peerId,
+            });
+          }
+        }
 
-          switch (this.platform) {
-            case "ios":
-              window.webkit.messageHandlers.p2pml.postMessage(message);
-              break;
-            case "android":
-              window.P2PMLAndroid.postMessage(JSON.stringify(message));
-              break;
-            default:
-              console.warn(`[Bridge] Platform unknown. Message lost: ${type}`);
+        sendChunkUploaded(bytesLength, peerId) {
+          if (this.platform === "android") {
+            window.P2PMLAndroid.onChunkUploaded(bytesLength, peerId);
+          } else if (this.platform === "ios") {
+            this.postToIos("onChunkUploaded", { bytesLength, peerId });
+          }
+        }
+
+        postToIos(type, payload) {
+          window.webkit.messageHandlers.p2pml.postMessage({ type, payload });
+        }
+
+        sendMessage(type, payload = {}) {
+          if (this.platform === "android") {
+            const message = JSON.stringify({ type, payload });
+            window.P2PMLAndroid.postMessage(message);
+          } else if (this.platform === "ios") {
+            this.postToIos(type, payload);
+          } else {
+            console.warn(`[Bridge] Platform unknown. Message lost: ${type}`);
           }
         }
       }
@@ -87,6 +104,16 @@
           if (this.eventHandlers.has(eventName)) return;
 
           const handler = (...args) => {
+            if (eventName === "onChunkDownloaded") {
+              this.bridge.sendChunkDownloaded(args[0], args[1], args[2]);
+              return;
+            }
+
+            if (eventName === "onChunkUploaded") {
+              this.bridge.sendChunkUploaded(args[0], args[1]);
+              return;
+            }
+
             const payload = this.formatEventPayload(eventName, args);
             this.bridge.sendMessage(eventName, payload);
           };
@@ -105,21 +132,13 @@
 
         formatEventPayload(eventName, args) {
           switch (eventName) {
-            case "onChunkDownloaded":
-              return {
-                bytesLength: args[0],
-                downloadSource: args[1],
-                peerId: args[2],
-              };
-            case "onChunkUploaded":
-              return { bytesLength: args[0], peerId: args[1] };
             case "onTrackerError":
             case "onTrackerWarning":
               return {
                 streamType: args[0].streamType,
                 error: {
-                  message: args[0].error.message,
-                  stack: args[0].error.stack,
+                  message: args[0].error?.message,
+                  stack: args[0].error?.stack,
                 },
               };
             default:

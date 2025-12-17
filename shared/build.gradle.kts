@@ -21,7 +21,13 @@ kotlin {
     }
 
     sourceSets {
-        androidMain.dependencies { implementation("io.ktor:ktor-client-okhttp:3.1.0") }
+        androidMain.dependencies {
+            implementation("io.ktor:ktor-client-okhttp:3.1.0")
+
+            compileOnly("androidx.media3:media3-exoplayer:1.8.0")
+            compileOnly("androidx.media3:media3-exoplayer-hls:1.8.0")
+            implementation("org.slf4j:slf4j-simple:2.0.9")
+        }
 
         iosMain.dependencies { implementation("io.ktor:ktor-client-darwin:3.1.0") }
 

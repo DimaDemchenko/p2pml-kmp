@@ -32,6 +32,8 @@ class WebViewEventDispatcher(
     }
 
     private fun handleChunkDownloaded(body: NSDictionary) {
+        if (!eventEmitter.hasListeners(CoreEventMap.OnChunkDownloaded)) return
+
         val payload = body.objectForKey("payload") as? NSDictionary ?: return
         val bytesLength = (payload.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val downloadSource = payload.objectForKey("downloadSource") as? String ?: return
@@ -44,6 +46,8 @@ class WebViewEventDispatcher(
     }
 
     private fun handleChunkUploaded(body: NSDictionary) {
+        if (!eventEmitter.hasListeners(CoreEventMap.OnChunkUploaded)) return
+
         val payload = body.objectForKey("payload") as? NSDictionary ?: return
         val bytesLength = (payload.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val peerId = payload.objectForKey("peerId") as? String ?: return

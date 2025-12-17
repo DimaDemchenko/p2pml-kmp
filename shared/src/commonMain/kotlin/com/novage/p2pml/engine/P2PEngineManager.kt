@@ -43,6 +43,10 @@ class P2PEngineManager(
         evaluate("window.p2p.setManifestUrl('$manifestUrl');")
     }
 
+    override fun applyDynamicConfig(dynamicConfigJson: String) {
+        evaluate("window.p2p.applyDynamicP2PCoreConfig('$dynamicConfigJson');")
+    }
+
     override fun subscribeToP2PEvent(eventName: String) {
         evaluate("window.p2p.subscribeToEvent('$eventName');")
     }

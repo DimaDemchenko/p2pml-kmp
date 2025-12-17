@@ -36,8 +36,9 @@ internal class ServerModule(
                     }
                     .start(wait = false)
         } catch (e: Exception) {
+            e.printStackTrace()
             val message = e.message ?: "Failed to start server on port $port"
-            // onServerStarted Error
+            println("❌ CRITICAL: P2P Server failed to start!")
         }
     }
 

@@ -36,7 +36,8 @@ class EventEmitter {
         return listeners.filterValues { it.isNotEmpty() }.keys.map { it.eventName }
     }
 
-    fun <T> getListenerCount(event: CoreEventMap<T>): Int {
-        return listeners[event]?.size ?: 0
+    fun <T> hasListeners(event: CoreEventMap<T>): Boolean {
+        return listeners[event]?.isNotEmpty() == true
     }
+
 }
