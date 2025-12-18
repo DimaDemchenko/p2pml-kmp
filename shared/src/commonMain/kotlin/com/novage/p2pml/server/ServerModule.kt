@@ -5,7 +5,7 @@ import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
 import com.novage.p2pml.engine.P2PEngine
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStarted
+import io.ktor.server.application.ServerReady
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
@@ -43,7 +43,7 @@ internal class ServerModule(
     }
 
     private fun subscribeToServerStarted(application: Application) {
-        application.monitor.subscribe(ApplicationStarted) { onServerStarted() }
+        application.monitor.subscribe(ServerReady) { onServerStarted() }
     }
 
     fun stop() {
