@@ -72,7 +72,7 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
     }
 
     fun start(getPlaybackInfo: () -> PlaybackInfo, context: Context) {
-        val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter, ) {
+        val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter) {
             onWebViewLoaded()
         }
         val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)

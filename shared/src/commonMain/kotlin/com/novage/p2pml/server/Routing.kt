@@ -2,8 +2,6 @@ package com.novage.p2pml.server
 
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.parser.decodeBase64Url
-import com.novage.p2pml.resources.INDEX_HTML
-import com.novage.p2pml.resources.P2PML_CORE_JS
 import io.ktor.client.HttpClient
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -11,12 +9,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.toByteArray
+import p2pmedialoadermobile.shared.generated.resources.Res
 
 data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
 
@@ -30,8 +30,7 @@ internal fun Application.configureRoutes(
         registerManifestRoute(client, manifestHandler)
         registerSegmentRoute(client, segmentHandler, manifestParser)
         registerSegmentReceiveRoute(segmentHandler)
-        registerStaticRoute()
-        registerStaticJsRoute()
+        registerWebAssets()
     }
 }
 
@@ -153,10 +152,23 @@ internal fun Route.registerSegmentRoute(
     }
 }
 
-internal fun Route.registerStaticRoute() {
-    get("/static/") { call.respondText(INDEX_HTML, ContentType.Text.Html) }
-}
+internal fun Route.registerWebAssets() {
+    get("/static/{path...}") {
+        val path = call.parameters.getAll("path")?.joinToString("/")?.ifEmpty { null }
+            ?: "index.html"
 
-internal fun Route.registerStaticJsRoute() {
-    get("/static/js") { call.respondText(P2PML_CORE_JS, ContentType.Application.JavaScript) }
+        try {
+            val bytes = Res.readBytes("files/$path")
+
+            val contentType = when {
+                path.endsWith(".js") -> ContentType.Application.JavaScript
+                path.endsWith(".html") -> ContentType.Text.Html
+                else -> ContentType.Application.OctetStream
+            }
+
+            call.respondBytes(bytes, contentType)
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.NotFound)
+        }
+    }
 }

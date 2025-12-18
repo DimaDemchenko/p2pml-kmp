@@ -21,6 +21,7 @@ kotlin {
             implementation("androidx.media3:media3-exoplayer:1.8.0")
             implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
             implementation("androidx.compose.material3:material3:1.4.0")
+            implementation(compose.materialIconsExtended)
         }
         commonMain.dependencies {
             implementation(compose.runtime)

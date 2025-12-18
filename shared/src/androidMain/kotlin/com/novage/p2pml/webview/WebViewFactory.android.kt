@@ -13,17 +13,28 @@ class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
         eventEmitter: EventEmitter,
         onWebviewLoaded: () -> Unit
     ): HeadlessWebView {
-        return AndroidHeadlessWebView(context)
+        return AndroidHeadlessWebView(context, eventEmitter, onWebviewLoaded)
     }
 }
 
-private class AndroidHeadlessWebView(context: Context) : HeadlessWebView {
+private class AndroidHeadlessWebView(
+    context: Context,
+    eventEmitter: EventEmitter,
+    onWebviewLoaded: () -> Unit
+) : HeadlessWebView {
     @SuppressLint("SetJavaScriptEnabled")
     private val webView: WebView = WebView(context).apply {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
         webViewClient = WebViewClient()
+
+        val dispatcher = AndroidWebViewEventDispatcher(
+            eventEmitter = eventEmitter,
+            onPageReady = onWebviewLoaded
+        )
+
+        addJavascriptInterface(dispatcher, "P2PMLAndroid")
     }
 
     override fun loadUrl(url: String) {
