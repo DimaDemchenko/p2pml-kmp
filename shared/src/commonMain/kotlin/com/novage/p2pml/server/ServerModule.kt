@@ -22,7 +22,10 @@ internal class ServerModule(
     private var client = createHttpClient()
     private var hlsManifestParser = HlsManifestParser(playbackProvider)
     private var manifestHandler =
-        ManifestHandler(hlsManifestParser, engineManager) { println("Manifest changed") }
+        ManifestHandler(hlsManifestParser, engineManager) {
+            playbackProvider.resetData()
+            hlsManifestParser.reset()
+        }
     private var segmentHandler = SegmentHandler(engineManager)
 
     fun start(port: Int = 8080) {
@@ -36,8 +39,6 @@ internal class ServerModule(
                     }
                     .start(wait = false)
         } catch (e: Exception) {
-            e.printStackTrace()
-            val message = e.message ?: "Failed to start server on port $port"
             println("❌ CRITICAL: P2P Server failed to start!")
         }
     }
