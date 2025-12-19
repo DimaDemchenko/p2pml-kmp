@@ -8,4 +8,5 @@ object Streams {
     const val HLS_ADVANCED_STREAM = "https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8"
     const val HLS_ADVANCED_STREAM_2 = "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8"
     const val HLS_LIVE_STREAM = "https://fcc3ddae59ed.us-west-2.playback.live-video.net/api/video/v1/us-west-2.893648527354.channel.DmumNckWFTqz.m3u8"
+    const val HLS_4K_STREAM = "https://cdn.bitmovin.com/content/demos/4k/38e843e0-1998-11e9-8a92-c734cd79b4dc/video_25000000.m3u8"
 }

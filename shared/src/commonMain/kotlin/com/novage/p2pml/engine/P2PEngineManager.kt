@@ -22,8 +22,8 @@ class P2PEngineManager(
         webView.destroy()
     }
 
-    override fun initCoreEngine(coreConfigJson: String) {
-        evaluate("window.p2p.initP2P('$coreConfigJson');")
+    override fun initCoreEngine(coreConfigJson: String, uploadUrl: String) {
+        evaluate("window.p2p.initP2P('$coreConfigJson', '$uploadUrl');")
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {

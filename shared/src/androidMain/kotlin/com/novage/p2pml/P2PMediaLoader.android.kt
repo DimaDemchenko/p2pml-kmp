@@ -10,26 +10,27 @@ import com.novage.p2pml.eventEmitter.EventListener
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.providers.PlaybackProvider
+import com.novage.p2pml.server.LocalUrlFactory
+import com.novage.p2pml.server.ServerConfig
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.webview.AndroidWebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.runBlocking
 
 class P2PMediaLoader(private val context: Context, private val onP2PReadyCallback: () -> Unit = {}) {
+    private val serverConfig = ServerConfig()
+    private val urlFactory = LocalUrlFactory(serverConfig)
     private val eventEmitter = EventEmitter()
     private var serverModule: ServerModule? = null
     private var defaultPlaybackProvider: PlaybackProvider? = null
     private var engineManager: P2PEngine? = null
+
     private var isEngineReady = false
 
     fun getManifestUrl(manifestUrl: String): String {
-        val encodedManifest = manifestUrl.encodeURLParameter()
-        return "http://127.0.0.1:8080/manifest/$encodedManifest"
+        return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
 
-    init {
-        println("P2PMediaLoader initialized with Android context.")
-    }
     /**
      * Initializes and starts P2P media streaming components.
      *
@@ -66,7 +67,8 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
             ServerModule(
                 playbackProvider = provider,
                 engineManager = engine,
-                onServerStarted = { onServerStarted() },
+                urlFactory = urlFactory,
+                onServerStarted = { port -> onServerStarted(port) },
             )
         serverModule?.start()
     }
@@ -85,9 +87,10 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
             ServerModule(
                 playbackProvider = playbackProvider,
                 engineManager = engine,
-                onServerStarted = { onServerStarted() },
+                urlFactory = urlFactory,
+                onServerStarted = { port -> onServerStarted(port) },
             )
-        println("Starting server module...")
+
         serverModule?.start()
     }
 
@@ -139,7 +142,10 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
     }
 
     private fun onWebViewLoaded() {
-        engineManager?.initCoreEngine("{}")
+        engineManager?.initCoreEngine(
+            coreConfigJson = "{}",
+            uploadUrl = urlFactory.buildUploadUrl()
+        )
 
         val subscribedEvents = eventEmitter.getSubscribedEventNames()
         subscribedEvents.forEach { eventName ->
@@ -150,8 +156,10 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
         onP2PReadyCallback()
     }
 
-    private fun onServerStarted() {
-        engineManager?.loadUrl("http://127.0.0.1:8080/static/")
+    private fun onServerStarted(port: Int) {
+        this.serverConfig.updatePort(port);
+
+        engineManager?.loadUrl(urlFactory.buildStaticPageUrl())
     }
 
     fun release() {
@@ -165,5 +173,6 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
 
         runBlocking { defaultPlaybackProvider?.resetData() }
         isEngineReady = false
+        serverConfig.updatePort(-1)
     }
 }

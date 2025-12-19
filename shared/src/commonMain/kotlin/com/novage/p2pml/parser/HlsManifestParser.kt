@@ -9,6 +9,7 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
 import com.novage.p2pml.parser.hlsPlaylistParser.InitializationSegment
 import com.novage.p2pml.parser.hlsPlaylistParser.Segment
 import com.novage.p2pml.providers.PlaybackProvider
+import com.novage.p2pml.server.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,7 +18,10 @@ import kotlinx.serialization.json.Json
 internal const val MAIN_STREAM = "main"
 internal const val SECONDARY_STREAM = "secondary"
 
-internal class HlsManifestParser(private val playbackProvider: PlaybackProvider) {
+internal class HlsManifestParser(
+    private val playbackProvider: PlaybackProvider,
+    private val urlFactory: LocalUrlFactory
+) {
     private val parser = HlsPlaylistParser()
     private val mutex = Mutex()
 
@@ -253,8 +257,7 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
                 encodeUrlToBase64(absoluteSegmentUrl)
             }
 
-        // TODO: Move port to configuration
-        val newSegmentUrl = getLocalhostUrl(8080, "segment/$encodedAbsoluteSegmentUrl")
+        val newSegmentUrl = urlFactory.buildSegmentUrl(encodedAbsoluteSegmentUrl)
 
         val startIndex =
             manifestBuilder.indexOf(segmentUrlInManifest).takeIf { it != -1 }
@@ -277,7 +280,7 @@ internal class HlsManifestParser(private val playbackProvider: PlaybackProvider)
         streams.add(Stream(runtimeId = absoluteStreamUrl, type = streamType, index = index))
 
         val encodedUrl = absoluteStreamUrl.encodeURLParameter()
-        val newUrl = getLocalhostUrl(8080, "manifest/${encodedUrl}")
+        val newUrl = urlFactory.buildManifestUrl(encodedUrl)
 
         replaceUrlInManifest(updatedManifestBuilder, streamUrlInManifest, newUrl)
     }

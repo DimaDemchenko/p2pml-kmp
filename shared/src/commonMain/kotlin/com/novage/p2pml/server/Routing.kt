@@ -35,7 +35,7 @@ internal fun Application.configureRoutes(
 }
 
 internal fun Route.registerSegmentReceiveRoute(segmentHandler: SegmentHandler) {
-    post("/segment-upload") {
+    post("/${RouteConfig.UPLOAD_ROUTE}") {
         val segmentId =
             call.request.queryParameters["segmentId"]
                 ?: return@post call.respondText(
@@ -76,7 +76,7 @@ internal fun Route.registerSegmentReceiveRoute(segmentHandler: SegmentHandler) {
 }
 
 internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestHandler: ManifestHandler) {
-    get("/manifest/{manifestUrl}") {
+    get("/${RouteConfig.MANIFEST_ROUTE}/{manifestUrl}") {
         val manifestUrl = call.parameters["manifestUrl"]
 
         if (manifestUrl.isNullOrBlank()) {
@@ -108,7 +108,7 @@ internal fun Route.registerSegmentRoute(
     segmentHandler: SegmentHandler,
     parser: HlsManifestParser,
 ) {
-    get("/segment/{segmentUrl}") {
+    get("/${RouteConfig.SEGMENT_ROUTE}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
 
         if (encodedSegmentUrl.isNullOrBlank()) {
@@ -153,7 +153,7 @@ internal fun Route.registerSegmentRoute(
 }
 
 internal fun Route.registerWebAssets() {
-    get("/static/{path...}") {
+    get("/${RouteConfig.STATIC_ROUTE}/{path...}") {
         val path = call.parameters.getAll("path")?.joinToString("/")?.ifEmpty { null }
             ?: "index.html"
 

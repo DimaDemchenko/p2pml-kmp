@@ -4,8 +4,6 @@ import com.novage.p2pml.httpClient.createHttpClient
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
 import com.novage.p2pml.engine.P2PEngine
-import io.ktor.server.application.Application
-import io.ktor.server.application.ServerReady
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
@@ -15,36 +13,40 @@ import kotlinx.coroutines.runBlocking
 internal class ServerModule(
     playbackProvider: PlaybackProvider,
     engineManager: P2PEngine,
-    private val onServerStarted: () -> Unit,
+    urlFactory: LocalUrlFactory,
+    private val onServerStarted: (serverPort: Int) -> Unit,
 ) {
-    private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? =
-        null
+    private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private var client = createHttpClient()
-    private var hlsManifestParser = HlsManifestParser(playbackProvider)
-    private var manifestHandler =
-        ManifestHandler(hlsManifestParser, engineManager) {
-            playbackProvider.resetData()
-            hlsManifestParser.reset()
-        }
+    private var hlsManifestParser = HlsManifestParser(playbackProvider, urlFactory)
+    private var manifestHandler = ManifestHandler(hlsManifestParser, engineManager) {
+        playbackProvider.resetData()
+        hlsManifestParser.reset()
+    }
     private var segmentHandler = SegmentHandler(engineManager)
 
-    fun start(port: Int = 8080) {
+    fun start() {
         if (server != null) return
 
         try {
-            server =
-                embeddedServer(CIO, port) {
-                        configureRoutes(client, manifestHandler, hlsManifestParser, segmentHandler)
-                        subscribeToServerStarted(this)
-                    }
-                    .start(wait = false)
-        } catch (e: Exception) {
-            println("❌ CRITICAL: P2P Server failed to start!")
-        }
-    }
+            val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
+                configureRoutes(client, manifestHandler, hlsManifestParser, segmentHandler)
+            }.start(wait = false)
 
-    private fun subscribeToServerStarted(application: Application) {
-        application.monitor.subscribe(ServerReady) { onServerStarted() }
+            server = serverInstance
+
+            runBlocking {
+                val assignedPort = serverInstance.engine.resolvedConnectors()
+                    .firstOrNull()?.port ?: throw Exception("Failed to retrieve assigned port")
+
+                println("🚀 Server successfully bound to port: $assignedPort")
+                onServerStarted(assignedPort)
+            }
+
+        } catch (e: Exception) {
+            println("❌ CRITICAL: P2P Server failed to start! ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     fun stop() {

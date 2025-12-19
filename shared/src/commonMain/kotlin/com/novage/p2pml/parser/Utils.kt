@@ -10,4 +10,3 @@ fun encodeUrlToBase64(url: String): String = url.encodeBase64().encodeURLParamet
 fun decodeBase64Url(encodedString: String): String =
     encodedString.decodeBase64String().decodeURLQueryComponent()
 
-fun getLocalhostUrl(port: Int, path: String): String = "http://127.0.0.1:$port/$path"
