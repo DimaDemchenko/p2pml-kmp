@@ -4,6 +4,8 @@ import com.novage.p2pml.engine.P2PEngine
 import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.eventEmitter.*
 import com.novage.p2pml.providers.DefaultPlaybackProvider
+import com.novage.p2pml.server.LocalUrlFactory
+import com.novage.p2pml.server.ServerConfig
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.webview.IosWebViewFactory
 import io.ktor.http.encodeURLParameter
@@ -11,7 +13,8 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.runBlocking
 
 class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
-
+    private val serverConfig = ServerConfig()
+    private val urlFactory = LocalUrlFactory(serverConfig)
     private val eventEmitter = EventEmitter()
     private var engineManager: P2PEngine? = null
     private var serverModule: ServerModule? = null
@@ -19,9 +22,7 @@ class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
     private val isEngineReady = atomic(false)
 
     fun getManifestUrl(manifestUrl: String): String {
-        val encodedManifest = manifestUrl.encodeURLParameter()
-
-        return "http://127.0.0.1:8080/manifest/$encodedManifest"
+        return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
@@ -37,7 +38,8 @@ class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
             ServerModule(
                 playbackProvider = playbackProvider,
                 engineManager = engine,
-                onServerStarted = { onServerStarted() },
+                urlFactory = urlFactory,
+                onServerStarted = { port -> onServerStarted(port) },
             )
 
         serverModule?.start()
@@ -54,14 +56,20 @@ class P2PMediaLoader(private val onP2PReadyCallback: () -> Unit = {}) {
 
         runBlocking { defaultPlaybackProvider?.resetData() }
         isEngineReady.value = false
+        serverConfig.updatePort(-1)
     }
 
-    private fun onServerStarted() {
-        engineManager?.loadUrl("http://127.0.0.1:8080/static/")
+    private fun onServerStarted(port: Int) {
+        this.serverConfig.updatePort(port);
+
+        engineManager?.loadUrl(urlFactory.buildStaticPageUrl())
     }
 
     private fun onWebViewLoaded() {
-        engineManager?.initCoreEngine("{}")
+        engineManager?.initCoreEngine(
+            coreConfigJson = "{}",
+            uploadUrl = urlFactory.buildUploadUrl()
+        )
 
         val subscribedEvents = eventEmitter.getSubscribedEventNames()
         subscribedEvents.forEach { eventName ->
