@@ -2,33 +2,24 @@ package com.novage.p2pml
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
-import com.novage.p2pml.engine.P2PEngine
-import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.eventEmitter.CoreEventMap
-import com.novage.p2pml.eventEmitter.EventEmitter
 import com.novage.p2pml.eventEmitter.EventListener
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.providers.PlaybackProvider
-import com.novage.p2pml.server.LocalUrlFactory
-import com.novage.p2pml.server.ServerConfig
-import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.webview.AndroidWebViewFactory
-import io.ktor.http.encodeURLParameter
-import kotlinx.coroutines.runBlocking
 
-class P2PMediaLoader(private val context: Context, private val onP2PReadyCallback: () -> Unit = {}) {
-    private val serverConfig = ServerConfig()
-    private val urlFactory = LocalUrlFactory(serverConfig)
-    private val eventEmitter = EventEmitter()
-    private var serverModule: ServerModule? = null
-    private var defaultPlaybackProvider: PlaybackProvider? = null
-    private var engineManager: P2PEngine? = null
+class P2PMediaLoader(
+    private val context: Context,
+    onP2PReadyCallback: () -> Unit = {}
+) : P2PMediaLoaderCore(onP2PReadyCallback) {
 
-    private var isEngineReady = false
+    private fun startInternal(provider: PlaybackProvider) {
+        val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter) {
+            onWebViewLoaded()
+        }
 
-    fun getManifestUrl(manifestUrl: String): String {
-        return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
+        initialize(webView, provider)
     }
 
     /**
@@ -38,7 +29,8 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
      * @throws IllegalStateException if called in an invalid state
      */
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        prepareStart(context, DefaultPlaybackProvider(getPlaybackInfo))
+        val provider = DefaultPlaybackProvider(getPlaybackInfo)
+        startInternal(provider)
     }
 
     /**
@@ -48,50 +40,8 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
      * @throws IllegalStateException if called in an invalid state
      */
     fun start(exoPlayer: ExoPlayer) {
-        prepareStart(context, ExoPlayerPlaybackProvider(exoPlayer))
-    }
-
-    private fun prepareStart(
-        context: Context,
-        provider: PlaybackProvider,
-    ) {
-        val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter, ) {
-            onWebViewLoaded()
-        }
-        val engine = P2PEngineManager(webView, provider)
-
-        engineManager = engine
-        defaultPlaybackProvider = provider
-
-        serverModule =
-            ServerModule(
-                playbackProvider = provider,
-                engineManager = engine,
-                urlFactory = urlFactory,
-                onServerStarted = { port -> onServerStarted(port) },
-            )
-        serverModule?.start()
-    }
-
-    fun start(getPlaybackInfo: () -> PlaybackInfo, context: Context) {
-        val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter) {
-            onWebViewLoaded()
-        }
-        val playbackProvider = DefaultPlaybackProvider(getPlaybackInfo)
-        val engine = P2PEngineManager(webView, playbackProvider)
-
-        engineManager = engine
-        defaultPlaybackProvider = playbackProvider
-
-        serverModule =
-            ServerModule(
-                playbackProvider = playbackProvider,
-                engineManager = engine,
-                urlFactory = urlFactory,
-                onServerStarted = { port -> onServerStarted(port) },
-            )
-
-        serverModule?.start()
+        val provider = ExoPlayerPlaybackProvider(exoPlayer)
+        startInternal(provider)
     }
 
     /**
@@ -128,51 +78,5 @@ class P2PMediaLoader(private val context: Context, private val onP2PReadyCallbac
         if (isEngineReady && isNowEmpty) {
             engineManager?.unsubscribeFromP2PEvent(event.eventName)
         }
-    }
-
-    /**
-     * Applies dynamic core configurations to the `P2PMediaLoader` engine.
-     *
-     * @param dynamicCoreConfigJson A JSON string containing dynamic core configurations for the P2P engine.
-     * Refer to the [DynamicCoreConfig Documentation](https://novage.github.io/p2p-media-loader/docs/v2.1.0/types/p2p-media-loader-core.DynamicCoreConfig.html).
-     * @throws IllegalStateException if P2PMediaLoader is not started
-     */
-    fun applyDynamicConfig(dynamicCoreConfigJson: String) {
-        engineManager?.applyDynamicConfig(dynamicCoreConfigJson)
-    }
-
-    private fun onWebViewLoaded() {
-        engineManager?.initCoreEngine(
-            coreConfigJson = "{}",
-            uploadUrl = urlFactory.buildUploadUrl()
-        )
-
-        val subscribedEvents = eventEmitter.getSubscribedEventNames()
-        subscribedEvents.forEach { eventName ->
-            engineManager?.subscribeToP2PEvent(eventName)
-        }
-
-        isEngineReady = true
-        onP2PReadyCallback()
-    }
-
-    private fun onServerStarted(port: Int) {
-        this.serverConfig.updatePort(port);
-
-        engineManager?.loadUrl(urlFactory.buildStaticPageUrl())
-    }
-
-    fun release() {
-        eventEmitter.removeAllListeners()
-
-        engineManager?.destroy()
-        engineManager = null
-
-        serverModule?.stop()
-        serverModule = null
-
-        runBlocking { defaultPlaybackProvider?.resetData() }
-        isEngineReady = false
-        serverConfig.updatePort(-1)
     }
 }
