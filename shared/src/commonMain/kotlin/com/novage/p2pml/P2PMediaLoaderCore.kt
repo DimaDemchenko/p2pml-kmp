@@ -43,7 +43,10 @@ abstract class P2PMediaLoaderCore(
             playbackProvider = provider,
             engineManager = engine,
             urlFactory = urlFactory,
-            onServerStarted = { onServerStarted() }
+            onServerStarted = { port->
+                serverConfig.updatePort(port)
+                onServerStarted()
+            }
         )
         this.serverModule = module
 
