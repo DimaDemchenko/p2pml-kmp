@@ -70,14 +70,10 @@
         constructor(bridge) {
           this.bridge = bridge;
           this.eventHandlers = new Map();
-          this.uploadUrl = "http://127.0.0.1:8080/segment-upload";
         }
 
         initP2P(coreConfigJson, uploadBaseUrl) {
-          if (uploadBaseUrl) {
-            this.uploadUrl = uploadBaseUrl;
-          }
-
+          this.uploadUrl = uploadBaseUrl;
           this.coreConfig = coreConfigJson ? JSON.parse(coreConfigJson) : {};
           this.createP2PEngine();
         }
@@ -204,7 +200,10 @@
           try {
             await this.core.loadSegment(segmentUrl, {
               onSuccess: (response) => uploadToKtor("success", response.data),
-              onError: (error) => uploadToKtor("error", null, error.type),
+              onError: (error) => {
+                console.error(`Segment with URL ${segmentUrl} failed to load`, error);
+                uploadToKtor("error", null, error.type)
+              },
             });
           } catch (e) {
             uploadToKtor("error", null, "not_found");

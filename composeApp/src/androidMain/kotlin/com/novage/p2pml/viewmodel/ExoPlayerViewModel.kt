@@ -14,6 +14,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.TransferListener
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import com.novage.p2pml.P2PMediaLoader
@@ -31,7 +32,18 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
         get() = getApplication()
 
     val player: ExoPlayer by lazy {
-        ExoPlayer.Builder(context).build()
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                10_000,
+                15_000,
+                2_500,
+                5_000
+            )
+            .build()
+
+        ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
+            .build()
     }
     private var p2pml: P2PMediaLoader? = null
     private var p2pStatsTracker: P2PStatsTracker? = null
@@ -59,7 +71,7 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun initializePlayback() {
-        val manifest = p2pml?.getManifestUrl(Streams.HLS_BIG_BUCK_BUNNY_QUALITY_4)
+        val manifest = p2pml?.getManifestUrl(Streams.HLS_4K_STREAM)
             ?: throw IllegalStateException("P2PML is not started")
         val loggingDataSourceFactory = LoggingDataSourceFactory(context)
 
