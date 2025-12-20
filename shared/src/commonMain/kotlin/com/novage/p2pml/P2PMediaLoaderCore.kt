@@ -12,7 +12,10 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.runBlocking
 
 abstract class P2PMediaLoaderCore(
-    private val onP2PReadyCallback: () -> Unit
+    private val onP2PReadyCallback: () -> Unit,
+    private val onP2PReadyErrorCallback: (message: String) -> Unit,
+    private val coreConfigJson : String = "{}",
+    private val customEngineFileUrl: String? = null
 ) {
     private val serverConfig = ServerConfig()
     protected val urlFactory = LocalUrlFactory(serverConfig)
@@ -50,7 +53,11 @@ abstract class P2PMediaLoaderCore(
         )
         this.serverModule = module
 
-        module.start()
+        try {
+            module.start()
+        } catch (e: Exception) {
+            onP2PReadyErrorCallback(e.message ?: "P2P Server failed to start")
+        }
     }
 
     fun getManifestUrl(manifestUrl: String): String {
@@ -76,13 +83,13 @@ abstract class P2PMediaLoaderCore(
     }
 
     private fun onServerStarted() {
-        val staticUrl = urlFactory.buildStaticPageUrl()
-        engineManager?.loadUrl(staticUrl)
+        val engineFileUrl = customEngineFileUrl ?: urlFactory.buildStaticPageUrl()
+        engineManager?.loadUrl(engineFileUrl)
     }
 
     protected fun onWebViewLoaded() {
         engineManager?.initCoreEngine(
-            coreConfigJson = "{}",
+            coreConfigJson = coreConfigJson,
             uploadUrl = urlFactory.buildUploadUrl()
         )
 

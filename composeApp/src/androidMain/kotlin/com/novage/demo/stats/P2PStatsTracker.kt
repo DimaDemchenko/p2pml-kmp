@@ -1,4 +1,4 @@
-package com.novage.p2pml.stats
+package com.novage.demo.stats
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi

@@ -1,4 +1,4 @@
-package com.novage.p2pml.ui
+package com.novage.demo.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

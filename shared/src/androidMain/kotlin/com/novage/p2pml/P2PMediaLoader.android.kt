@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.eventEmitter.CoreEventMap
 import com.novage.p2pml.eventEmitter.EventListener
+import com.novage.p2pml.interop.OnP2PReadyCallback
+import com.novage.p2pml.interop.OnP2PReadyErrorCallback
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.providers.PlaybackProvider
@@ -11,8 +13,16 @@ import com.novage.p2pml.webview.AndroidWebViewFactory
 
 class P2PMediaLoader(
     private val context: Context,
-    onP2PReadyCallback: () -> Unit = {}
-) : P2PMediaLoaderCore(onP2PReadyCallback) {
+    onP2PReadyCallback: OnP2PReadyCallback,
+    onP2PReadyErrorCallback: OnP2PReadyErrorCallback,
+    coreConfigJson: String = "{}",
+    customEngineFileUrl: String? = null
+) : P2PMediaLoaderCore(
+    onP2PReadyCallback = { onP2PReadyCallback.onReady() },
+    onP2PReadyErrorCallback = { message -> onP2PReadyErrorCallback.onError(message) },
+    coreConfigJson = coreConfigJson,
+    customEngineFileUrl = customEngineFileUrl
+) {
 
     private fun startInternal(provider: PlaybackProvider) {
         val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter) {

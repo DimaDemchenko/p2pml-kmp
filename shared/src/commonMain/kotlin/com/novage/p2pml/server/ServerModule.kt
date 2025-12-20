@@ -45,7 +45,7 @@ internal class ServerModule(
 
         } catch (e: Exception) {
             println("❌ CRITICAL: P2P Server failed to start! ${e.message}")
-            e.printStackTrace()
+            throw e
         }
     }
 

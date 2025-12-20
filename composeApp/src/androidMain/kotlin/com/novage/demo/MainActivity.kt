@@ -1,4 +1,4 @@
-package com.novage.p2pml
+package com.novage.demo
 
 import android.os.Bundle
 import android.webkit.WebView
@@ -8,8 +8,8 @@ import androidx.annotation.OptIn
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.media3.common.util.UnstableApi
-import com.novage.p2pml.ui.ExoPlayerScreen
-import com.novage.p2pml.viewmodel.ExoPlayerViewModel
+import com.novage.demo.ui.ExoPlayerScreen
+import com.novage.demo.viewmodel.ExoPlayerViewModel
 @UnstableApi
 class MainActivity : ComponentActivity() {
     private val viewModel: ExoPlayerViewModel by lazy {

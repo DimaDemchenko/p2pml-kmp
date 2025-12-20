@@ -1,4 +1,4 @@
-package com.novage.p2pml.ui
+package com.novage.demo.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.novage.p2pml.stats.P2PStats
+import com.novage.demo.stats.P2PStats
 
 @Composable
 fun ExoPlayerScreen(

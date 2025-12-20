@@ -1,4 +1,4 @@
-package com.novage.p2pml
+package com.novage.demo
 
 object Streams {
     const val HLS_BIG_BUCK_BUNNY = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"

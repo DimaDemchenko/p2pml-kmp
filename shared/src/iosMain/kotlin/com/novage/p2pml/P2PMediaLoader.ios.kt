@@ -5,8 +5,16 @@ import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.webview.IosWebViewFactory
 
 class P2PMediaLoader(
-    private val onP2PReadyCallback: () -> Unit = {}
-) : P2PMediaLoaderCore(onP2PReadyCallback) {
+    onP2PReadyCallback: () -> Unit,
+    onP2PReadyErrorCallback: (String) -> Unit,
+    coreConfigJson: String = "{}",
+    customEngineFileUrl: String? = null
+) : P2PMediaLoaderCore(
+        onP2PReadyCallback = onP2PReadyCallback,
+        onP2PReadyErrorCallback = onP2PReadyErrorCallback,
+        coreConfigJson,
+        customEngineFileUrl
+) {
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
         val webViewFactory = IosWebViewFactory()
