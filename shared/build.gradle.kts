@@ -41,6 +41,7 @@ kotlin {
             implementation("io.ktor:ktor-server-core:3.1.0")
             implementation("io.ktor:ktor-server-cio:3.1.0")
             implementation("io.ktor:ktor-client-core:3.1.0")
+            implementation("io.ktor:ktor-server-cors:3.1.0")
             implementation(compose.components.resources)
             implementation(compose.runtime)
         }
