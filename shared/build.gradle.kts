@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0"
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -24,24 +24,25 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            implementation("io.ktor:ktor-client-okhttp:3.1.0")
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.slf4j.simple)
 
-            compileOnly("androidx.media3:media3-exoplayer:1.8.0")
-            compileOnly("androidx.media3:media3-exoplayer-hls:1.8.0")
-            implementation("org.slf4j:slf4j-simple:2.0.9")
+
+            compileOnly(libs.androidx.media3.exoplayer)
+            compileOnly(libs.androidx.media3.exoplayer.hls)
         }
 
-        iosMain.dependencies { implementation("io.ktor:ktor-client-darwin:3.1.0") }
+        iosMain.dependencies { implementation(libs.ktor.client.darwin) }
 
         commonMain.dependencies {
             implementation(kotlin("stdlib"))
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
-            implementation("io.ktor:ktor-utils:3.1.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
-            implementation("io.ktor:ktor-server-core:3.1.0")
-            implementation("io.ktor:ktor-server-cio:3.1.0")
-            implementation("io.ktor:ktor-client-core:3.1.0")
-            implementation("io.ktor:ktor-server-cors:3.1.0")
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.ktor.utils)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.ktor.server.core)
+            implementation(libs.ktor.server.cio)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.server.cors)
             implementation(compose.components.resources)
             implementation(compose.runtime)
         }

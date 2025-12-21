@@ -18,11 +18,14 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-            implementation("androidx.media3:media3-exoplayer:1.8.0")
-            implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
-            implementation("androidx.compose.material3:material3:1.4.0")
+            implementation(libs.androidx.media3.exoplayer)
+            implementation(libs.androidx.media3.exoplayer.hls)
+            implementation(libs.androidx.material3)
+            implementation(libs.androidx.media3.ui)
+
             implementation(compose.materialIconsExtended)
         }
+
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -59,12 +62,9 @@ android {
 }
 
 dependencies {
-    implementation("androidx.media3:media3-exoplayer-hls:1.5.1")
-    implementation("androidx.media3:media3-exoplayer:1.5.1")
-    implementation("androidx.media3:media3-ui:1.5.1")
     debugImplementation(compose.uiTooling)
 
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation("io.ktor:ktor-client-okhttp:3.1.0")
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.ktor.client.okhttp)
 }
