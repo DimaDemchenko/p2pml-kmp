@@ -168,6 +168,7 @@ internal fun Route.registerWebAssets() {
 
             call.respondBytes(bytes, contentType)
         } catch (e: Exception) {
+            e.printStackTrace()
             call.respond(HttpStatusCode.NotFound)
         }
     }
