@@ -4,6 +4,7 @@ import com.novage.p2pml.httpClient.createHttpClient
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
 import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.server.plugins.configureCORS
 import io.ktor.http.HttpHeaders
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -34,7 +35,7 @@ internal class ServerModule(
 
         try {
             val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
-                configureCORS(this)
+                configureCORS()
                 configureRoutes(client, manifestHandler, hlsManifestParser, segmentHandler)
             }.start(wait = false)
 
@@ -51,15 +52,6 @@ internal class ServerModule(
         } catch (e: Exception) {
             println("❌ CRITICAL: P2P Server failed to start! ${e.message}")
             throw e
-        }
-    }
-
-    private fun configureCORS(application: Application) {
-        application.install(CORS) {
-            anyHost()
-
-            allowHeader(HttpHeaders.ContentType)
-            allowHeader(HttpHeaders.AccessControlAllowOrigin)
         }
     }
 
