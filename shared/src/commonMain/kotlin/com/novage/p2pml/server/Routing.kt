@@ -17,7 +17,8 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.toByteArray
 import p2pmedialoadermobile.shared.generated.resources.Res
-
+import kotlin.time.measureTime
+import kotlin.time.measureTimedValue
 data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
 
 internal fun Application.configureRoutes(
@@ -167,8 +168,7 @@ internal fun Route.registerWebAssets() {
             }
 
             call.respondBytes(bytes, contentType)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             call.respond(HttpStatusCode.NotFound)
         }
     }
