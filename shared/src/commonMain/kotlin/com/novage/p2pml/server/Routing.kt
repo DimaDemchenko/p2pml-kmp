@@ -16,9 +16,9 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.toByteArray
+import kotlinx.coroutines.CompletableDeferred
 import p2pmedialoadermobile.shared.generated.resources.Res
-import kotlin.time.measureTime
-import kotlin.time.measureTimedValue
+
 data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
 
 internal fun Application.configureRoutes(
@@ -116,39 +116,36 @@ internal fun Route.registerSegmentRoute(
             call.respondText("Missing segment URL", status = HttpStatusCode.BadRequest)
             return@get
         }
+
         val segmentUrl = decodeBase64Url(encodedSegmentUrl)
         val byteRange = call.request.headers[HttpHeaders.Range]
 
-        try {
-            val isCurrentSegment = parser.isCurrentSegment(segmentUrl)
-
-            if (!isCurrentSegment) {
-                val fetchedSegmentBytes = fetchSegment(httpClient, call, segmentUrl)
-                respondWithSegmentBytes(call, fetchedSegmentBytes, byteRange)
-                return@get
-            }
-
-            println("↑↑↑↑ Requesting segment from webview network $segmentUrl")
-            val deferredSegmentBytes =
-                segmentHandler.registerSegmentRequest(segmentUrl)
-                    ?: throw SegmentAlreadyRequested("Segment already requested")
-
-            val segmentBytes = deferredSegmentBytes.await()
-            respondWithSegmentBytes(call, segmentBytes, byteRange)
-        } catch (ex: Exception) {
-            if (ex is SegmentAbortedException) {
-                println("Segment aborted: ${ex.message}")
-                call.respondText("Segment aborted", status = HttpStatusCode.RequestTimeout)
-                return@get
-            } else if (ex is SegmentAlreadyRequested) {
-                println("Segment already requested: ${ex.message}")
-                call.respondText("Segment already requested", status = HttpStatusCode.Conflict)
-                return@get
-            }
-
-            println("Error processing segment: ${ex.message} | Fetching through HTTP")
+        if (!parser.isCurrentSegment(segmentUrl)) {
             val fetchedSegmentBytes = fetchSegment(httpClient, call, segmentUrl)
             respondWithSegmentBytes(call, fetchedSegmentBytes, byteRange)
+            return@get
+        }
+
+        var deferred: CompletableDeferred<ByteArray>? = null
+
+        try {
+            deferred = segmentHandler.createOrReplaceRequest(segmentUrl)
+
+            val bytes = deferred.await()
+            respondWithSegmentBytes(call, bytes, byteRange)
+        } catch (_: SegmentReplacedException) {
+            println("♻️ Old request replaced. Terminating.")
+            call.respond(HttpStatusCode.RequestTimeout)
+        } catch (_: TooManyRetriesException) {
+            println("🚫 Max retries hit. Fallback to HTTP.")
+            respondFallback(httpClient, call, segmentUrl, byteRange)
+        } catch (e: Exception) {
+            println("❌ P2P Error: ${e.message}. Fallback.")
+            respondFallback(httpClient, call, segmentUrl, byteRange)
+        } finally {
+            if (deferred != null) {
+                segmentHandler.cancelRequest(segmentUrl, deferred)
+            }
         }
     }
 }

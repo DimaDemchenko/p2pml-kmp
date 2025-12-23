@@ -10,6 +10,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.RoutingCall
 
@@ -25,7 +26,7 @@ internal val excludedHeaders =
         HttpHeaders.AcceptEncoding,
     )
 
-suspend fun fetchManifest(
+internal suspend fun fetchManifest(
     httpClient: HttpClient,
     call: RoutingCall,
     manifestUrl: String,
@@ -45,7 +46,7 @@ suspend fun fetchManifest(
     return ManifestFetchResult(manifest, responseUrl)
 }
 
-suspend fun fetchSegment(client: HttpClient, call: RoutingCall, segmentUrl: String): ByteArray {
+internal suspend fun fetchSegment(client: HttpClient, call: RoutingCall, segmentUrl: String): ByteArray {
     val isByteRangeRequest =
         call.request.headers.contains(HttpHeaders.Range) &&
             call.request.headers[HttpHeaders.Range] != null
@@ -63,7 +64,7 @@ suspend fun fetchSegment(client: HttpClient, call: RoutingCall, segmentUrl: Stri
     return response.bodyAsBytes()
 }
 
-suspend fun respondWithSegmentBytes(
+internal suspend fun respondWithSegmentBytes(
     call: ApplicationCall,
     segmentBytes: ByteArray,
     byteRange: String?,
@@ -81,5 +82,19 @@ suspend fun respondWithSegmentBytes(
         )
     } else {
         call.respondBytes(segmentBytes, ContentType.Application.OctetStream)
+    }
+}
+
+internal suspend fun respondFallback(
+    client: HttpClient,
+    call: RoutingCall,
+    url: String,
+    range: String?
+) {
+    try {
+        val bytes = fetchSegment(client, call, url)
+        respondWithSegmentBytes(call, bytes, range)
+    } catch (_: Exception) {
+        call.respond(HttpStatusCode.BadGateway)
     }
 }

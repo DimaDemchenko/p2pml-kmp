@@ -5,14 +5,10 @@ import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
 import com.novage.p2pml.engine.P2PEngine
 import com.novage.p2pml.server.plugins.configureCORS
-import io.ktor.http.HttpHeaders
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import io.ktor.server.plugins.cors.routing.CORS
 import kotlinx.coroutines.runBlocking
 
 internal class ServerModule(
