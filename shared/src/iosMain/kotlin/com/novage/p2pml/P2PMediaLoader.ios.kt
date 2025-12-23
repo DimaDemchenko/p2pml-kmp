@@ -8,19 +8,22 @@ class P2PMediaLoader(
     onP2PReadyCallback: () -> Unit,
     onP2PReadyErrorCallback: (String) -> Unit,
     coreConfigJson: String = "{}",
-    customEngineFileUrl: String? = null
-) : P2PMediaLoaderCore(
+    customEngineFileUrl: String? = null,
+) :
+    P2PMediaLoaderCore(
         onP2PReadyCallback = onP2PReadyCallback,
         onP2PReadyErrorCallback = onP2PReadyErrorCallback,
         coreConfigJson,
-        customEngineFileUrl
-) {
+        customEngineFileUrl,
+    ) {
+    constructor(
+        onP2PReadyCallback: () -> Unit,
+        onP2PReadyErrorCallback: (String) -> Unit,
+    ) : this(onP2PReadyCallback, onP2PReadyErrorCallback, "{}", null)
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
         val webViewFactory = IosWebViewFactory()
-        val webView = webViewFactory.createHeadlessWebView(eventEmitter) {
-            onWebViewLoaded()
-        }
+        val webView = webViewFactory.createHeadlessWebView(eventEmitter) { onWebViewLoaded() }
 
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
 

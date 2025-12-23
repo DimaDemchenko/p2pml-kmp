@@ -18,6 +18,7 @@ struct ContentView: View {
 
     private func startMediaLoader(_ loader: P2PMediaLoader) {
         loader.start(getPlaybackInfo: {
+            // Using weak self to prevent potential retain cycles within the closure
             guard let validPlayer = self.player else {
                 return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
             }
@@ -35,46 +36,34 @@ struct ContentView: View {
             VideoPlayer(player: player)
             .frame(height: 300)
             .onAppear {
-                var loader: P2PMediaLoader! = nil
+                // 1. Initialize the loader with the TWO required callbacks from your Kotlin file
+                let loader = P2PMediaLoader(
+                    onP2PReadyCallback: {
+                        print("P2P Engine is Ready!")
+                        self.isP2PReady = true
+                        self.createPlayer(with: self.mediaLoader)
+                        self.player?.play()
+                    },
+                    onP2PReadyErrorCallback: { errorMessage in
+                        print("P2P Engine failed to start: \(errorMessage)")
+                        // Fallback logic: Create player without P2P if engine fails
+                        self.createPlayer(with: nil)
+                    }
+                )
 
-                loader = P2PMediaLoader(onP2PReadyCallback: {
-                    self.isP2PReady = true
-
-                    self.createPlayer(with: loader)
-                    self.player?.play()
-                })
-
+                // 2. Setup event listeners (OnSegmentLoaded, OnPeerConnect, etc.)
                 self.setupListeners(for: loader)
 
-                startMediaLoader(loader)
+                // 3. Store reference and start the loader
                 self.mediaLoader = loader
+                startMediaLoader(loader)
             }
             .onDisappear {
-                eventSubscriptions.forEach {
-                    $0.cancel()
-                }
-                eventSubscriptions.removeAll()
-
-                player?.pause()
-                player = nil
-                statusObserver?.cancel()
-                statusObserver = nil
-                mediaLoader = nil
-                isP2PReady = false
+                cleanup()
             }
 
             Button("Show Player Info") {
-                if let player = player {
-                    let currentSeconds = CMTimeGetSeconds(player.currentTime())
-                    let speed = player.rate
-                    let status = player.currentItem?.status ?? .unknown
-                    playerInfo = String(
-                        format: "Time: %.2f sec, Speed: %.2f, Status: %@",
-                        currentSeconds, speed, statusString(status)
-                    )
-                } else {
-                    playerInfo = "Player is not available."
-                }
+                updatePlayerInfo()
             }
             .padding()
             .background(Color.blue.opacity(0.8))
@@ -93,6 +82,8 @@ struct ContentView: View {
         }
         .padding()
     }
+
+    // MARK: - Helper Methods
 
     private func setupListeners(for loader: P2PMediaLoader) {
         eventSubscriptions.append(loader.observeSegmentLoaded { details in
@@ -116,11 +107,12 @@ struct ContentView: View {
         })
     }
 
-    private func createPlayer(with loader: P2PMediaLoader) {
-        let manifestUrl = loader.getManifestUrl(manifestUrl: sampleManifest)
+    private func createPlayer(with loader: P2PMediaLoader?) {
+        // Use the loader to get the proxied manifest URL, or fallback to raw manifest
+        let manifestUrl = loader?.getManifestUrl(manifestUrl: sampleManifest) ?? sampleManifest
 
         guard let url = URL(string: manifestUrl) else {
-            print("Invalid manifest URL from loader: \(manifestUrl)")
+            print("Invalid manifest URL: \(manifestUrl)")
             return
         }
 
@@ -138,6 +130,34 @@ struct ContentView: View {
         }
     }
 
+    private func updatePlayerInfo() {
+        if let player = player {
+            let currentSeconds = CMTimeGetSeconds(player.currentTime())
+            let speed = player.rate
+            let status = player.currentItem?.status ?? .unknown
+            playerInfo = String(
+                format: "Time: %.2f sec, Speed: %.2f, Status: %@",
+                currentSeconds, speed, statusString(status)
+            )
+        } else {
+            playerInfo = "Player is not available."
+        }
+    }
+
+    private func cleanup() {
+        eventSubscriptions.forEach {
+            $0.cancel()
+        }
+        eventSubscriptions.removeAll()
+
+        player?.pause()
+        player = nil
+        statusObserver?.cancel()
+        statusObserver = nil
+        mediaLoader = nil
+        isP2PReady = false
+    }
+
     private func statusString(_ status: AVPlayerItem.Status) -> String {
         switch status {
         case .unknown: return "Unknown"
@@ -145,11 +165,5 @@ struct ContentView: View {
         case .failed: return "Failed"
         @unknown default: return "Other"
         }
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
     }
 }
