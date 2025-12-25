@@ -1,4 +1,6 @@
-package com.novage.p2pml.server
+package com.novage.p2pml.server.config
+
+import com.novage.p2pml.server.routes.RoutePaths
 
 class LocalUrlFactory(private val config: ServerConfig) {
 
@@ -8,18 +10,18 @@ class LocalUrlFactory(private val config: ServerConfig) {
     }
 
     fun buildManifestUrl(encodedUrl: String): String {
-        return "${getBaseUrl()}/${RouteConfig.MANIFEST_ROUTE}/$encodedUrl"
+        return "${getBaseUrl()}/${RoutePaths.MANIFEST}/$encodedUrl"
     }
 
     fun buildSegmentUrl(encodedUrl: String): String {
-        return "${getBaseUrl()}/${RouteConfig.SEGMENT_ROUTE}/$encodedUrl"
+        return "${getBaseUrl()}/${RoutePaths.SEGMENT}/$encodedUrl"
     }
 
     fun buildStaticPageUrl(): String {
-        return "${getBaseUrl()}/${RouteConfig.STATIC_ROUTE}/"
+        return "${getBaseUrl()}/${RoutePaths.STATIC}/"
     }
 
     fun buildUploadUrl(): String {
-        return "${getBaseUrl()}/${RouteConfig.UPLOAD_ROUTE}"
+        return "${getBaseUrl()}/${RoutePaths.SEGMENT_UPLOAD}"
     }
 }

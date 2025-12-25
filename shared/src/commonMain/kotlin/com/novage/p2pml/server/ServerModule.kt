@@ -4,7 +4,11 @@ import com.novage.p2pml.httpClient.createHttpClient
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.providers.PlaybackProvider
 import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.server.plugins.configureCORS
+import com.novage.p2pml.server.routes.configureRoutes
+import com.novage.p2pml.server.services.ManifestService
+import com.novage.p2pml.server.services.SegmentService
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
@@ -20,11 +24,11 @@ internal class ServerModule(
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private var client = createHttpClient()
     private var hlsManifestParser = HlsManifestParser(playbackProvider, urlFactory)
-    private var manifestHandler = ManifestHandler(hlsManifestParser, engineManager) {
+    private var manifestService = ManifestService(hlsManifestParser, engineManager) {
         playbackProvider.resetData()
         hlsManifestParser.reset()
     }
-    private var segmentHandler = SegmentHandler(engineManager)
+    private var segmentService = SegmentService(engineManager)
 
     fun start() {
         if (server != null) return
@@ -32,7 +36,7 @@ internal class ServerModule(
         try {
             val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
                 configureCORS()
-                configureRoutes(client, manifestHandler, hlsManifestParser, segmentHandler)
+                configureRoutes(client, manifestService, hlsManifestParser, segmentService)
             }.start(wait = false)
 
             server = serverInstance
@@ -53,8 +57,8 @@ internal class ServerModule(
 
     fun stop() {
         runBlocking {
-            segmentHandler.reset()
-            manifestHandler.reset()
+            segmentService.reset()
+            manifestService.resetState()
         }
 
         server?.stop(gracePeriodMillis = 100, timeoutMillis = 500)

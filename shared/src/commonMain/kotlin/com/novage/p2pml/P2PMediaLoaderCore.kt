@@ -4,8 +4,8 @@ import com.novage.p2pml.engine.P2PEngine
 import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.eventEmitter.*
 import com.novage.p2pml.providers.PlaybackProvider
-import com.novage.p2pml.server.LocalUrlFactory
-import com.novage.p2pml.server.ServerConfig
+import com.novage.p2pml.server.config.LocalUrlFactory
+import com.novage.p2pml.server.config.ServerConfig
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter

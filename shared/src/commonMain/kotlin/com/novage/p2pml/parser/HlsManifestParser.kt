@@ -9,7 +9,7 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
 import com.novage.p2pml.parser.hlsPlaylistParser.InitializationSegment
 import com.novage.p2pml.parser.hlsPlaylistParser.Segment
 import com.novage.p2pml.providers.PlaybackProvider
-import com.novage.p2pml.server.LocalUrlFactory
+import com.novage.p2pml.server.config.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

@@ -1,4 +1,4 @@
-package com.novage.p2pml.server
+package com.novage.p2pml.server.config
 
 class ServerConfig {
     var port: Int = -1

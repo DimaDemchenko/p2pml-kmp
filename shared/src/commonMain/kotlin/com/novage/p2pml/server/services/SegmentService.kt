@@ -1,21 +1,24 @@
-package com.novage.p2pml.server
+package com.novage.p2pml.server.services
 
 import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.server.exceptions.SegmentReplacedException
+import com.novage.p2pml.server.exceptions.TooManyRetriesException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-
-internal const val MAX_RETRIES = 4
-
-class SegmentHandler(private val engineManager: P2PEngine) {
+internal class SegmentService(private val p2pEngine: P2PEngine) {
     private val mutex = Mutex()
+    private val requests = mutableMapOf<String, RequestState>()
+
     private data class RequestState(
         val deferred: CompletableDeferred<ByteArray>,
         val attemptCount: Int
     )
 
-    private val requests = mutableMapOf<String, RequestState>()
+    companion object {
+        private const val MAX_RETRIES = 4
+    }
 
     suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<ByteArray> {
         mutex.withLock {
@@ -34,13 +37,13 @@ class SegmentHandler(private val engineManager: P2PEngine) {
             val newDeferred = CompletableDeferred<ByteArray>()
             requests[segmentUrl] = RequestState(newDeferred, currentAttempts + 1)
 
-            engineManager.requestSegmentBytes(segmentUrl)
+            p2pEngine.requestSegmentBytes(segmentUrl)
 
             return newDeferred
         }
     }
 
-    suspend fun completeSegmentRequest(segmentUrl: String, segmentData: ByteArray) {
+    suspend fun completeRequest(segmentUrl: String, segmentData: ByteArray) {
         mutex.withLock {
             val state = requests[segmentUrl] ?: return
             state.deferred.complete(segmentData)
@@ -48,10 +51,10 @@ class SegmentHandler(private val engineManager: P2PEngine) {
         }
     }
 
-    suspend fun getSegmentRequest(segmentUrl: String): CompletableDeferred<ByteArray>? =
+    suspend fun getPendingRequest(segmentUrl: String): CompletableDeferred<ByteArray>? =
         mutex.withLock { requests[segmentUrl]?.deferred }
 
-    suspend fun removeSegmentRequest(segmentUrl: String) {
+    suspend fun removeRequest(segmentUrl: String) {
         mutex.withLock { requests.remove(segmentUrl) }
     }
 
@@ -67,9 +70,8 @@ class SegmentHandler(private val engineManager: P2PEngine) {
 
     suspend fun reset() {
         mutex.withLock {
-            requests.values.forEach {
-                it.deferred.completeExceptionally(Exception("Resetting"))
-            }
+            val resetException = Exception("Engine Resetting")
+            requests.values.forEach { it.deferred.completeExceptionally(resetException) }
             requests.clear()
         }
     }
