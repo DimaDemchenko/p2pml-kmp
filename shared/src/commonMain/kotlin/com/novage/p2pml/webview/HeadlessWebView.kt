@@ -1,6 +1,6 @@
 package com.novage.p2pml.webview
 
-import com.novage.p2pml.eventEmitter.EventEmitter
+import com.novage.p2pml.events.EventEmitter
 
 interface WebViewFactory {
     fun createHeadlessWebView(eventEmitter: EventEmitter, onWebviewLoaded: () -> Unit): HeadlessWebView

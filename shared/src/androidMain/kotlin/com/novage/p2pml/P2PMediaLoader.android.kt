@@ -2,8 +2,8 @@ package com.novage.p2pml
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
-import com.novage.p2pml.eventEmitter.CoreEventMap
-import com.novage.p2pml.eventEmitter.EventListener
+import com.novage.p2pml.events.CoreEventMap
+import com.novage.p2pml.events.EventListener
 import com.novage.p2pml.interop.OnP2PReadyCallback
 import com.novage.p2pml.interop.OnP2PReadyErrorCallback
 import com.novage.p2pml.providers.DefaultPlaybackProvider

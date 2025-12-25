@@ -1,6 +1,6 @@
 package com.novage.p2pml.webview
 
-import com.novage.p2pml.eventEmitter.*
+import com.novage.p2pml.events.*
 import com.novage.p2pml.utils.decodeFromNSDictionary
 import kotlinx.serialization.json.Json
 import platform.Foundation.*

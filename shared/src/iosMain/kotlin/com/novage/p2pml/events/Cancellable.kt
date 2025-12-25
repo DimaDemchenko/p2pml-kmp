@@ -1,4 +1,4 @@
-package com.novage.p2pml.eventEmitter
+package com.novage.p2pml.events
 
 interface Cancellable {
     fun cancel()

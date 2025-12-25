@@ -1,6 +1,6 @@
 package com.novage.p2pml
 
-import com.novage.p2pml.eventEmitter.*
+import com.novage.p2pml.events.*
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.webview.IosWebViewFactory
 

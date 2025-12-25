@@ -6,7 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.novage.p2pml.eventEmitter.EventEmitter
+import com.novage.p2pml.events.EventEmitter
 
 class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(

@@ -4,7 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.webkit.JavascriptInterface
-import com.novage.p2pml.eventEmitter.*
+import com.novage.p2pml.events.*
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
 

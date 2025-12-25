@@ -1,6 +1,6 @@
 package com.novage.p2pml.webview
 
-import com.novage.p2pml.eventEmitter.EventEmitter
+import com.novage.p2pml.events.EventEmitter
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero

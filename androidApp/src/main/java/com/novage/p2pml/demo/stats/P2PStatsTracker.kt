@@ -3,11 +3,11 @@ package com.novage.p2pml.demo.stats
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.novage.p2pml.*
-import com.novage.p2pml.eventEmitter.ChunkDownloadedDetails
-import com.novage.p2pml.eventEmitter.ChunkUploadedDetails
-import com.novage.p2pml.eventEmitter.CoreEventMap
-import com.novage.p2pml.eventEmitter.EventListener
-import com.novage.p2pml.eventEmitter.PeerDetails
+import com.novage.p2pml.events.ChunkDownloadedDetails
+import com.novage.p2pml.events.ChunkUploadedDetails
+import com.novage.p2pml.events.CoreEventMap
+import com.novage.p2pml.events.EventListener
+import com.novage.p2pml.events.PeerDetails
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 

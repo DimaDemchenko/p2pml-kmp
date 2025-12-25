@@ -1,4 +1,4 @@
-package com.novage.p2pml.eventEmitter
+package com.novage.p2pml.events
 
 fun interface EventListener<T> {
     fun onEvent(data: T)
