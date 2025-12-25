@@ -1,5 +1,7 @@
 package com.novage.p2pml.events
 
+import com.novage.p2pml.domain.models.CoreEventMap
+
 fun interface EventListener<T> {
     fun onEvent(data: T)
 }

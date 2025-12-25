@@ -1,14 +1,7 @@
 package com.novage.p2pml.parser
-
-import com.novage.p2pml.RuntimeSegment
-import com.novage.p2pml.Stream
-import com.novage.p2pml.UpdateStreamParams
-import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
-import com.novage.p2pml.parser.hlsPlaylistParser.HlsMultivariantPlaylist
-import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
-import com.novage.p2pml.parser.hlsPlaylistParser.InitializationSegment
-import com.novage.p2pml.parser.hlsPlaylistParser.Segment
-import com.novage.p2pml.providers.PlaybackProvider
+import com.novage.p2pml.domain.models.Segment
+import com.novage.p2pml.parser.hlsPlaylistParser.*
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.server.config.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
@@ -28,7 +21,7 @@ internal class HlsManifestParser(
     private var currentMasterManifestUrl: String? = null
 
     private val streams = mutableListOf<Stream>()
-    private val streamSegments = mutableMapOf<String, MutableMap<Long, RuntimeSegment>>()
+    private val streamSegments = mutableMapOf<String, MutableMap<Long, Segment>>()
     private val updateStreamParams = mutableMapOf<String, UpdateStreamParams>()
 
     private val currentVideoSegmentRuntimeIds = mutableSetOf<String>()
@@ -157,13 +150,13 @@ internal class HlsManifestParser(
         val updatedManifestBuilder = StringBuilder(originalManifest)
 
         val segmentsToRemove = removeObsoleteSegments(manifestUrl, newMediaSequence)
-        val segmentsToAdd = mutableListOf<RuntimeSegment>()
+        val segmentsToAdd = mutableListOf<Segment>()
         val initializationSegments = mutableSetOf<InitializationSegment>()
 
         val initialStartTime = getInitialStartTime(isStreamLive, mediaPlaylist)
 
         clearCurrentSegmentRuntimeIds(mediaType)
-        mediaPlaylist.segments.forEachIndexed { index, segment ->
+        mediaPlaylist.hlsSegments.forEachIndexed { index, segment ->
             if (segment.initializationSegment != null)
                 initializationSegments.add(segment.initializationSegment)
 
@@ -199,7 +192,7 @@ internal class HlsManifestParser(
 
     private fun updateStreamData(
         variantUrl: String,
-        newSegments: List<RuntimeSegment>,
+        newSegments: List<Segment>,
         segmentsToRemove: List<String>,
         isLive: Boolean,
     ) {
@@ -218,23 +211,23 @@ internal class HlsManifestParser(
         variantUrl: String,
         segmentId: Long,
         initialStartTime: Double,
-        segment: Segment,
-    ): RuntimeSegment? {
+        hlsSegment: HlsSegment,
+    ): Segment? {
         val segmentsMap = streamSegments.getOrPut(variantUrl) { mutableMapOf() }
         if (segmentsMap.contains(segmentId)) return null
 
         val prevSegment = segmentsMap[segmentId - 1]
 
-        val segmentDurationInSeconds = segment.durationUs / 1_000_000.0
+        val segmentDurationInSeconds = hlsSegment.durationUs / 1_000_000.0
         val startTime = prevSegment?.endTime ?: initialStartTime
         val endTime = startTime + segmentDurationInSeconds
 
         val newSegment =
-            RuntimeSegment(
-                runtimeId = segment.runtimeUrl,
+            Segment(
+                runtimeId = hlsSegment.runtimeUrl,
                 externalId = segmentId,
-                url = segment.absoluteUrl,
-                byteRange = segment.byteRange,
+                url = hlsSegment.absoluteUrl,
+                byteRange = hlsSegment.byteRange,
                 startTime = startTime,
                 endTime = endTime,
             )
@@ -244,11 +237,11 @@ internal class HlsManifestParser(
         return newSegment
     }
 
-    private fun processSegment(segment: Segment, manifestBuilder: StringBuilder) {
-        val byteRange = segment.byteRange
-        val absoluteSegmentUrl = segment.absoluteUrl
+    private fun processSegment(hlsSegment: HlsSegment, manifestBuilder: StringBuilder) {
+        val byteRange = hlsSegment.byteRange
+        val absoluteSegmentUrl = hlsSegment.absoluteUrl
         val segmentUrlInManifest =
-            if (segment.url == absoluteSegmentUrl) absoluteSegmentUrl else segment.url
+            if (hlsSegment.url == absoluteSegmentUrl) absoluteSegmentUrl else hlsSegment.url
 
         val encodedAbsoluteSegmentUrl =
             if (byteRange != null) {
@@ -261,7 +254,7 @@ internal class HlsManifestParser(
 
         val startIndex =
             manifestBuilder.indexOf(segmentUrlInManifest).takeIf { it != -1 }
-                ?: throw IllegalStateException("URL not found in manifest: $segment.url")
+                ?: throw IllegalStateException("URL not found in manifest: $hlsSegment.url")
         val endIndex = startIndex + segmentUrlInManifest.length
 
         // for some reason, replaceRange doesn't work in iOS

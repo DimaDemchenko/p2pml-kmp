@@ -1,9 +1,9 @@
 package com.novage.p2pml
 
-import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.events.*
-import com.novage.p2pml.providers.PlaybackProvider
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.server.config.ServerConfig
 import com.novage.p2pml.server.ServerModule

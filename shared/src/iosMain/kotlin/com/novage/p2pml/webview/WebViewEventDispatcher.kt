@@ -1,5 +1,16 @@
 package com.novage.p2pml.webview
 
+import com.novage.p2pml.domain.models.ChunkDownloadedDetails
+import com.novage.p2pml.domain.models.ChunkUploadedDetails
+import com.novage.p2pml.domain.models.CoreEventMap
+import com.novage.p2pml.domain.models.PeerDetails
+import com.novage.p2pml.domain.models.PeerErrorDetails
+import com.novage.p2pml.domain.models.SegmentAbortDetails
+import com.novage.p2pml.domain.models.SegmentErrorDetails
+import com.novage.p2pml.domain.models.SegmentLoadDetails
+import com.novage.p2pml.domain.models.SegmentStartDetails
+import com.novage.p2pml.domain.models.TrackerErrorDetails
+import com.novage.p2pml.domain.models.TrackerWarningDetails
 import com.novage.p2pml.events.*
 import com.novage.p2pml.utils.decodeFromNSDictionary
 import kotlinx.serialization.json.Json

@@ -1,9 +1,10 @@
 package com.novage.p2pml.providers
 
 import androidx.media3.exoplayer.ExoPlayer
-import com.novage.p2pml.PlaybackInfo
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.domain.models.PlaybackInfo
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
-import com.novage.p2pml.parser.hlsPlaylistParser.Segment
+import com.novage.p2pml.parser.hlsPlaylistParser.HlsSegment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -36,14 +37,14 @@ internal class ExoPlayerPlaybackProvider(
 
     private fun updateExistingSegmentRelativeTime(
         segmentId: Long,
-        segment: Segment,
+        hlsSegment: HlsSegment,
     ) {
         val prevSegment = currentSegments[segmentId - 1]
         val currentSegment =
             currentSegments[segmentId]
                 ?: throw IllegalStateException("Current segment is null")
 
-        val segmentDurationInSeconds = segment.durationUs / 1_000_000.0
+        val segmentDurationInSeconds = hlsSegment.durationUs / 1_000_000.0
         val relativeStartTime = prevSegment?.endTime ?: 0.0
         val relativeEndTime = relativeStartTime + segmentDurationInSeconds
 
@@ -52,11 +53,11 @@ internal class ExoPlayerPlaybackProvider(
     }
 
     private fun addSegment(
-        segment: Segment,
+        hlsSegment: HlsSegment,
         externalId: Long,
     ) {
         val prevSegment = currentSegments[externalId - 1]
-        val segmentDurationInSeconds = segment.durationUs / 1_000_000.0
+        val segmentDurationInSeconds = hlsSegment.durationUs / 1_000_000.0
 
         val relativeStartTime = prevSegment?.endTime ?: 0.0
         val absoluteStartTime = prevSegment?.absoluteEndTime ?: currentAbsoluteTime!!
@@ -83,7 +84,7 @@ internal class ExoPlayerPlaybackProvider(
 
             removeObsoleteSegments(newMediaSequence)
 
-            parsedMediaPlaylist.segments.forEachIndexed { index, segment ->
+            parsedMediaPlaylist.hlsSegments.forEachIndexed { index, segment ->
                 val segmentIndex = newMediaSequence + index
 
                 if (!currentSegments.contains(segmentIndex)) {

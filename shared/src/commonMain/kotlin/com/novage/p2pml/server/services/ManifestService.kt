@@ -1,6 +1,6 @@
 package com.novage.p2pml.server.services
 
-import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.parser.HlsManifestParser
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

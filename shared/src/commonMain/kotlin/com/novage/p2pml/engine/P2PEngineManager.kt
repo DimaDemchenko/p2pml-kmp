@@ -1,6 +1,7 @@
 package com.novage.p2pml.engine
 
-import com.novage.p2pml.providers.PlaybackProvider
+import com.novage.p2pml.domain.interfaces.P2PEngine
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.webview.HeadlessWebView
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json

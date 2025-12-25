@@ -80,7 +80,7 @@ class HlsPlaylistParser {
     private fun parseMediaPlaylist(iterator: LineIterator, playlistUri: String): HlsPlaylist {
         var mediaSequence = 0L
         var hasEndTag = false
-        val segments = mutableListOf<Segment>()
+        val hlsSegments = mutableListOf<HlsSegment>()
         val variableDefinitions = mutableMapOf<String, String>()
         var initializationSegment: InitializationSegment? = null
 
@@ -127,8 +127,8 @@ class HlsPlaylistParser {
                 val absoluteUri =
                     if (isAbsolute(segmentUri)) segmentUri else resolve(playlistUri, segmentUri)
 
-                val segment =
-                    Segment(
+                val hlsSegment =
+                    HlsSegment(
                         url = segmentUri,
                         absoluteUrl = absoluteUri,
                         byteRangeOffset = segmentByteRangeOffset,
@@ -137,7 +137,7 @@ class HlsPlaylistParser {
                         initializationSegment = initializationSegment,
                     )
 
-                segments.add(segment)
+                hlsSegments.add(hlsSegment)
 
                 if (segmentByteRangeLength != -1L) segmentByteRangeOffset += segmentByteRangeLength
 
@@ -150,7 +150,7 @@ class HlsPlaylistParser {
             baseUri = playlistUri,
             mediaSequence = mediaSequence,
             hasEndTag = hasEndTag,
-            segments = segments,
+            hlsSegments = hlsSegments,
         )
     }
 

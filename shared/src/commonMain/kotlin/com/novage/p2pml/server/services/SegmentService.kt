@@ -1,6 +1,6 @@
 package com.novage.p2pml.server.services
 
-import com.novage.p2pml.engine.P2PEngine
+import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.server.exceptions.TooManyRetriesException
 import kotlinx.coroutines.CompletableDeferred

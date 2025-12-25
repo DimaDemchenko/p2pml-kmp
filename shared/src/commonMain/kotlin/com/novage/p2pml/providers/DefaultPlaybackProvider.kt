@@ -1,6 +1,7 @@
 package com.novage.p2pml.providers
 
-import com.novage.p2pml.PlaybackInfo
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.domain.models.PlaybackInfo
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

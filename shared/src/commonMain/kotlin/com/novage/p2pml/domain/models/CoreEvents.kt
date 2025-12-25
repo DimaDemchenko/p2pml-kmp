@@ -1,4 +1,4 @@
-package com.novage.p2pml.events
+package com.novage.p2pml.domain.models
 
 import kotlin.jvm.JvmField
 import kotlinx.serialization.Serializable
@@ -100,26 +100,6 @@ sealed class CoreEventMap<T>(val eventName: String) {
 data class PeerErrorDetails(val peerId: String, val streamType: String, val error: String)
 
 /**
- * Describes a media segment with its unique identifiers, location, and timing information.
- *
- * @property runtimeId The unique identifier of the segment.
- * @property externalId The external identifier of the segment.
- * @property url The URL of the segment.
- * @property byteRange The byte range of the segment.
- * @property startTime The start time of the segment.
- * @property endTime The end time of the segment.
- */
-@Serializable
-data class SegmentDetails(
-    val runtimeId: String,
-    val externalId: Int,
-    val url: String,
-    val byteRange: SegmentByteRange? = null,
-    val startTime: Double,
-    val endTime: Double,
-)
-
-/**
  * Represents the details about a loaded segment.
  *
  * @property segmentUrl The URL of the segment.
@@ -146,7 +126,7 @@ data class SegmentLoadDetails(
  */
 @Serializable
 data class SegmentStartDetails(
-    val segment: SegmentDetails,
+    val segment: Segment,
     val downloadSource: String,
     val peerId: String? = null,
 )
@@ -163,7 +143,7 @@ data class SegmentStartDetails(
 @Serializable
 data class SegmentErrorDetails(
     val error: String,
-    val segment: SegmentDetails,
+    val segment: Segment,
     val downloadSource: String,
     val peerId: String?,
     val streamType: String,
@@ -179,7 +159,7 @@ data class SegmentErrorDetails(
  */
 @Serializable
 data class SegmentAbortDetails(
-    val segment: SegmentDetails,
+    val segment: Segment,
     val downloadSource: String,
     val peerId: String? = null,
     val streamType: String,
