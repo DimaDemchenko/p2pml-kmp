@@ -74,14 +74,6 @@ sealed class CoreEventMap<T>(val eventName: String) {
 }
 
 /**
- * Represents a range of bytes, used for specifying a segment of data to download.
- *
- * @property start The starting byte index of the range.
- * @property end The ending byte index of the range.
- */
-@Serializable data class SegmentByteRange(val start: Int, val end: Int)
-
-/**
  * Represents the details of a peer in a peer-to-peer network.
  *
  * @property peerId The unique identifier for a peer in the network.
