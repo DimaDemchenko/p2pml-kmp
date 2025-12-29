@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 
 abstract class HlsPlaylist(val baseUri: String)
 
-class HlsMultivariantPlaylist(
+internal class HlsMultivariantPlaylist(
     baseUri: String,
     val variants: List<Variant>,
     val videos: List<Rendition>,
@@ -15,7 +15,7 @@ class HlsMultivariantPlaylist(
     val closedCaptions: List<Rendition>,
 ) : HlsPlaylist(baseUri)
 
-class HlsMediaPlaylist(
+internal class HlsMediaPlaylist(
     baseUri: String,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
@@ -40,7 +40,7 @@ data class Rendition(
 
 data class InitializationSegment(val url: String, val absoluteUrl: String)
 
-data class HlsSegment(
+internal data class HlsSegment(
     val url: String,
     val absoluteUrl: String,
     val byteRangeOffset: Long,

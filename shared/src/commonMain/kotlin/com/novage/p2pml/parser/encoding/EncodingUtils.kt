@@ -1,4 +1,4 @@
-package com.novage.p2pml.parser
+package com.novage.p2pml.parser.encoding
 
 import io.ktor.http.decodeURLQueryComponent
 import io.ktor.http.encodeURLParameter

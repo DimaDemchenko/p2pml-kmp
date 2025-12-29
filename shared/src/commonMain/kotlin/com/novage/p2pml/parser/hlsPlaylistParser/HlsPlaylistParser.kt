@@ -34,7 +34,7 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_SUBTITLES
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_VIDEO
 import kotlin.math.roundToLong
 
-class HlsPlaylistParser {
+internal class HlsPlaylistParser {
     fun parse(playlistUri: String, playlistData: String): HlsPlaylist {
         val reader = Reader(playlistData)
         val extraLines = ArrayDeque<String>()

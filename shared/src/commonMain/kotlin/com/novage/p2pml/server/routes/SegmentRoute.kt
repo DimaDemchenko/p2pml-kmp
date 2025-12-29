@@ -1,7 +1,7 @@
 package com.novage.p2pml.server.routes
 
 import com.novage.p2pml.parser.HlsManifestParser
-import com.novage.p2pml.parser.decodeBase64Url
+import com.novage.p2pml.parser.encoding.decodeBase64Url
 import com.novage.p2pml.server.services.SegmentService
 import com.novage.p2pml.server.exceptions.SegmentAbortedException
 import com.novage.p2pml.server.exceptions.SegmentReplacedException

@@ -2,12 +2,7 @@ package com.novage.p2pml.parser.hlsPlaylistParser
 
 object HlsConstants {
     const val MICROS_PER_SECOND = 1_000_000L
-
-    const val LOG_TAG: String = "HlsPlaylistParser"
     const val PLAYLIST_HEADER: String = "#EXTM3U"
-
-    // Tag names.
-    const val TAG_PREFIX: String = "#EXT"
     const val TAG_VERSION: String = "#EXT-X-VERSION"
     const val TAG_PLAYLIST_TYPE: String = "#EXT-X-PLAYLIST-TYPE"
     const val TAG_DEFINE: String = "#EXT-X-DEFINE"
@@ -139,7 +134,6 @@ object HlsConstants {
     val REGEX_GAP: Regex = compileBooleanAttrPattern("GAP")
     val REGEX_PRECISE: Regex = compileBooleanAttrPattern("PRECISE")
     val REGEX_VALUE: Regex = Regex("VALUE=\"(.+?)\"")
-    val REGEX_IMPORT: Regex = Regex("IMPORT=\"(.+?)\"")
     val REGEX_VARIABLE_REFERENCE: Regex = Regex("\\{\\$([a-zA-Z0-9\\-_]+)\\}")
 
     /** Compiles a regex for a boolean attribute with the given name. */

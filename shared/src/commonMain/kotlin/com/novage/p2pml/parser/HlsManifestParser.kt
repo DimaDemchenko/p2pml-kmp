@@ -2,6 +2,7 @@ package com.novage.p2pml.parser
 import com.novage.p2pml.domain.models.Segment
 import com.novage.p2pml.parser.hlsPlaylistParser.*
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.parser.encoding.encodeUrlToBase64
 import com.novage.p2pml.server.config.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
