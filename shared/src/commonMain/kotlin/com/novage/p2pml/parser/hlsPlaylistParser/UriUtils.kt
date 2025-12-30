@@ -14,7 +14,7 @@ private const val FRAGMENT = 3
  * @param referenceUri The reference URI to resolve, or null which is treated as the empty string.
  * @return The resolved URI.
  */
-fun resolve(baseUri: String?, referenceUri: String?): String {
+internal fun resolve(baseUri: String?, referenceUri: String?): String {
     val base = baseUri ?: ""
     val reference = referenceUri ?: ""
 
@@ -63,7 +63,7 @@ fun resolve(baseUri: String?, referenceUri: String?): String {
 }
 
 /** Returns true if [uri] is absolute (i.e. starts with a scheme), false otherwise. */
-fun isAbsolute(uri: String?): Boolean {
+internal fun isAbsolute(uri: String?): Boolean {
     return uri != null && getUriIndices(uri)[SCHEME_COLON] != -1
 }
 
@@ -74,7 +74,7 @@ fun isAbsolute(uri: String?): Boolean {
  * @param queryParameterName The name of the query parameter to remove.
  * @return A new URI string without the specified query parameter.
  */
-fun removeQueryParameter(uri: String, queryParameterName: String): String {
+internal fun removeQueryParameter(uri: String, queryParameterName: String): String {
     val qIndex = uri.indexOf('?')
     if (qIndex == -1) return uri
 
@@ -107,7 +107,7 @@ fun removeQueryParameter(uri: String, queryParameterName: String): String {
  * @param limit The index (exclusive) at which the path ends.
  * @return The StringBuilder’s string after removing dot segments.
  */
-fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): String {
+internal fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): String {
     var off = offset
     var lim = limit
     if (off >= lim) {
@@ -163,7 +163,7 @@ fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): String {
  * - index 2: index where the query starts (or equals fragment index if none),
  * - index 3: index where the fragment starts (or equals the length of the URI if none).
  */
-fun getUriIndices(uriString: String): IntArray {
+internal fun getUriIndices(uriString: String): IntArray {
     val indices = IntArray(INDEX_COUNT)
     if (uriString.isEmpty()) {
         indices[SCHEME_COLON] = -1
@@ -212,7 +212,7 @@ fun getUriIndices(uriString: String): IntArray {
  * This implementation splits the path into segments (delimited by '/') and then computes the common
  * prefix.
  */
-fun getRelativePath(baseUri: String, targetUri: String): String {
+internal fun getRelativePath(baseUri: String, targetUri: String): String {
     // For opaque URIs or if schemes/authorities differ, return targetUri.
     val baseIndices = getUriIndices(baseUri)
     val targetIndices = getUriIndices(targetUri)
@@ -259,7 +259,7 @@ fun getRelativePath(baseUri: String, targetUri: String): String {
 }
 
 /** Helper: Extracts the path segments from the URI. */
-fun getPathSegments(uri: String): List<String> {
+internal fun getPathSegments(uri: String): List<String> {
     val indices = getUriIndices(uri)
     val path = uri.substring(indices[PATH], indices[QUERY])
     return path.split('/').filter { it.isNotEmpty() }
