@@ -3,16 +3,15 @@ package com.novage.p2pml.providers
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.domain.models.PlaybackInfo
-import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
-import com.novage.p2pml.parser.hlsPlaylistParser.HlsSegment
+import com.novage.p2pml.domain.models.PlaylistSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private data class PlaybackSegment(
-    var startTime: Double,
-    var endTime: Double,
+    val startTime: Double,
+    val endTime: Double,
     val absoluteStartTime: Double,
     val absoluteEndTime: Double,
     val externalId: Long,
@@ -21,116 +20,94 @@ private data class PlaybackSegment(
 internal class ExoPlayerPlaybackProvider(
     private val exoPlayer: ExoPlayer,
 ) : PlaybackProvider {
-    private var currentMediaPlaylist: HlsMediaPlaylist? = null
+    private var currentSnapshot: PlaylistSnapshot? = null
     private var currentAbsoluteTime: Double? = null
 
     private var currentSegments = mutableMapOf<Long, PlaybackSegment>()
     private val mutex = Mutex()
 
+    private val nowInSeconds: Double
+        get() = System.currentTimeMillis() / 1000.0
+
     private fun removeObsoleteSegments(removeUntilId: Long) {
-        val obsoleteIds = currentSegments.keys.filter { it < removeUntilId }
-
-        obsoleteIds.forEach { id ->
-            currentSegments.remove(id)
-        }
-    }
-
-    private fun updateExistingSegmentRelativeTime(
-        segmentId: Long,
-        hlsSegment: HlsSegment,
-    ) {
-        val prevSegment = currentSegments[segmentId - 1]
-        val currentSegment =
-            currentSegments[segmentId]
-                ?: throw IllegalStateException("Current segment is null")
-
-        val segmentDurationInSeconds = hlsSegment.durationUs / 1_000_000.0
-        val relativeStartTime = prevSegment?.endTime ?: 0.0
-        val relativeEndTime = relativeStartTime + segmentDurationInSeconds
-
-        currentSegment.startTime = relativeStartTime
-        currentSegment.endTime = relativeEndTime
+        currentSegments.entries.removeIf { it.key < removeUntilId }
     }
 
     private fun addSegment(
-        hlsSegment: HlsSegment,
+        duration: Double,
         externalId: Long,
     ) {
         val prevSegment = currentSegments[externalId - 1]
-        val segmentDurationInSeconds = hlsSegment.durationUs / 1_000_000.0
 
         val relativeStartTime = prevSegment?.endTime ?: 0.0
-        val absoluteStartTime = prevSegment?.absoluteEndTime ?: currentAbsoluteTime!!
+        val relativeEndTime = relativeStartTime + duration
 
-        val relativeEndTime = relativeStartTime + segmentDurationInSeconds
-        val absoluteEndTime = absoluteStartTime + segmentDurationInSeconds
+        val absoluteStartTime = prevSegment?.absoluteEndTime
+            ?: currentAbsoluteTime
+            ?: nowInSeconds
 
-        currentSegments[externalId] =
-            PlaybackSegment(
-                relativeStartTime,
-                relativeEndTime,
-                absoluteStartTime,
-                absoluteEndTime,
-                externalId,
-            )
+        val absoluteEndTime = absoluteStartTime + duration
+
+        currentSegments[externalId] = PlaybackSegment(
+            startTime = relativeStartTime,
+            endTime = relativeEndTime,
+            absoluteStartTime = absoluteStartTime,
+            absoluteEndTime = absoluteEndTime,
+            externalId = externalId
+        )
     }
 
-    override suspend fun getAbsolutePlaybackPosition(parsedMediaPlaylist: HlsMediaPlaylist): Double =
-        mutex.withLock {
-            currentMediaPlaylist = parsedMediaPlaylist
+    override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double = mutex.withLock {
+        currentSnapshot = snapshot
 
-            val newMediaSequence = parsedMediaPlaylist.mediaSequence
-            currentAbsoluteTime = System.currentTimeMillis() / 1000.0
-
-            removeObsoleteSegments(newMediaSequence)
-
-            parsedMediaPlaylist.hlsSegments.forEachIndexed { index, segment ->
-                val segmentIndex = newMediaSequence + index
-
-                if (!currentSegments.contains(segmentIndex)) {
-                    addSegment(segment, segmentIndex)
-                } else {
-                    updateExistingSegmentRelativeTime(segmentIndex, segment)
-                }
-            }
-
-            return@withLock currentAbsoluteTime!!
+        if (currentAbsoluteTime == null) {
+            currentAbsoluteTime = nowInSeconds
         }
 
-    override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo =
-        mutex.withLock {
-            val playbackPositionInSeconds =
-                withContext(Dispatchers.Main) {
-                    exoPlayer.currentPosition / 1000.0
-                }
-            val playbackSpeed = withContext(Dispatchers.Main) { exoPlayer.playbackParameters.speed }
+        val newMediaSequence = snapshot.mediaSequence
 
-            if (currentMediaPlaylist == null || currentMediaPlaylist?.hasEndTag == true) {
-                return PlaybackInfo(playbackPositionInSeconds, playbackSpeed)
+        snapshot.segmentDurations.forEachIndexed { index, duration ->
+            val segmentIndex = newMediaSequence + index
+
+            if (!currentSegments.contains(segmentIndex)) {
+                addSegment(duration, segmentIndex)
             }
-
-            val currentPlayback =
-                if (playbackPositionInSeconds < 0) {
-                    0.0
-                } else {
-                    playbackPositionInSeconds
-                }
-
-            val currentSegment =
-                currentSegments.values.find {
-                    currentPlayback >= it.startTime && currentPlayback <= it.endTime
-                } ?: throw IllegalStateException("Current segment is null")
-
-            val segmentPlayTime = currentPlayback - currentSegment.startTime
-            val segmentAbsolutePlayTime = currentSegment.absoluteStartTime + segmentPlayTime
-
-            return PlaybackInfo(segmentAbsolutePlayTime, playbackSpeed)
         }
+
+        removeObsoleteSegments(newMediaSequence)
+
+        return@withLock checkNotNull(currentAbsoluteTime) { "Absolute time was not initialized" }
+    }
+
+    override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo = mutex.withLock {
+        val (position, speed) = withContext(Dispatchers.Main) {
+            (exoPlayer.currentPosition / 1000.0) to exoPlayer.playbackParameters.speed
+        }
+
+        val snapshot = currentSnapshot
+        if (snapshot == null || snapshot.hasEndTag) {
+            return PlaybackInfo(position, speed)
+        }
+
+        val currentPlayback = position.coerceAtLeast(0.0)
+        val currentSegment = currentSegments.values.find {
+            currentPlayback >= it.startTime && currentPlayback <= it.endTime
+        }
+
+        if (currentSegment == null) {
+            return PlaybackInfo(0.0, speed)
+        }
+
+        val segmentPlayTime = currentPlayback - currentSegment.startTime
+        val segmentAbsolutePlayTime = currentSegment.absoluteStartTime + segmentPlayTime
+
+        return PlaybackInfo(segmentAbsolutePlayTime, speed)
+    }
 
     override suspend fun resetData() =
         mutex.withLock {
             currentSegments.clear()
-            currentMediaPlaylist = null
+            currentSnapshot = null
             currentAbsoluteTime = null
         }
 }
