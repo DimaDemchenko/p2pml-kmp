@@ -2,6 +2,7 @@ package com.novage.p2pml.parser
 import com.novage.p2pml.domain.models.Segment
 import com.novage.p2pml.parser.hlsPlaylistParser.*
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.domain.models.PlaylistSnapshot
 import com.novage.p2pml.parser.encoding.encodeUrlToBase64
 import com.novage.p2pml.server.config.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
@@ -130,12 +131,21 @@ internal class HlsManifestParser(
     private suspend fun getInitialStartTime(
         isLive: Boolean,
         mediaPlaylist: HlsMediaPlaylist,
-    ): Double =
+    ): Double {
         if (isLive) {
-            playbackProvider.getAbsolutePlaybackPosition(mediaPlaylist)
+            val snapshot = PlaylistSnapshot(
+                mediaSequence = mediaPlaylist.mediaSequence,
+                hasEndTag = mediaPlaylist.hasEndTag,
+                segmentDurations = mediaPlaylist.hlsSegments.map {
+                    it.durationUs / 1_000_000.0
+                }
+            )
+
+            return playbackProvider.getAbsolutePlaybackPosition(snapshot)
         } else {
-            0.0
+            return 0.0
         }
+    }
 
     private suspend fun parseMediaPlaylist(
         manifestUrl: String,
