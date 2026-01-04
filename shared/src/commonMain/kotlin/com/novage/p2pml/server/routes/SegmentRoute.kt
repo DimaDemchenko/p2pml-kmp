@@ -22,7 +22,6 @@ import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
 import kotlinx.coroutines.CompletableDeferred
 
-// 1. Static Logger
 private val logger = CoreLogger("SegmentRoute")
 
 internal fun Route.registerSegmentRoutes(
