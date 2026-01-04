@@ -33,10 +33,12 @@ abstract class P2PMediaLoaderCore(
     protected val eventEmitter = EventEmitter()
 
     protected var engineManager: P2PEngine? = null
+        private set
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
 
     protected var isEngineReady = false
+        private set
 
     protected fun initialize(
         webView: HeadlessWebView,
@@ -48,12 +50,15 @@ abstract class P2PMediaLoaderCore(
         }
 
         logger.d { "Initializing P2PMediaLoaderCore..." }
-
         this.playbackProvider = provider
 
         val engine = P2PEngineManager(webView, provider)
         this.engineManager = engine
 
+        startLocalServer(provider, engine)
+    }
+
+    private fun startLocalServer(provider: PlaybackProvider, engine: P2PEngine) {
         val module = ServerModule(
             playbackProvider = provider,
             engineManager = engine,
@@ -61,9 +66,9 @@ abstract class P2PMediaLoaderCore(
             enableCors = customEngineFileUrl != null,
             onServerStarted = { port ->
                 logger.i { "Local P2P Server started on port: $port" }
-
                 urlFactory.setPort(port)
-                onServerStarted()
+
+                onServerReady()
             }
         )
         this.serverModule = module
@@ -73,6 +78,8 @@ abstract class P2PMediaLoaderCore(
         } catch (e: Exception) {
             logger.e(e) { "P2P Server failed to start" }
             onP2PReadyErrorCallback(e.message ?: "P2P Server failed to start")
+
+            release()
         }
     }
 
@@ -82,8 +89,46 @@ abstract class P2PMediaLoaderCore(
     }
 
     fun applyDynamicConfig(dynamicCoreConfigJson: String) {
+        val engine = engineManager ?: run {
+            logger.w { "Cannot apply dynamic config: engineManager is null." }
+            return
+        }
+
         logger.d { "Applying dynamic config: $dynamicCoreConfigJson" }
-        engineManager?.applyDynamicConfig(dynamicCoreConfigJson)
+        engine.applyDynamicConfig(dynamicCoreConfigJson)
+    }
+
+    private fun onServerReady() {
+        val engine = engineManager ?: return
+
+        val engineFileUrl = customEngineFileUrl ?: urlFactory.buildStaticPageUrl()
+        logger.d { "Loading P2P Engine from: $engineFileUrl" }
+        engine.loadUrl(engineFileUrl)
+    }
+
+    protected fun onWebViewLoaded() {
+        val engine = engineManager ?: run {
+            logger.w { "WebView loaded but engineManager is null." }
+            return
+        }
+
+        logger.i { "WebView loaded. Initializing Core JS Engine." }
+
+        engine.initCoreEngine(
+            coreConfigJson = coreConfigJson,
+            uploadUrl = urlFactory.buildUploadUrl()
+        )
+
+        val subscribedEvents = eventEmitter.getSubscribedEventNames()
+        if (subscribedEvents.isNotEmpty()) {
+            logger.d { "Subscribing to events: $subscribedEvents" }
+            subscribedEvents.forEach { eventName ->
+                engine.subscribeToP2PEvent(eventName)
+            }
+        }
+
+        isEngineReady = true
+        onP2PReadyCallback()
     }
 
     open fun release() {
@@ -103,32 +148,5 @@ abstract class P2PMediaLoaderCore(
         urlFactory.setPort(-1)
 
         logger.d { "Release complete." }
-    }
-
-    private fun onServerStarted() {
-        val engineFileUrl = customEngineFileUrl ?: urlFactory.buildStaticPageUrl()
-        logger.d { "Loading P2P Engine from: $engineFileUrl" }
-        engineManager?.loadUrl(engineFileUrl)
-    }
-
-    protected fun onWebViewLoaded() {
-        logger.i { "WebView loaded. Initializing Core JS Engine." }
-
-        engineManager?.initCoreEngine(
-            coreConfigJson = coreConfigJson,
-            uploadUrl = urlFactory.buildUploadUrl()
-        )
-
-        val subscribedEvents = eventEmitter.getSubscribedEventNames()
-        if (subscribedEvents.isNotEmpty()) {
-            logger.d { "Subscribing to events: $subscribedEvents" }
-        }
-
-        subscribedEvents.forEach { eventName ->
-            engineManager?.subscribeToP2PEvent(eventName)
-        }
-
-        isEngineReady = true
-        onP2PReadyCallback()
     }
 }
