@@ -18,7 +18,6 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import com.novage.p2pml.P2PMediaLoader
-import com.novage.p2pml.P2PMediaLoaderCore
 import com.novage.p2pml.demo.Streams
 import com.novage.p2pml.demo.stats.P2PStats
 import com.novage.p2pml.demo.stats.P2PStatsTracker
