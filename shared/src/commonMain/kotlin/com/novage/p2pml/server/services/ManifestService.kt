@@ -17,8 +17,8 @@ internal class ManifestService(
     private val mutex = Mutex()
 
     suspend fun processManifest(manifestUrl: String, manifest: String): String {
-        if (!parser.doesManifestExist(manifestUrl)) {
-            logger.i { "New stream detected (or manifest expired). Resetting state for: $manifestUrl" }
+        if (!parser.isManifestTracked(manifestUrl)) {
+            logger.i { "Untracked manifest detected (New Session). Resetting ManifestService state for: $manifestUrl" }
 
             resetState()
             onManifestChanged()

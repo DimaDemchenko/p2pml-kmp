@@ -8,7 +8,8 @@ internal enum class LogLevel {
     DEBUG, INFO, WARN, ERROR
 }
 
-internal class CoreLogger(private val tag: String) {
+internal class CoreLogger(private val className: String) {
+    private val tag = "P2PML~$className"
 
     inline fun d(message: () -> String) {
         if (LogConfig.isEnabled) writeLog(LogLevel.DEBUG, tag, message())

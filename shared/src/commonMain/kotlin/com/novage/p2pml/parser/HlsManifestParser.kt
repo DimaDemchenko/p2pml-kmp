@@ -11,7 +11,6 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
-import kotlin.time.Clock
 
 internal const val MAIN_STREAM = "main"
 internal const val SECONDARY_STREAM = "secondary"
@@ -65,7 +64,7 @@ internal class HlsManifestParser(
                     currentAudioSegmentRuntimeIds.contains(segmentUrl)
         }
 
-    suspend fun doesManifestExist(manifestUrl: String): Boolean =
+    suspend fun isManifestTracked(manifestUrl: String): Boolean =
         mutex.withLock {
             currentMasterManifestUrl == manifestUrl || streams.containsKey(manifestUrl)
         }
