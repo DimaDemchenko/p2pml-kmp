@@ -40,7 +40,13 @@ class P2PMediaLoader(
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
         val webViewFactory = IosWebViewFactory()
-        val webView = webViewFactory.createHeadlessWebView(eventEmitter) { onWebViewLoaded() }
+        val webView = webViewFactory.createHeadlessWebView(
+            eventEmitter = eventEmitter,
+            onWebViewLoaded = ::onWebViewLoaded,
+            onWebViewError = { errorMessage ->
+                failInitialization("WebView failed to load: $errorMessage")
+            }
+        )
 
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
 

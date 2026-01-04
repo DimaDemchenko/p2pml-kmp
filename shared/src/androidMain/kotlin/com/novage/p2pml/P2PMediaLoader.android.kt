@@ -31,9 +31,13 @@ class P2PMediaLoader(
     }
 
     private fun startInternal(provider: PlaybackProvider) {
-        val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter) {
-            onWebViewLoaded()
-        }
+        val webView = AndroidWebViewFactory(context).createHeadlessWebView(
+            eventEmitter = eventEmitter,
+            onWebViewLoaded = ::onWebViewLoaded,
+            onWebViewError = { errorMessage ->
+                failInitialization("WebView failed to load: $errorMessage")
+            }
+        )
 
         initialize(webView, provider)
     }

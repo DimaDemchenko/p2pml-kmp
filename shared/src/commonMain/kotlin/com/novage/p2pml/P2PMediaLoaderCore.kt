@@ -76,10 +76,7 @@ abstract class P2PMediaLoaderCore(
         try {
             module.start()
         } catch (e: Exception) {
-            logger.e(e) { "P2P Server failed to start" }
-            onP2PReadyErrorCallback(e.message ?: "P2P Server failed to start")
-
-            release()
+            failInitialization("Failed to start local server: ${e.message}")
         }
     }
 
@@ -129,6 +126,13 @@ abstract class P2PMediaLoaderCore(
 
         isEngineReady = true
         onP2PReadyCallback()
+    }
+
+
+    protected fun failInitialization(message: String) {
+        logger.e { "Initialization failed: $message" }
+        onP2PReadyErrorCallback(message)
+        release()
     }
 
     open fun release() {

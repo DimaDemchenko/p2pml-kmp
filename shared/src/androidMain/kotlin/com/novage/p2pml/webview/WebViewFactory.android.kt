@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.novage.p2pml.events.EventEmitter
@@ -11,27 +14,49 @@ import com.novage.p2pml.events.EventEmitter
 class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
-        onWebviewLoaded: () -> Unit
+        onWebViewLoaded: () -> Unit,
+        onWebViewError: (String) -> Unit
     ): HeadlessWebView {
-        return AndroidHeadlessWebView(context, eventEmitter, onWebviewLoaded)
+        return AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
     }
 }
 
 private class AndroidHeadlessWebView(
     context: Context,
     eventEmitter: EventEmitter,
-    onWebviewLoaded: () -> Unit
+    private val onWebViewLoaded: () -> Unit,
+    private val onWebViewError: (String) -> Unit
 ) : HeadlessWebView {
     @SuppressLint("SetJavaScriptEnabled")
     private val webView: WebView = WebView(context).apply {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
-        webViewClient = WebViewClient()
+        webViewClient = object : WebViewClient() {
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                if (request == null || !request.isForMainFrame) return
+
+                onWebViewError("WebView Error: ${error?.description} (Code: ${error?.errorCode})")
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: WebResourceResponse?
+            ) {
+                if (request == null || !request.isForMainFrame) return
+
+                onWebViewError("HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}")
+            }
+        }
 
         val dispatcher = AndroidWebViewEventDispatcher(
             eventEmitter = eventEmitter,
-            onPageReady = onWebviewLoaded
+            onPageReady = onWebViewLoaded
         )
 
         addJavascriptInterface(dispatcher, "P2PMLAndroid")

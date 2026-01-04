@@ -4,29 +4,37 @@ import com.novage.p2pml.events.EventEmitter
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
+import platform.Foundation.NSError
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
 import platform.Foundation.setValue
+import platform.WebKit.WKNavigation
+import platform.WebKit.WKNavigationDelegateProtocol
 import platform.WebKit.WKPreferences
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
+import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
-        onWebviewLoaded: () -> Unit
+        onWebViewLoaded: () -> Unit,
+        onWebViewError: (String) -> Unit
     ): HeadlessWebView {
-        return IosHeadlessWebView(eventEmitter, onWebviewLoaded)
+        return IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
     }
 }
 
 private class IosHeadlessWebView(
     private val eventEmitter: EventEmitter,
-    private val onWebviewLoaded: () -> Unit
+    private val onWebViewLoaded: () -> Unit,
+    private val onWebViewError: (String) -> Unit,
 ) : HeadlessWebView {
     private var webView: WKWebView? = null
+
+    private var navigationDelegate: NavigationDelegate? = null
 
     init {
         dispatch_async(dispatch_get_main_queue()) {
@@ -38,7 +46,7 @@ private class IosHeadlessWebView(
     private fun initWebView() {
         val configuration = WKWebViewConfiguration()
 
-        val scriptMessageHandler = WebViewEventDispatcher(eventEmitter) { onWebviewLoaded() }
+        val scriptMessageHandler = WebViewEventDispatcher(eventEmitter) { onWebViewLoaded() }
         configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
 
         val preferences = WKPreferences()
@@ -46,8 +54,12 @@ private class IosHeadlessWebView(
         configuration.preferences = preferences
 
         val frame = CGRectZero.readValue()
-
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
+
+        val delegate = NavigationDelegate(onWebViewError)
+        this.navigationDelegate = delegate
+        wkWebView.navigationDelegate = delegate
+
         wkWebView.hidden = true
         wkWebView.userInteractionEnabled = false
         wkWebView.inspectable = true
@@ -86,8 +98,23 @@ private class IosHeadlessWebView(
             view.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
             view.stopLoading()
             view.removeFromSuperview()
+            view.navigationDelegate = null
 
+            navigationDelegate = null
             webView = null
         }
+    }
+}
+
+private class NavigationDelegate(
+    private val onError: (String) -> Unit
+) : NSObject(), WKNavigationDelegateProtocol {
+
+    override fun webView(
+        webView: WKWebView,
+        didFailProvisionalNavigation: WKNavigation?,
+        withError: NSError
+    ) {
+        onError("Network Error: ${withError.localizedDescription} (${withError.code})")
     }
 }
