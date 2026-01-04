@@ -6,10 +6,12 @@ import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.domain.models.PlaylistSnapshot
 import com.novage.p2pml.parser.encoding.encodeUrlToBase64
 import com.novage.p2pml.server.config.LocalUrlFactory
+import com.novage.p2pml.utils.CoreLogger
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 
 internal const val MAIN_STREAM = "main"
 internal const val SECONDARY_STREAM = "secondary"
@@ -18,6 +20,7 @@ internal class HlsManifestParser(
     private val playbackProvider: PlaybackProvider,
     private val urlFactory: LocalUrlFactory
 ) {
+    private val logger = CoreLogger("HlsManifestParser")
     private val parser = HlsPlaylistParser()
     private val mutex = Mutex()
 
@@ -32,7 +35,10 @@ internal class HlsManifestParser(
     private val currentAudioSegmentRuntimeIds = mutableSetOf<String>()
 
     suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String =
-        mutex.withLock { parseHlsManifest(manifestUrl, originalManifest) }
+        mutex.withLock {
+            logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
+            parseHlsManifest(manifestUrl, originalManifest)
+        }
 
     private fun addCurrentSegmentRuntimeId(streamType: String, runtimeId: String) {
         when (streamType) {
@@ -66,9 +72,18 @@ internal class HlsManifestParser(
 
     private suspend fun parseHlsManifest(manifestUrl: String, manifest: String): String {
         return when (val hlsPlaylist = parser.parse(manifestUrl, manifest)) {
-            is HlsMediaPlaylist -> parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
-            is HlsMultivariantPlaylist -> parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
-            else -> throw IllegalStateException("Unsupported playlist type")
+            is HlsMediaPlaylist -> {
+                logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
+                parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
+            }
+            is HlsMultivariantPlaylist -> {
+                logger.d { "Type: Multivariant (Master) Playlist" }
+                parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
+            }
+            else -> {
+                logger.e { "Unsupported playlist type found for: $manifestUrl" }
+                throw IllegalStateException("Unsupported playlist type")
+            }
         }
     }
 
@@ -80,6 +95,8 @@ internal class HlsManifestParser(
         val updatedManifestBuilder = StringBuilder(originalManifest)
 
         currentMasterManifestUrl = manifestUrl
+
+        logger.i { "Processing Master Playlist. Variants: ${hlsPlaylist.variants.size}, Audio: ${hlsPlaylist.audios.size}" }
 
         hlsPlaylist.variants.forEachIndexed { index, variant ->
             processStream(
@@ -201,6 +218,8 @@ internal class HlsManifestParser(
             streams[manifestUrl] = Stream(runtimeId = manifestUrl, type = MAIN_STREAM, index = 0)
         }
 
+        logger.d { "Segments updated. Added: ${segmentsToAdd.size}, Removed: ${segmentsToRemove.size}" }
+
         return updatedManifestBuilder.toString()
     }
 
@@ -285,13 +304,13 @@ internal class HlsManifestParser(
         newUrl: String,
     ) {
         val startIndex = updatedManifestBuilder.indexOf(oldUrl).takeIf { it != -1 }
+
         if (startIndex == null) {
+            logger.w { "Failed to rewrite URL. Original string not found in manifest: $oldUrl" }
             return
         }
 
         val endIndex = startIndex + oldUrl.length
-        // for some reason, replaceRange doesn't work in iOS
-        // updatedManifestBuilder.replaceRange(startIndex, endIndex, newUrl)
         updatedManifestBuilder.deleteRange(startIndex, endIndex)
         updatedManifestBuilder.insert(startIndex, newUrl)
     }
@@ -306,6 +325,7 @@ internal class HlsManifestParser(
     }
 
     suspend fun reset() = mutex.withLock {
+        logger.i { "Resetting parser state." }
         streams.clear()
         streamSegments.clear()
         updateStreamParams.clear()

@@ -18,6 +18,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import com.novage.p2pml.P2PMediaLoader
+import com.novage.p2pml.P2PMediaLoaderCore
 import com.novage.p2pml.demo.Streams
 import com.novage.p2pml.demo.stats.P2PStats
 import com.novage.p2pml.demo.stats.P2PStatsTracker
@@ -55,6 +56,8 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
     val loadingState: StateFlow<Boolean> get() = _loadingState
 
     fun setupP2PML() {
+        P2PMediaLoader.enableLogging()
+
         p2pml = P2PMediaLoader(
             context = context,
             onP2PReadyCallback = {
@@ -68,7 +71,7 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
 
         p2pStatsTracker = P2PStatsTracker(p2pml!!)
         p2pml!!.start(player)
-        println(">>>> P2P Media Loader started")
+
         viewModelScope.launch {
             p2pStatsTracker?.statsFlow?.collectLatest { stats ->
                 _p2pStats.value = stats

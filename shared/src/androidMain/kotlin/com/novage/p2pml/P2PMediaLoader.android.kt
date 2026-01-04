@@ -25,6 +25,11 @@ class P2PMediaLoader(
     customEngineFileUrl = customEngineFileUrl
 ) {
 
+    companion object {
+        fun enableLogging() = P2PMediaLoaderCore.enableLogging()
+        fun disableLogging() = P2PMediaLoaderCore.disableLogging()
+    }
+
     private fun startInternal(provider: PlaybackProvider) {
         val webView = AndroidWebViewFactory(context).createHeadlessWebView(eventEmitter) {
             onWebViewLoaded()

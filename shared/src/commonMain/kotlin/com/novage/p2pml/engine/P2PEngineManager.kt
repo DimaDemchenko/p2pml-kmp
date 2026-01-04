@@ -2,6 +2,7 @@ package com.novage.p2pml.engine
 
 import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.utils.CoreLogger
 import com.novage.p2pml.webview.HeadlessWebView
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
@@ -11,23 +12,30 @@ class P2PEngineManager(
     private val playbackProvider: PlaybackProvider
 ) : P2PEngine {
 
+    private val logger = CoreLogger("P2PEngineManager")
+
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var playbackInfoJob: Job? = null
 
     override fun loadUrl(url: String) {
+        logger.d { "Loading Web Engine URL: $url" }
         webView.loadUrl(url)
     }
 
     override fun destroy() {
+        logger.d { "Destroying P2PEngineManager..." }
         scope.cancel()
         webView.destroy()
     }
 
     override fun initCoreEngine(coreConfigJson: String, uploadUrl: String) {
+        logger.i { "Initializing JS Core Engine" }
         evaluate("window.p2p.initP2P('$coreConfigJson', '$uploadUrl');")
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {
+        logger.d { "Requesting segment via P2P Engine: $segmentUrl" }
+
         startPlaybackInfoUpdate()
         evaluate("window.p2p.processSegmentRequest('$segmentUrl');")
     }
@@ -41,10 +49,12 @@ class P2PEngineManager(
     }
 
     override fun setManifestUrl(manifestUrl: String) {
+        logger.d { "Setting manifest URL in P2P Engine: $manifestUrl" }
         evaluate("window.p2p.setManifestUrl('$manifestUrl');")
     }
 
     override fun applyDynamicConfig(dynamicConfigJson: String) {
+        logger.i { "Applying dynamic config: $dynamicConfigJson" }
         evaluate("window.p2p.applyDynamicP2PCoreConfig('$dynamicConfigJson');")
     }
 
@@ -57,11 +67,17 @@ class P2PEngineManager(
     }
 
     private fun evaluate(script: String) {
-        webView.evaluateJavascript("javascript:$script", null)
+        try {
+            webView.evaluateJavascript("javascript:$script", null)
+        } catch (e: Exception) {
+            logger.e(e) { "WebView interaction failed. Script: ${script.take(100)}..." }
+        }
     }
 
     private fun startPlaybackInfoUpdate() {
         if (playbackInfoJob?.isActive == true) return
+
+        logger.d { "Starting playback info update loop." }
 
         playbackInfoJob = scope.launch {
             while (isActive) {
@@ -73,7 +89,7 @@ class P2PEngineManager(
 
                     delay(1000)
                 } catch (e: Exception) {
-                    println("Heartbeat error: ${e.message}")
+                    logger.w { "Playback info update loop error: ${e.message}" }
                 }
             }
         }

@@ -53,10 +53,7 @@ class AndroidWebViewEventDispatcher(
             val payloadStr = root.opt("payload")?.toString() ?: "{}"
 
             when (type) {
-                "onWebViewLoaded" -> {
-                    Log.d("P2PML", "✅ WebView loaded")
-                    onPageReady?.invoke()
-                }
+                "onWebViewLoaded" -> { onPageReady?.invoke() }
                 "onSegmentLoaded" -> emitEvent(CoreEventMap.OnSegmentLoaded, payloadStr)
                 "onSegmentStart" -> emitEvent(CoreEventMap.OnSegmentStart, payloadStr)
                 "onSegmentError" -> emitEvent(CoreEventMap.OnSegmentError, payloadStr)

@@ -33,6 +33,11 @@ class P2PMediaLoader(
         onP2PReadyErrorCallback: (String) -> Unit,
     ) : this(onP2PReadyCallback, onP2PReadyErrorCallback, "{}", null)
 
+    companion object {
+        fun enableLogging() = P2PMediaLoaderCore.enableLogging()
+        fun disableLogging() = P2PMediaLoaderCore.disableLogging()
+    }
+
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
         val webViewFactory = IosWebViewFactory()
         val webView = webViewFactory.createHeadlessWebView(eventEmitter) { onWebViewLoaded() }

@@ -9,6 +9,7 @@ import com.novage.p2pml.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.server.utils.fetchSegment
 import com.novage.p2pml.server.utils.respondFallback
 import com.novage.p2pml.server.utils.respondVideoSegment
+import com.novage.p2pml.utils.CoreLogger // <--- Import
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -20,6 +21,9 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
 import kotlinx.coroutines.CompletableDeferred
+
+// 1. Static Logger
+private val logger = CoreLogger("SegmentRoute")
 
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
@@ -46,7 +50,10 @@ private fun Route.segmentDownloadRoute(
         val segmentUrl = decodeBase64Url(encodedSegmentUrl)
         val byteRange = call.request.headers[HttpHeaders.Range]
 
+        logger.d { "Player requested segment: $segmentUrl (Range: $byteRange)" }
+
         if (!parser.isCurrentSegment(segmentUrl)) {
+            logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
             val fetchedSegmentBytes = httpClient.fetchSegment(call, segmentUrl)
 
             call.respondVideoSegment(fetchedSegmentBytes, byteRange)
@@ -58,24 +65,26 @@ private fun Route.segmentDownloadRoute(
         try {
             deferred = segmentService.createOrReplaceRequest(segmentUrl)
 
+            logger.d { "Waiting for segment data from p2p engine for: $segmentUrl" }
             val bytes = deferred.await()
+            logger.d { "Serving ${bytes.size} bytes to Player for: $segmentUrl" }
 
             call.respondVideoSegment(bytes, byteRange)
         } catch (_: SegmentReplacedException) {
-            println("♻️ Old request replaced. Terminating.")
+            logger.i { "Request replaced. Terminating old request." }
             call.respond(HttpStatusCode.RequestTimeout)
-        } catch (_: TooManyRetriesException) {
-            println("🚫 Max retries hit. Fallback to HTTP.")
 
+        } catch (_: TooManyRetriesException) {
+            logger.w { "Max retries hit for P2P. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
 
         } catch (e: Exception) {
-            println("❌ P2P Error: ${e.message}. Fallback.")
-
+            logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
 
         } finally {
             if (deferred?.isActive == true) {
+                logger.d { "Cleaning up active request." }
                 segmentService.cancelRequest(segmentUrl, deferred)
             }
         }
@@ -92,15 +101,18 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         if (error != null) {
             val deferredSegment = segmentService.getPendingRequest(segmentId)
                 ?: run {
+                    logger.w { "Received error for unknown segment ID: $segmentId" }
                     call.respond(HttpStatusCode.NotFound)
                     return@post
                 }
 
             if (error.contains("aborted")) {
+                logger.i { "Segment upload aborted: $segmentId" }
                 deferredSegment.completeExceptionally(
                     SegmentAbortedException("Segment aborted - $segmentId")
                 )
             } else {
+                logger.w { "Error processing segment: $segmentId - $error" }
                 deferredSegment.completeExceptionally(
                     Exception("Error processing segment - $segmentId - $error")
                 )
@@ -112,7 +124,9 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         }
 
         val segmentBytes = call.receiveChannel().toByteArray()
-        println("↓↓↓↓ Received segment bytes for $segmentId")
+
+        logger.i { "Received segment bytes for $segmentId (Size: ${segmentBytes.size} bytes)" }
+
         segmentService.completeRequest(segmentId, segmentBytes)
 
         call.respond(HttpStatusCode.OK)

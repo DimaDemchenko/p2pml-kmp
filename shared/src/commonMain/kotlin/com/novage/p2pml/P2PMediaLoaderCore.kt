@@ -7,6 +7,8 @@ import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.server.config.ServerConfig
 import com.novage.p2pml.server.ServerModule
+import com.novage.p2pml.utils.CoreLogger
+import com.novage.p2pml.utils.LogConfig
 import com.novage.p2pml.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.runBlocking
@@ -17,6 +19,18 @@ abstract class P2PMediaLoaderCore(
     private val coreConfigJson : String = "{}",
     private val customEngineFileUrl: String? = null
 ) {
+    private val logger = CoreLogger("P2PMediaLoaderCore")
+
+    companion object {
+        fun enableLogging() {
+            LogConfig.isEnabled = true
+        }
+
+        fun disableLogging() {
+            LogConfig.isEnabled = false
+        }
+    }
+
     private val serverConfig = ServerConfig()
     protected val urlFactory = LocalUrlFactory(serverConfig)
     protected val eventEmitter = EventEmitter()
@@ -27,15 +41,16 @@ abstract class P2PMediaLoaderCore(
 
     protected var isEngineReady = false
 
-    /**
-     * Platform-agnostic initialization.
-     * Call this from your platform-specific 'start' method.
-     */
     protected fun initialize(
         webView: HeadlessWebView,
         provider: PlaybackProvider
     ) {
-        if (engineManager != null) return
+        if (engineManager != null) {
+            logger.w { "Initialize called but engine is already created. Ignoring." }
+            return
+        }
+
+        logger.d { "Initializing P2PMediaLoaderCore..." }
 
         this.playbackProvider = provider
 
@@ -46,7 +61,8 @@ abstract class P2PMediaLoaderCore(
             playbackProvider = provider,
             engineManager = engine,
             urlFactory = urlFactory,
-            onServerStarted = { port->
+            onServerStarted = { port ->
+                logger.i { "Local P2P Server started on port: $port" }
                 serverConfig.updatePort(port)
                 onServerStarted()
             }
@@ -56,19 +72,24 @@ abstract class P2PMediaLoaderCore(
         try {
             module.start()
         } catch (e: Exception) {
+            logger.e(e) { "P2P Server failed to start" }
             onP2PReadyErrorCallback(e.message ?: "P2P Server failed to start")
         }
     }
 
     fun getManifestUrl(manifestUrl: String): String {
+        logger.d { "Building manifest URL for: $manifestUrl" }
         return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
 
     fun applyDynamicConfig(dynamicCoreConfigJson: String) {
+        logger.d { "Applying dynamic config: $dynamicCoreConfigJson" }
         engineManager?.applyDynamicConfig(dynamicCoreConfigJson)
     }
 
     open fun release() {
+        logger.i { "Releasing P2PMediaLoaderCore resources..." }
+
         eventEmitter.removeAllListeners()
 
         engineManager?.destroy()
@@ -80,20 +101,29 @@ abstract class P2PMediaLoaderCore(
         runBlocking { playbackProvider?.resetData() }
         isEngineReady = false
         serverConfig.updatePort(-1)
+
+        logger.d { "Release complete." }
     }
 
     private fun onServerStarted() {
         val engineFileUrl = customEngineFileUrl ?: urlFactory.buildStaticPageUrl()
+        logger.d { "Loading P2P Engine from: $engineFileUrl" }
         engineManager?.loadUrl(engineFileUrl)
     }
 
     protected fun onWebViewLoaded() {
+        logger.i { "WebView loaded. Initializing Core JS Engine." }
+
         engineManager?.initCoreEngine(
             coreConfigJson = coreConfigJson,
             uploadUrl = urlFactory.buildUploadUrl()
         )
 
         val subscribedEvents = eventEmitter.getSubscribedEventNames()
+        if (subscribedEvents.isNotEmpty()) {
+            logger.d { "Subscribing to events: $subscribedEvents" }
+        }
+
         subscribedEvents.forEach { eventName ->
             engineManager?.subscribeToP2PEvent(eventName)
         }
@@ -101,5 +131,4 @@ abstract class P2PMediaLoaderCore(
         isEngineReady = true
         onP2PReadyCallback()
     }
-
 }

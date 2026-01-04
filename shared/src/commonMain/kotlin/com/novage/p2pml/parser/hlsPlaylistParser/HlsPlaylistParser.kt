@@ -32,15 +32,20 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_AUDIO
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_CLOSED_CAPTIONS
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_SUBTITLES
 import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_VIDEO
+import com.novage.p2pml.utils.CoreLogger
 import kotlin.math.roundToLong
 
 internal class HlsPlaylistParser {
+    private val logger = CoreLogger("HlsPlaylistParser")
     fun parse(playlistUri: String, playlistData: String): HlsPlaylist {
         val reader = Reader(playlistData)
         val extraLines = ArrayDeque<String>()
 
         try {
-            if (!checkPlaylistHeader(reader)) throw Exception("Invalid playlist header")
+            if (!checkPlaylistHeader(reader)) {
+                logger.e { "Playlist missing #EXTM3U header: $playlistUri" }
+                throw Exception("Invalid playlist header")
+            }
 
             var line = reader.readLine()
             while (line != null) {
@@ -69,12 +74,12 @@ internal class HlsPlaylistParser {
                 line = reader.readLine()
             }
         } catch (e: Exception) {
-            println("Failed to parse playlist: ${e.message}")
-            throw Exception("Failed to parse playlist: ${e.message}")
-            // Ignore parsing errors.
+            logger.e(e) { "Failed to parse playlist: ${e.message}" }
+            throw e
         }
-        println("Failed to parse playlist")
-        throw Exception("Failed to parse playlist")
+
+        logger.e { "Failed to parse playlist: No valid tags found." }
+        throw Exception("Failed to parse playlist: No valid tags found")
     }
 
     private fun parseMediaPlaylist(iterator: LineIterator, playlistUri: String): HlsPlaylist {
