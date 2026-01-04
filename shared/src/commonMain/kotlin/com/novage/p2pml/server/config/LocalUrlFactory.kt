@@ -2,11 +2,16 @@ package com.novage.p2pml.server.config
 
 import com.novage.p2pml.server.routes.RoutePaths
 
-class LocalUrlFactory(private val config: ServerConfig) {
+internal class LocalUrlFactory {
+    private var port: Int = -1
+
+    fun setPort(newPort: Int) {
+        port = newPort
+    }
 
     private fun getBaseUrl(): String {
-        if (!config.isReady) throw IllegalStateException("❌ P2P Server not ready")
-        return "http://127.0.0.1:${config.port}"
+        if (port == -1) throw IllegalStateException("P2P Server not ready (Port not set)")
+        return "http://127.0.0.1:$port"
     }
 
     fun buildManifestUrl(encodedUrl: String): String {

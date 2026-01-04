@@ -5,7 +5,6 @@ import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.events.*
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.server.config.LocalUrlFactory
-import com.novage.p2pml.server.config.ServerConfig
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.utils.CoreLogger
 import com.novage.p2pml.utils.LogConfig
@@ -19,8 +18,6 @@ abstract class P2PMediaLoaderCore(
     private val coreConfigJson : String = "{}",
     private val customEngineFileUrl: String? = null
 ) {
-    private val logger = CoreLogger("P2PMediaLoaderCore")
-
     companion object {
         fun enableLogging() {
             LogConfig.isEnabled = true
@@ -31,8 +28,8 @@ abstract class P2PMediaLoaderCore(
         }
     }
 
-    private val serverConfig = ServerConfig()
-    protected val urlFactory = LocalUrlFactory(serverConfig)
+    private val logger = CoreLogger("P2PMediaLoaderCore")
+    private val urlFactory = LocalUrlFactory()
     protected val eventEmitter = EventEmitter()
 
     protected var engineManager: P2PEngine? = null
@@ -61,9 +58,11 @@ abstract class P2PMediaLoaderCore(
             playbackProvider = provider,
             engineManager = engine,
             urlFactory = urlFactory,
+            enableCors = customEngineFileUrl != null,
             onServerStarted = { port ->
                 logger.i { "Local P2P Server started on port: $port" }
-                serverConfig.updatePort(port)
+
+                urlFactory.setPort(port)
                 onServerStarted()
             }
         )
@@ -100,7 +99,8 @@ abstract class P2PMediaLoaderCore(
 
         runBlocking { playbackProvider?.resetData() }
         isEngineReady = false
-        serverConfig.updatePort(-1)
+
+        urlFactory.setPort(-1)
 
         logger.d { "Release complete." }
     }

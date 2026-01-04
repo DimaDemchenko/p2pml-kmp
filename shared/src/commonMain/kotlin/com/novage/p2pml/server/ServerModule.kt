@@ -9,7 +9,7 @@ import com.novage.p2pml.server.plugins.configureCORS
 import com.novage.p2pml.server.routes.configureRoutes
 import com.novage.p2pml.server.services.ManifestService
 import com.novage.p2pml.server.services.SegmentService
-import com.novage.p2pml.utils.CoreLogger // <--- Import
+import com.novage.p2pml.utils.CoreLogger
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
@@ -20,6 +20,7 @@ internal class ServerModule(
     playbackProvider: PlaybackProvider,
     engineManager: P2PEngine,
     urlFactory: LocalUrlFactory,
+    private val enableCors: Boolean,
     private val onServerStarted: (serverPort: Int) -> Unit,
 ) {
     private val logger = CoreLogger("ServerModule")
@@ -46,7 +47,10 @@ internal class ServerModule(
             logger.d { "Starting local P2P Server..." }
 
             val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
-                configureCORS()
+                if (enableCors) {
+                    configureCORS()
+                }
+
                 configureRoutes(client, manifestService, hlsManifestParser, segmentService)
             }.start(wait = false)
 

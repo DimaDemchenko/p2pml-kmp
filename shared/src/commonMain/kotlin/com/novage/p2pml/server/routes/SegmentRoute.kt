@@ -9,7 +9,7 @@ import com.novage.p2pml.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.server.utils.fetchSegment
 import com.novage.p2pml.server.utils.respondFallback
 import com.novage.p2pml.server.utils.respondVideoSegment
-import com.novage.p2pml.utils.CoreLogger // <--- Import
+import com.novage.p2pml.utils.CoreLogger
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
