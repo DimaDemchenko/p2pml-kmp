@@ -94,7 +94,7 @@ abstract class P2PMediaLoaderCore(
         engineManager?.destroy()
         engineManager = null
 
-        serverModule?.stop()
+        serverModule?.destroy()
         serverModule = null
 
         runBlocking { playbackProvider?.resetData() }

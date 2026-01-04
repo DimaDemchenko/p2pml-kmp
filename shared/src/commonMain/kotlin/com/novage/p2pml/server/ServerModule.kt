@@ -17,7 +17,7 @@ import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.runBlocking
 
 internal class ServerModule(
-    playbackProvider: PlaybackProvider,
+    private val playbackProvider: PlaybackProvider,
     engineManager: P2PEngine,
     urlFactory: LocalUrlFactory,
     private val enableCors: Boolean,
@@ -25,32 +25,29 @@ internal class ServerModule(
 ) {
     private val logger = CoreLogger("ServerModule")
 
-    private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
-    private var client = createHttpClient()
-    private var hlsManifestParser = HlsManifestParser(playbackProvider, urlFactory)
+    private val client = createHttpClient()
+    private val hlsManifestParser = HlsManifestParser(playbackProvider, urlFactory)
 
-    private var manifestService = ManifestService(hlsManifestParser, engineManager) {
+    private val manifestService = ManifestService(hlsManifestParser, engineManager) {
         logger.d { "Resetting playback and parser state" }
         playbackProvider.resetData()
         hlsManifestParser.reset()
     }
+    private val segmentService = SegmentService(engineManager)
 
-    private var segmentService = SegmentService(engineManager)
+    private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
     fun start() {
         if (server != null) {
-            logger.w { "Attempted to start server, but it is already running. Ignoring." }
+            logger.w { "Server is already running. Ignoring start request." }
             return
         }
 
+        logger.d { "Starting local P2P Server..." }
+
         try {
-            logger.d { "Starting local P2P Server..." }
-
             val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
-                if (enableCors) {
-                    configureCORS()
-                }
-
+                if (enableCors) configureCORS()
                 configureRoutes(client, manifestService, hlsManifestParser, segmentService)
             }.start(wait = false)
 
@@ -58,28 +55,35 @@ internal class ServerModule(
 
             runBlocking {
                 val assignedPort = serverInstance.engine.resolvedConnectors()
-                    .firstOrNull()?.port ?: throw Exception("Failed to retrieve assigned port")
+                    .firstOrNull()?.port
+
+                if (assignedPort == null) {
+                    throw IllegalStateException("Server started but failed to retrieve assigned port")
+                }
 
                 logger.i { "Server successfully bound to port: $assignedPort" }
                 onServerStarted(assignedPort)
             }
 
         } catch (e: Exception) {
-            logger.e(e) { "CRITICAL: P2P Server failed to start! ${e.message}" }
+            logger.e(e) { "P2P Server failed to start!" }
+            destroy()
             throw e
         }
     }
 
-    fun stop() {
-        logger.i { "Stopping P2P Server..." }
+    fun destroy() {
+        logger.i { "Destroying P2P Server module..." }
 
         runBlocking {
             segmentService.reset()
             manifestService.resetState()
         }
 
-        server?.stop(gracePeriodMillis = 100, timeoutMillis = 500)
-        server = null
+        server?.let {
+            it.stop(gracePeriodMillis = 100, timeoutMillis = 500)
+            server = null
+        }
 
         try {
             client.close()
