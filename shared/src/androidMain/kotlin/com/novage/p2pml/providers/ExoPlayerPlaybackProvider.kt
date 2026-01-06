@@ -17,6 +17,8 @@ private data class PlaybackSegment(
     val externalId: Long,
 )
 
+private const val MILLISECONDS_IN_SECOND = 1000.0
+
 internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : PlaybackProvider {
     private var currentSnapshot: PlaylistSnapshot? = null
     private var currentAbsoluteTime: Double? = null
@@ -25,7 +27,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     private val mutex = Mutex()
 
     private val nowInSeconds: Double
-        get() = System.currentTimeMillis() / 1000.0
+        get() = System.currentTimeMillis() / MILLISECONDS_IN_SECOND
 
     private fun removeObsoleteSegments(removeUntilId: Long) {
         currentSegments.entries.removeIf { it.key < removeUntilId }
@@ -76,7 +78,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo = mutex.withLock {
         val (position, speed) = withContext(Dispatchers.Main) {
-            (exoPlayer.currentPosition / 1000.0) to exoPlayer.playbackParameters.speed
+            (exoPlayer.currentPosition / MILLISECONDS_IN_SECOND) to exoPlayer.playbackParameters.speed
         }
 
         val snapshot = currentSnapshot

@@ -35,6 +35,10 @@ import com.novage.p2pml.parser.hlsPlaylistParser.HlsConstants.TYPE_VIDEO
 import com.novage.p2pml.utils.CoreLogger
 import kotlin.math.roundToLong
 
+private const val UTF8_BOM_BYTE_1 = 0xEF
+private const val UTF8_BOM_BYTE_2 = 0xBB
+private const val UTF8_BOM_BYTE_3 = 0xBF
+
 internal class HlsPlaylistParser {
     private val logger = CoreLogger("HlsPlaylistParser")
     fun parse(playlistUri: String, playlistData: String): HlsPlaylist {
@@ -194,7 +198,7 @@ internal class HlsPlaylistParser {
                     val captionGroupId =
                         parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, variableDefinitions)
 
-                    var variantUrlInManifest = ""
+                    var variantUrlInManifest: String
                     val variantUri =
                         if (isIFrameOnlyVariant) {
                             variantUrlInManifest =
@@ -289,8 +293,8 @@ internal class HlsPlaylistParser {
 
     private fun checkPlaylistHeader(reader: Reader): Boolean {
         var last = reader.read()
-        if (last == 0xEF) {
-            if (reader.read() != 0xBB || reader.read() != 0xBF) return false
+        if (last == UTF8_BOM_BYTE_1) {
+            if (reader.read() != UTF8_BOM_BYTE_2 || reader.read() != UTF8_BOM_BYTE_3) return false
 
             last = reader.read()
         }

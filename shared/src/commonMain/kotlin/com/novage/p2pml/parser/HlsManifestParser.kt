@@ -18,15 +18,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
+private const val MAIN_STREAM = "main"
+private const val SECONDARY_STREAM = "secondary"
+private const val MICROSECONDS_IN_SECOND = 1_000_000.0
+
 internal class HlsManifestParser(
     private val playbackProvider: PlaybackProvider,
     private val urlFactory: LocalUrlFactory,
 ) {
-    private companion object {
-        const val MAIN_STREAM = "main"
-        const val SECONDARY_STREAM = "secondary"
-    }
-
     private val logger = CoreLogger("HlsManifestParser")
     private val parser = HlsPlaylistParser()
     private val mutex = Mutex()
@@ -167,7 +166,7 @@ internal class HlsManifestParser(
                 mediaSequence = mediaPlaylist.mediaSequence,
                 hasEndTag = mediaPlaylist.hasEndTag,
                 segmentDurations = mediaPlaylist.hlsSegments.map {
-                    it.durationUs / 1_000_000.0
+                    it.durationUs / MICROSECONDS_IN_SECOND
                 },
             )
             return playbackProvider.getAbsolutePlaybackPosition(snapshot)
@@ -251,7 +250,7 @@ internal class HlsManifestParser(
         if (segmentsMap.contains(segmentId)) return null
 
         val prevSegment = segmentsMap[segmentId - 1]
-        val segmentDurationInSeconds = hlsSegment.durationUs / 1_000_000.0
+        val segmentDurationInSeconds = hlsSegment.durationUs / MICROSECONDS_IN_SECOND
 
         val startTime = prevSegment?.endTime ?: initialStartTime
         val endTime = startTime + segmentDurationInSeconds
