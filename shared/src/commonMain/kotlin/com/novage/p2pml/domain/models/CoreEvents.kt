@@ -1,7 +1,7 @@
 package com.novage.p2pml.domain.models
 
-import kotlin.jvm.JvmField
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmField
 
 /**
  * CoreEventMap is a sealed class that represents the different types of events that can be emitted

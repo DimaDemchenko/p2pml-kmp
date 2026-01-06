@@ -3,12 +3,10 @@ package com.novage.p2pml.parser.hlsPlaylistParser
 class Reader(private val text: String) {
     private var position = 0
 
-    fun read(): Int {
-        return if (position < text.length) {
-            text[position++].code
-        } else {
-            -1
-        }
+    fun read(): Int = if (position < text.length) {
+        text[position++].code
+    } else {
+        -1
     }
 
     fun readLine(): String? {

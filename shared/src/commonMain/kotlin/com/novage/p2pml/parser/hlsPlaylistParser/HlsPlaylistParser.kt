@@ -58,13 +58,13 @@ internal class HlsPlaylistParser {
                     return parseMultivariantPlaylist(LineIterator(extraLines, reader), playlistUri)
                 } else if (
                     trimmed.startsWith(TAG_TARGET_DURATION) ||
-                        trimmed.startsWith(TAG_MEDIA_SEQUENCE) ||
-                        trimmed.startsWith(TAG_MEDIA_DURATION) ||
-                        trimmed.startsWith(TAG_KEY) ||
-                        trimmed.startsWith(TAG_BYTERANGE) ||
-                        trimmed == TAG_DISCONTINUITY ||
-                        trimmed == TAG_DISCONTINUITY_SEQUENCE ||
-                        trimmed == TAG_ENDLIST
+                    trimmed.startsWith(TAG_MEDIA_SEQUENCE) ||
+                    trimmed.startsWith(TAG_MEDIA_DURATION) ||
+                    trimmed.startsWith(TAG_KEY) ||
+                    trimmed.startsWith(TAG_BYTERANGE) ||
+                    trimmed == TAG_DISCONTINUITY ||
+                    trimmed == TAG_DISCONTINUITY_SEQUENCE ||
+                    trimmed == TAG_ENDLIST
                 ) {
                     extraLines.add(line)
                     return parseMediaPlaylist(LineIterator(extraLines, reader), playlistUri)
@@ -114,8 +114,9 @@ internal class HlsPlaylistParser {
                         val splitByteRange = splitString(byteRange, "@")
 
                         segmentByteRangeLength = splitByteRange[0].toLong()
-                        if (splitByteRange.size > 1)
+                        if (splitByteRange.size > 1) {
                             segmentByteRangeOffset = splitByteRange[1].toLong()
+                        }
                     }
                     line.startsWith(TAG_INIT_SEGMENT) -> {
                         val uri = parseStringAttr(line, REGEX_URI, variableDefinitions)
@@ -217,7 +218,7 @@ internal class HlsPlaylistParser {
                             audioGroupId = audioGroupId,
                             subtitleGroupId = subtitleGroupId,
                             captionGroupId = captionGroupId,
-                        )
+                        ),
                     )
                 }
             }
@@ -238,7 +239,7 @@ internal class HlsPlaylistParser {
                             urlInManifest = referenceUri,
                             groupId = groupId,
                             name = name,
-                        )
+                        ),
                     )
                 TYPE_AUDIO ->
                     audios.add(
@@ -247,7 +248,7 @@ internal class HlsPlaylistParser {
                             urlInManifest = referenceUri,
                             groupId = groupId,
                             name = name,
-                        )
+                        ),
                     )
                 TYPE_SUBTITLES ->
                     subtitles.add(
@@ -256,7 +257,7 @@ internal class HlsPlaylistParser {
                             urlInManifest = referenceUri,
                             groupId = groupId,
                             name = name,
-                        )
+                        ),
                     )
                 TYPE_CLOSED_CAPTIONS ->
                     closedCaptions.add(
@@ -265,7 +266,7 @@ internal class HlsPlaylistParser {
                             urlInManifest = referenceUri,
                             groupId = groupId,
                             name = name,
-                        )
+                        ),
                     )
             }
         }
@@ -309,29 +310,23 @@ internal class HlsPlaylistParser {
     private fun replaceVariableReferences(
         string: String,
         variableDefinitions: Map<String, String>,
-    ): String {
-        return REGEX_VARIABLE_REFERENCE.replace(string) { matchResult ->
-            val groupName = matchResult.groupValues[1]
-            variableDefinitions[groupName]?.let { Regex.escapeReplacement(it) } ?: ""
-        }
+    ): String = REGEX_VARIABLE_REFERENCE.replace(string) { matchResult ->
+        val groupName = matchResult.groupValues[1]
+        variableDefinitions[groupName]?.let { Regex.escapeReplacement(it) } ?: ""
     }
 
     private fun parseStringAttr(
         line: String,
         regex: Regex,
         variableDefinitions: Map<String, String>,
-    ): String {
-        return parseOptionalStringAttr(line, regex, null, variableDefinitions)
-            ?: throw Exception("Missing required attribute")
-    }
+    ): String = parseOptionalStringAttr(line, regex, null, variableDefinitions)
+        ?: throw Exception("Missing required attribute")
 
     private fun parseOptionalStringAttr(
         line: String,
         regex: Regex,
         variableDefinitions: Map<String, String>,
-    ): String? {
-        return parseOptionalStringAttr(line, regex, null, variableDefinitions)
-    }
+    ): String? = parseOptionalStringAttr(line, regex, null, variableDefinitions)
 
     private fun parseOptionalStringAttr(
         line: String,
@@ -347,7 +342,5 @@ internal class HlsPlaylistParser {
         }
     }
 
-    private fun parseLongAttr(line: String, regex: Regex): Long {
-        return parseStringAttr(line, regex, emptyMap()).toLong()
-    }
+    private fun parseLongAttr(line: String, regex: Regex): Long = parseStringAttr(line, regex, emptyMap()).toLong()
 }

@@ -1,9 +1,9 @@
 package com.novage.p2pml.server
 
+import com.novage.p2pml.domain.interfaces.P2PEngine
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.http.createHttpClient
 import com.novage.p2pml.parser.HlsManifestParser
-import com.novage.p2pml.domain.interfaces.PlaybackProvider
-import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.server.plugins.configureCORS
 import com.novage.p2pml.server.routes.configureRoutes
@@ -64,7 +64,6 @@ internal class ServerModule(
                 logger.i { "Server successfully bound to port: $assignedPort" }
                 onServerStarted(assignedPort)
             }
-
         } catch (e: Exception) {
             logger.e(e) { "P2P Server failed to start!" }
             destroy()

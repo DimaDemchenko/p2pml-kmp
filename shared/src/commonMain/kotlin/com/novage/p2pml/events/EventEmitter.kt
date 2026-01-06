@@ -26,7 +26,8 @@ class EventEmitter {
 
     fun <T> emit(event: CoreEventMap<T>, data: T) {
         listeners[event]?.forEach {
-            @Suppress("UNCHECKED_CAST") (it as EventListener<T>).onEvent(data)
+            @Suppress("UNCHECKED_CAST")
+            (it as EventListener<T>).onEvent(data)
         }
     }
 
@@ -34,12 +35,7 @@ class EventEmitter {
         listeners.clear()
     }
 
-    fun getSubscribedEventNames(): List<String> {
-        return listeners.filterValues { it.isNotEmpty() }.keys.map { it.eventName }
-    }
+    fun getSubscribedEventNames(): List<String> = listeners.filterValues { it.isNotEmpty() }.keys.map { it.eventName }
 
-    fun <T> hasListeners(event: CoreEventMap<T>): Boolean {
-        return listeners[event]?.isNotEmpty() == true
-    }
-
+    fun <T> hasListeners(event: CoreEventMap<T>): Boolean = listeners[event]?.isNotEmpty() == true
 }

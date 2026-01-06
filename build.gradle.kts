@@ -19,7 +19,9 @@ subprojects {
             target("**/*.kt")
             targetExclude("**/generated/**/*.kt")
 
-            ktlint()
+            ktlint().editorConfigOverride(mapOf(
+                "ktlint_standard_function-naming" to "disabled",
+            ))
 
             trimTrailingWhitespace()
             endWithNewline()
@@ -35,7 +37,7 @@ subprojects {
         config.setFrom(rootProject.files("detekt.yml"))
 
         parallel = true
-        //autoCorrect = true
+        autoCorrect = true
 
         source.setFrom("src")
     }

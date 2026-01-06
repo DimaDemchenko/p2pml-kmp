@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.media3.common.util.UnstableApi
 import com.novage.p2pml.demo.ui.ExoPlayerScreen
 import com.novage.p2pml.demo.viewmodel.ExoPlayerViewModel
+
 @UnstableApi
 class MainActivity : ComponentActivity() {
     private val viewModel: ExoPlayerViewModel by lazy {

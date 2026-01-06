@@ -72,5 +72,4 @@ internal data class UpdateStreamParams(
     val isLive: Boolean,
 )
 
-
 @Serializable internal data class Stream(val runtimeId: String, val type: String, val index: Int)

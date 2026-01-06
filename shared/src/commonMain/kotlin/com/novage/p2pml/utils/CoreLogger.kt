@@ -5,7 +5,10 @@ internal object LogConfig {
 }
 
 internal enum class LogLevel {
-    DEBUG, INFO, WARN, ERROR
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
 }
 
 internal class CoreLogger(private val className: String) {

@@ -36,7 +36,6 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
                 )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
-
         } catch (ex: Exception) {
             logger.e(ex) { "Error processing manifest request for: $manifestUrl" }
 

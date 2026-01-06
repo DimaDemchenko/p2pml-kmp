@@ -63,9 +63,7 @@ internal fun resolve(baseUri: String?, referenceUri: String?): String {
 }
 
 /** Returns true if [uri] is absolute (i.e. starts with a scheme), false otherwise. */
-internal fun isAbsolute(uri: String?): Boolean {
-    return uri != null && getUriIndices(uri)[SCHEME_COLON] != -1
-}
+internal fun isAbsolute(uri: String?): Boolean = uri != null && getUriIndices(uri)[SCHEME_COLON] != -1
 
 /**
  * Removes the specified [queryParameterName] from the query component of [uri].
@@ -81,8 +79,11 @@ internal fun removeQueryParameter(uri: String, queryParameterName: String): Stri
     val fragmentIndex = uri.indexOf('#', qIndex)
     val base = if (fragmentIndex == -1) uri.substring(0, qIndex) else uri.substring(0, qIndex)
     val query =
-        if (fragmentIndex == -1) uri.substring(qIndex + 1)
-        else uri.substring(qIndex + 1, fragmentIndex)
+        if (fragmentIndex == -1) {
+            uri.substring(qIndex + 1)
+        } else {
+            uri.substring(qIndex + 1, fragmentIndex)
+        }
     val fragment = if (fragmentIndex == -1) "" else uri.substring(fragmentIndex)
 
     val params = query.split('&').filter { it.isNotEmpty() }
@@ -219,19 +220,22 @@ internal fun getRelativePath(baseUri: String, targetUri: String): String {
     val baseScheme =
         if (baseIndices[SCHEME_COLON] != -1) baseUri.substring(0, baseIndices[SCHEME_COLON]) else ""
     val targetScheme =
-        if (targetIndices[SCHEME_COLON] != -1) targetUri.substring(0, targetIndices[SCHEME_COLON])
-        else ""
+        if (targetIndices[SCHEME_COLON] != -1) {
+            targetUri.substring(0, targetIndices[SCHEME_COLON])
+        } else {
+            ""
+        }
     if (!baseScheme.equals(targetScheme, ignoreCase = true)) return targetUri
 
-    fun getAuthority(uri: String, indices: IntArray): String {
-        return if (
-            indices[SCHEME_COLON] != -1 &&
-                uri.length > indices[SCHEME_COLON] + 2 &&
-                uri[indices[SCHEME_COLON] + 1] == '/' &&
-                uri[indices[SCHEME_COLON] + 2] == '/'
-        ) {
-            uri.substring(indices[SCHEME_COLON] + 3, indices[PATH])
-        } else ""
+    fun getAuthority(uri: String, indices: IntArray): String = if (
+        indices[SCHEME_COLON] != -1 &&
+        uri.length > indices[SCHEME_COLON] + 2 &&
+        uri[indices[SCHEME_COLON] + 1] == '/' &&
+        uri[indices[SCHEME_COLON] + 2] == '/'
+    ) {
+        uri.substring(indices[SCHEME_COLON] + 3, indices[PATH])
+    } else {
+        ""
     }
     val baseAuthority = getAuthority(baseUri, baseIndices)
     val targetAuthority = getAuthority(targetUri, targetIndices)

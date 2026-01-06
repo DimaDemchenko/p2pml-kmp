@@ -7,6 +7,4 @@ import io.ktor.util.encodeBase64
 
 internal fun encodeUrlToBase64(url: String): String = url.encodeBase64().encodeURLParameter()
 
-internal fun decodeBase64Url(encodedString: String): String =
-    encodedString.decodeBase64String().decodeURLQueryComponent()
-
+internal fun decodeBase64Url(encodedString: String): String = encodedString.decodeBase64String().decodeURLQueryComponent()

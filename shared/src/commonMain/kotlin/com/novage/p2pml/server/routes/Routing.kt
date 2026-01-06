@@ -20,5 +20,3 @@ internal fun Application.configureRoutes(
         registerWebAssets()
     }
 }
-
-

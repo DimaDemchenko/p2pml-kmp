@@ -2,6 +2,7 @@ package com.novage.p2pml
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.domain.models.CoreEventMap
 import com.novage.p2pml.domain.models.PlaybackInfo
 import com.novage.p2pml.events.EventListener
@@ -9,7 +10,6 @@ import com.novage.p2pml.interop.OnP2PReadyCallback
 import com.novage.p2pml.interop.OnP2PReadyErrorCallback
 import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.providers.ExoPlayerPlaybackProvider
-import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.webview.AndroidWebViewFactory
 
 class P2PMediaLoader(
@@ -17,12 +17,12 @@ class P2PMediaLoader(
     onP2PReadyCallback: OnP2PReadyCallback,
     onP2PReadyErrorCallback: OnP2PReadyErrorCallback,
     coreConfigJson: String = "{}",
-    customEngineFileUrl: String? = null
+    customEngineFileUrl: String? = null,
 ) : P2PMediaLoaderCore(
     onP2PReadyCallback = { onP2PReadyCallback.onReady() },
     onP2PReadyErrorCallback = { message -> onP2PReadyErrorCallback.onError(message) },
     coreConfigJson = coreConfigJson,
-    customEngineFileUrl = customEngineFileUrl
+    customEngineFileUrl = customEngineFileUrl,
 ) {
 
     companion object {
@@ -36,7 +36,7 @@ class P2PMediaLoader(
             onWebViewLoaded = ::onWebViewLoaded,
             onWebViewError = { errorMessage ->
                 failInitialization("WebView failed to load: $errorMessage")
-            }
+            },
         )
 
         initialize(webView, provider)

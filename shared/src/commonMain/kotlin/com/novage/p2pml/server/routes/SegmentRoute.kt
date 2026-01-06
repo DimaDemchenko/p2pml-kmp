@@ -2,10 +2,10 @@ package com.novage.p2pml.server.routes
 
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.parser.encoding.decodeBase64Url
-import com.novage.p2pml.server.services.SegmentService
 import com.novage.p2pml.server.exceptions.SegmentAbortedException
 import com.novage.p2pml.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.server.exceptions.TooManyRetriesException
+import com.novage.p2pml.server.services.SegmentService
 import com.novage.p2pml.server.utils.fetchSegment
 import com.novage.p2pml.server.utils.respondFallback
 import com.novage.p2pml.server.utils.respondVideoSegment
@@ -27,7 +27,7 @@ private val logger = CoreLogger("SegmentRoute")
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestParser
+    parser: HlsManifestParser,
 ) {
     segmentDownloadRoute(httpClient, segmentService, parser)
     segmentUploadRoute(segmentService)
@@ -72,15 +72,12 @@ private fun Route.segmentDownloadRoute(
         } catch (_: SegmentReplacedException) {
             logger.i { "Request replaced. Terminating old request." }
             call.respond(HttpStatusCode.RequestTimeout)
-
         } catch (_: TooManyRetriesException) {
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
-
         } catch (e: Exception) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
-
         } finally {
             if (deferred?.isActive == true) {
                 logger.d { "Cleaning up active request." }
@@ -108,12 +105,12 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
             if (error.contains("aborted")) {
                 logger.i { "Segment upload aborted: $segmentId" }
                 deferredSegment.completeExceptionally(
-                    SegmentAbortedException("Segment aborted - $segmentId")
+                    SegmentAbortedException("Segment aborted - $segmentId"),
                 )
             } else {
                 logger.w { "Error processing segment: $segmentId - $error" }
                 deferredSegment.completeExceptionally(
-                    Exception("Error processing segment - $segmentId - $error")
+                    Exception("Error processing segment - $segmentId - $error"),
                 )
                 segmentService.removeRequest(segmentId)
             }

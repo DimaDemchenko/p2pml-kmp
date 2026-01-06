@@ -16,7 +16,7 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
 
     private data class RequestState(
         val deferred: CompletableDeferred<ByteArray>,
-        val attemptCount: Int
+        val attemptCount: Int,
     )
 
     companion object {
@@ -37,7 +37,7 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
             if (previousState != null) {
                 logger.d { "Re-queueing pending download (Attempt ${currentAttempts + 1}) for: $segmentUrl" }
                 previousState.deferred.completeExceptionally(
-                    SegmentReplacedException("Segment request replaced by newer one")
+                    SegmentReplacedException("Segment request replaced by newer one"),
                 )
             } else {
                 logger.d { "Registered pending download for: $segmentUrl" }
@@ -67,8 +67,7 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
         }
     }
 
-    suspend fun getPendingRequest(segmentUrl: String): CompletableDeferred<ByteArray>? =
-        mutex.withLock { requests[segmentUrl]?.deferred }
+    suspend fun getPendingRequest(segmentUrl: String): CompletableDeferred<ByteArray>? = mutex.withLock { requests[segmentUrl]?.deferred }
 
     suspend fun removeRequest(segmentUrl: String) {
         mutex.withLock {

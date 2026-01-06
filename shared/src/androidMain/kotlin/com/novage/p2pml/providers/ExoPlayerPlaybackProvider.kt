@@ -53,7 +53,7 @@ internal class ExoPlayerPlaybackProvider(
             endTime = relativeEndTime,
             absoluteStartTime = absoluteStartTime,
             absoluteEndTime = absoluteEndTime,
-            externalId = externalId
+            externalId = externalId,
         )
     }
 
@@ -104,10 +104,9 @@ internal class ExoPlayerPlaybackProvider(
         return PlaybackInfo(segmentAbsolutePlayTime, speed)
     }
 
-    override suspend fun resetData() =
-        mutex.withLock {
-            currentSegments.clear()
-            currentSnapshot = null
-            currentAbsoluteTime = null
-        }
+    override suspend fun resetData() = mutex.withLock {
+        currentSegments.clear()
+        currentSnapshot = null
+        currentAbsoluteTime = null
+    }
 }

@@ -1,7 +1,6 @@
 package com.novage.p2pml.parser.hlsPlaylistParser
 
-class LineIterator(private val extraLines: ArrayDeque<String>, private val reader: Reader) :
-    Iterator<String> {
+class LineIterator(private val extraLines: ArrayDeque<String>, private val reader: Reader) : Iterator<String> {
     private var nextLine: String? = null
 
     override fun hasNext(): Boolean {

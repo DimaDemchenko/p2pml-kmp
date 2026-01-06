@@ -28,7 +28,9 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 @UnstableApi
-class ExoPlayerViewModel(application: Application) : AndroidViewModel(application) {
+class ExoPlayerViewModel(
+    application: Application,
+) : AndroidViewModel(application) {
     private companion object {
         const val MIN_BUFFER_MS = 10_000
         const val MAX_BUFFER_MS = 15_000
@@ -40,16 +42,18 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
         get() = getApplication()
 
     val player: ExoPlayer by lazy {
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                MIN_BUFFER_MS,
-                MAX_BUFFER_MS,
-                BUFFER_FOR_PLAYBACK_MS,
-                BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
-            )
-            .build()
+        val loadControl =
+            DefaultLoadControl
+                .Builder()
+                .setBufferDurationsMs(
+                    MIN_BUFFER_MS,
+                    MAX_BUFFER_MS,
+                    BUFFER_FOR_PLAYBACK_MS,
+                    BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                ).build()
 
-        ExoPlayer.Builder(context)
+        ExoPlayer
+            .Builder(context)
             .setLoadControl(loadControl)
             .build()
     }
@@ -65,16 +69,17 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
     fun setupP2PML() {
         P2PMediaLoader.enableLogging()
 
-        p2pml = P2PMediaLoader(
-            context = context,
-            onP2PReadyCallback = {
-                initializePlayback()
-                p2pStatsTracker?.startTracking()
-            },
-            onP2PReadyErrorCallback = { message ->
-                onReadyError(message)
-            }
-        )
+        p2pml =
+            P2PMediaLoader(
+                context = context,
+                onP2PReadyCallback = {
+                    initializePlayback()
+                    p2pStatsTracker?.startTracking()
+                },
+                onP2PReadyErrorCallback = { message ->
+                    onReadyError(message)
+                },
+            )
 
         p2pStatsTracker = P2PStatsTracker(p2pml!!)
         p2pml!!.start(player)
@@ -87,27 +92,32 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun initializePlayback() {
-        val manifest = checkNotNull(p2pml?.getManifestUrl(Streams.HLS_4K_STREAM)) {
-            "P2PML is not started"
-        }
+        val manifest =
+            checkNotNull(p2pml?.getManifestUrl(Streams.HLS_4K_STREAM)) {
+                "P2PML is not started"
+            }
         val loggingDataSourceFactory = LoggingDataSourceFactory(context)
 
-        val mediaSource = HlsMediaSource.Factory(loggingDataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(manifest))
+        val mediaSource =
+            HlsMediaSource
+                .Factory(loggingDataSourceFactory)
+                .createMediaSource(MediaItem.fromUri(manifest))
 
         player.apply {
             playWhenReady = true
             setMediaSource(mediaSource)
             prepare()
-            addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (playbackState == Player.STATE_READY) {
-                        viewModelScope.launch {
-                            _loadingState.value = false
+            addListener(
+                object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState == Player.STATE_READY) {
+                            viewModelScope.launch {
+                                _loadingState.value = false
+                            }
                         }
                     }
-                }
-            })
+                },
+            )
         }
     }
 
@@ -128,7 +138,6 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
     }
 }
 
-
 @UnstableApi
 class LoggingDataSourceFactory(
     context: Context,
@@ -137,6 +146,7 @@ class LoggingDataSourceFactory(
         const val CONNECT_TIMEOUT_MS = 30_000
         const val READ_TIMEOUT_MS = 30_000
     }
+
     private val httpDataSourceFactory =
         DefaultHttpDataSource
             .Factory()
@@ -147,10 +157,8 @@ class LoggingDataSourceFactory(
 
     private val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
 
-    override fun createDataSource(): DataSource =
-        LoggingDataSource(baseDataSourceFactory.createDataSource())
+    override fun createDataSource(): DataSource = LoggingDataSource(baseDataSourceFactory.createDataSource())
 }
-
 
 @UnstableApi
 class LoggingDataSource(
@@ -166,13 +174,16 @@ class LoggingDataSource(
         }
     }
 
-    override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-        try {
-            wrappedDataSource.read(buffer, offset, length)
-        } catch (e: IOException) {
-            Log.e("HLSSegmentLogger", "Error reading data source: ${e.message}", e)
-            throw e
-        }
+    override fun read(
+        buffer: ByteArray,
+        offset: Int,
+        length: Int,
+    ): Int = try {
+        wrappedDataSource.read(buffer, offset, length)
+    } catch (e: IOException) {
+        Log.e("HLSSegmentLogger", "Error reading data source: ${e.message}", e)
+        throw e
+    }
 
     override fun addTransferListener(transferListener: TransferListener) {
         wrappedDataSource.addTransferListener(transferListener)
