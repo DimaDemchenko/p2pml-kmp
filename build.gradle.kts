@@ -20,6 +20,7 @@ subprojects {
             targetExclude("**/generated/**/*.kt")
 
             ktlint().editorConfigOverride(mapOf(
+                "ktlint_standard_max-line-length" to "120",
                 "ktlint_standard_function-naming" to "disabled",
             ))
 

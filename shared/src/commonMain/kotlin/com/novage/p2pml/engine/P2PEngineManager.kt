@@ -16,7 +16,7 @@ import kotlinx.serialization.json.Json
 
 class P2PEngineManager(
     private val webView: HeadlessWebView,
-    private val playbackProvider: PlaybackProvider
+    private val playbackProvider: PlaybackProvider,
 ) : P2PEngine {
 
     private val logger = CoreLogger("P2PEngineManager")

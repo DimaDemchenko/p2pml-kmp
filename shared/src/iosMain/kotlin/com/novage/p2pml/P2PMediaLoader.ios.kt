@@ -22,13 +22,12 @@ class P2PMediaLoader(
     onP2PReadyErrorCallback: (String) -> Unit,
     coreConfigJson: String = "{}",
     customEngineFileUrl: String? = null,
-) :
-    P2PMediaLoaderCore(
-        onP2PReadyCallback = onP2PReadyCallback,
-        onP2PReadyErrorCallback = onP2PReadyErrorCallback,
-        coreConfigJson,
-        customEngineFileUrl,
-    ) {
+) : P2PMediaLoaderCore(
+    onP2PReadyCallback = onP2PReadyCallback,
+    onP2PReadyErrorCallback = onP2PReadyErrorCallback,
+    coreConfigJson,
+    customEngineFileUrl,
+) {
     constructor(
         onP2PReadyCallback: () -> Unit,
         onP2PReadyErrorCallback: (String) -> Unit,
@@ -46,7 +45,7 @@ class P2PMediaLoader(
             onWebViewLoaded = ::onWebViewLoaded,
             onWebViewError = { errorMessage ->
                 failInitialization("WebView failed to load: $errorMessage")
-            }
+            },
         )
 
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
@@ -54,17 +53,13 @@ class P2PMediaLoader(
         initialize(webView, provider)
     }
 
-    fun observeSegmentLoaded(block: (SegmentLoadDetails) -> Unit) =
-        bind(CoreEventMap.OnSegmentLoaded, block)
+    fun observeSegmentLoaded(block: (SegmentLoadDetails) -> Unit) = bind(CoreEventMap.OnSegmentLoaded, block)
 
-    fun observeSegmentStart(block: (SegmentStartDetails) -> Unit) =
-        bind(CoreEventMap.OnSegmentStart, block)
+    fun observeSegmentStart(block: (SegmentStartDetails) -> Unit) = bind(CoreEventMap.OnSegmentStart, block)
 
-    fun observeSegmentError(block: (SegmentErrorDetails) -> Unit) =
-        bind(CoreEventMap.OnSegmentError, block)
+    fun observeSegmentError(block: (SegmentErrorDetails) -> Unit) = bind(CoreEventMap.OnSegmentError, block)
 
-    fun observeSegmentAbort(block: (SegmentAbortDetails) -> Unit) =
-        bind(CoreEventMap.OnSegmentAbort, block)
+    fun observeSegmentAbort(block: (SegmentAbortDetails) -> Unit) = bind(CoreEventMap.OnSegmentAbort, block)
 
     fun observePeerConnect(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerConnect, block)
 
@@ -72,17 +67,13 @@ class P2PMediaLoader(
 
     fun observePeerError(block: (PeerErrorDetails) -> Unit) = bind(CoreEventMap.OnPeerError, block)
 
-    fun observeChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) =
-        bind(CoreEventMap.OnChunkDownloaded, block)
+    fun observeChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) = bind(CoreEventMap.OnChunkDownloaded, block)
 
-    fun observeChunkUploaded(block: (ChunkUploadedDetails) -> Unit) =
-        bind(CoreEventMap.OnChunkUploaded, block)
+    fun observeChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = bind(CoreEventMap.OnChunkUploaded, block)
 
-    fun observeTrackerError(block: (TrackerErrorDetails) -> Unit) =
-        bind(CoreEventMap.OnTrackerError, block)
+    fun observeTrackerError(block: (TrackerErrorDetails) -> Unit) = bind(CoreEventMap.OnTrackerError, block)
 
-    fun observeTrackerWarning(block: (TrackerWarningDetails) -> Unit) =
-        bind(CoreEventMap.OnTrackerWarning, block)
+    fun observeTrackerWarning(block: (TrackerWarningDetails) -> Unit) = bind(CoreEventMap.OnTrackerWarning, block)
 
     private fun <T> bind(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
         val listener = EventListener<T> { block(it) }

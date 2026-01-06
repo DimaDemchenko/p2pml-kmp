@@ -24,7 +24,8 @@ class WebViewEventDispatcher(
     private val eventEmitter: EventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null,
-) : NSObject(), WKScriptMessageHandlerProtocol {
+) : NSObject(),
+    WKScriptMessageHandlerProtocol {
 
     override fun userContentController(
         userContentController: WKUserContentController,

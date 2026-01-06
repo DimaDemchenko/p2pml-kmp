@@ -9,7 +9,6 @@ import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 
-
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal fun dictionaryToJson(dict: NSDictionary): NSString {
     val data =
