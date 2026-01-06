@@ -1,6 +1,8 @@
 import com.android.build.api.dsl.androidLibrary
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
+import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
 import java.util.Base64
 
 plugins {
@@ -13,7 +15,7 @@ val generatedSourceDir = layout.buildDirectory.dir("generated/p2p/kotlin")
 val assetsSourceDir = layout.projectDirectory.dir("src/assets")
 
 val generateAssetsTask = tasks.register("generateP2PAssets") {
-    description = "Encodes P2P assets (JS/HTML) into a Kotlin object"
+    description = "Encodes P2P Engine assets into a Kotlin object"
     group = "build"
 
     val inputDir = assetsSourceDir
@@ -50,17 +52,14 @@ val generateAssetsTask = tasks.register("generateP2PAssets") {
             internal object P2PAssets {
                 const val JS_FILENAME = "${jsFile.name}"
 
-                // HTML is usually small, but let's chunk it to be safe/consistent
                 private val HTML_CHUNKS = listOf(
                     ${chunkData(indexHtmlB64)}
                 )
                 
-                // JS is >65KB, so this chunking prevents the "UTF8 string too large" error
                 private val JS_CHUNKS = listOf(
                     ${chunkData(coreJsB64)}
                 )
 
-                // Public accessors that join the chunks at runtime
                 val INDEX_HTML_BASE64: String get() = HTML_CHUNKS.joinToString("")
                 val CORE_JS_BASE64: String get() = JS_CHUNKS.joinToString("")
             }
@@ -121,7 +120,11 @@ tasks.withType<KotlinCompile>().configureEach {
     dependsOn(generateAssetsTask)
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile>().configureEach {
+tasks.withType<KotlinNativeCompile>().configureEach {
+    dependsOn(generateAssetsTask)
+}
+
+tasks.withType<KotlinCompileCommon>().configureEach {
     dependsOn(generateAssetsTask)
 }
 
