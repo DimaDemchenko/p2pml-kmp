@@ -1,9 +1,15 @@
 package com.novage.p2pml.demo.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,6 +20,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.novage.p2pml.demo.stats.P2PStats
 
+private const val VIDEO_ASPECT_RATIO = 16f / 9f
+@Suppress("FunctionNaming")
 @Composable
 fun ExoPlayerScreen(
     player: ExoPlayer?,
@@ -25,7 +33,7 @@ fun ExoPlayerScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f),
+                .aspectRatio(VIDEO_ASPECT_RATIO),
             contentAlignment = Alignment.Center
         ) {
             AndroidView(
@@ -42,6 +50,13 @@ fun ExoPlayerScreen(
                 )
             }
         }
+
+        Text(
+            text = videoTitle,
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(16.dp)
+        )
 
         Box(
             modifier = Modifier

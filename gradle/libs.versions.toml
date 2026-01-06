@@ -8,6 +8,10 @@ android-compile-sdk = "36"
 android-min-sdk = "24"
 android-target-sdk = "36"
 
+# Lint & Formatter
+spotless = "8.1.0"
+detekt = "1.23.8"
+
 # Libraries
 androidx-activity-compose = "1.12.2"
 androidx-core-ktx = "1.17.0"
@@ -60,3 +64,5 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

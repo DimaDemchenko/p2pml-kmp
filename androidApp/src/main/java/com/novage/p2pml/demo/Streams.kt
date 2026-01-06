@@ -1,5 +1,6 @@
-package com.novage.p2pml.demo
+@file:Suppress("MaxLineLength")
 
+package com.novage.p2pml.demo
 object Streams {
     const val HLS_BIG_BUCK_BUNNY = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     const val HLS_BIG_BUCK_BUNNY_QUALITY_4 = "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8"

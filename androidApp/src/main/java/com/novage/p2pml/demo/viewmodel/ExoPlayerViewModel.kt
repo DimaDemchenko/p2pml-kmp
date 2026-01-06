@@ -25,19 +25,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 @UnstableApi
 class ExoPlayerViewModel(application: Application) : AndroidViewModel(application) {
+    private companion object {
+        const val MIN_BUFFER_MS = 10_000
+        const val MAX_BUFFER_MS = 15_000
+        const val BUFFER_FOR_PLAYBACK_MS = 2_500
+        const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
+    }
+
     private val context: Context
         get() = getApplication()
 
     val player: ExoPlayer by lazy {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                10_000,
-                15_000,
-                2_500,
-                5_000
+                MIN_BUFFER_MS,
+                MAX_BUFFER_MS,
+                BUFFER_FOR_PLAYBACK_MS,
+                BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
             )
             .build()
 
@@ -79,8 +87,9 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun initializePlayback() {
-        val manifest = p2pml?.getManifestUrl(Streams.HLS_4K_STREAM)
-            ?: throw IllegalStateException("P2PML is not started")
+        val manifest = checkNotNull(p2pml?.getManifestUrl(Streams.HLS_4K_STREAM)) {
+            "P2PML is not started"
+        }
         val loggingDataSourceFactory = LoggingDataSourceFactory(context)
 
         val mediaSource = HlsMediaSource.Factory(loggingDataSourceFactory)
@@ -124,13 +133,17 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
 class LoggingDataSourceFactory(
     context: Context,
 ) : DataSource.Factory {
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 30_000
+        const val READ_TIMEOUT_MS = 30_000
+    }
     private val httpDataSourceFactory =
         DefaultHttpDataSource
             .Factory()
             // Set your connection parameters here
-            .setConnectTimeoutMs(30000)
+            .setConnectTimeoutMs(CONNECT_TIMEOUT_MS)
             // Set your read timeout here
-            .setReadTimeoutMs(30000)
+            .setReadTimeoutMs(READ_TIMEOUT_MS)
 
     private val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
 
@@ -147,7 +160,7 @@ class LoggingDataSource(
         Log.d("HLSSegmentLogger", "Requesting: ${dataSpec.uri}")
         return try {
             wrappedDataSource.open(dataSpec)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Log.e("HLSSegmentLogger", "Error opening data source: ${e.message}", e)
             throw e
         }
@@ -156,7 +169,7 @@ class LoggingDataSource(
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
         try {
             wrappedDataSource.read(buffer, offset, length)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Log.e("HLSSegmentLogger", "Error reading data source: ${e.message}", e)
             throw e
         }
@@ -170,7 +183,7 @@ class LoggingDataSource(
     override fun close() {
         try {
             wrappedDataSource.close()
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             Log.e("HLSSegmentLogger", "Error closing data source: ${e.message}", e)
         }
     }
