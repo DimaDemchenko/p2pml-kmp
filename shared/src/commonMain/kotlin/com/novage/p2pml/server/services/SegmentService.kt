@@ -14,10 +14,7 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
     private val mutex = Mutex()
     private val requests = mutableMapOf<String, RequestState>()
 
-    private data class RequestState(
-        val deferred: CompletableDeferred<ByteArray>,
-        val attemptCount: Int,
-    )
+    private data class RequestState(val deferred: CompletableDeferred<ByteArray>, val attemptCount: Int)
 
     companion object {
         private const val MAX_RETRIES = 4
@@ -67,7 +64,9 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
         }
     }
 
-    suspend fun getPendingRequest(segmentUrl: String): CompletableDeferred<ByteArray>? = mutex.withLock { requests[segmentUrl]?.deferred }
+    suspend fun getPendingRequest(segmentUrl: String): CompletableDeferred<ByteArray>? = mutex.withLock {
+        requests[segmentUrl]?.deferred
+    }
 
     suspend fun removeRequest(segmentUrl: String) {
         mutex.withLock {

@@ -28,9 +28,7 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 @UnstableApi
-class ExoPlayerViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
+class ExoPlayerViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         const val MIN_BUFFER_MS = 10_000
         const val MAX_BUFFER_MS = 15_000
@@ -139,9 +137,7 @@ class ExoPlayerViewModel(
 }
 
 @UnstableApi
-class LoggingDataSourceFactory(
-    context: Context,
-) : DataSource.Factory {
+class LoggingDataSourceFactory(context: Context) : DataSource.Factory {
     private companion object {
         const val CONNECT_TIMEOUT_MS = 30_000
         const val READ_TIMEOUT_MS = 30_000
@@ -161,9 +157,7 @@ class LoggingDataSourceFactory(
 }
 
 @UnstableApi
-class LoggingDataSource(
-    private val wrappedDataSource: DataSource,
-) : DataSource {
+class LoggingDataSource(private val wrappedDataSource: DataSource) : DataSource {
     override fun open(dataSpec: DataSpec): Long {
         Log.d("HLSSegmentLogger", "Requesting: ${dataSpec.uri}")
         return try {
@@ -174,11 +168,7 @@ class LoggingDataSource(
         }
     }
 
-    override fun read(
-        buffer: ByteArray,
-        offset: Int,
-        length: Int,
-    ): Int = try {
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = try {
         wrappedDataSource.read(buffer, offset, length)
     } catch (e: IOException) {
         Log.e("HLSSegmentLogger", "Error reading data source: ${e.message}", e)

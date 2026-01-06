@@ -17,9 +17,7 @@ private data class PlaybackSegment(
     val externalId: Long,
 )
 
-internal class ExoPlayerPlaybackProvider(
-    private val exoPlayer: ExoPlayer,
-) : PlaybackProvider {
+internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : PlaybackProvider {
     private var currentSnapshot: PlaylistSnapshot? = null
     private var currentAbsoluteTime: Double? = null
 
@@ -33,10 +31,7 @@ internal class ExoPlayerPlaybackProvider(
         currentSegments.entries.removeIf { it.key < removeUntilId }
     }
 
-    private fun addSegment(
-        duration: Double,
-        externalId: Long,
-    ) {
+    private fun addSegment(duration: Double, externalId: Long) {
         val prevSegment = currentSegments[externalId - 1]
 
         val relativeStartTime = prevSegment?.endTime ?: 0.0

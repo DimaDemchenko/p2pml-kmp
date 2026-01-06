@@ -29,10 +29,7 @@ private val EXCLUDED_PROXY_HEADERS =
 
 internal data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
 
-internal suspend fun HttpClient.fetchManifest(
-    call: ApplicationCall,
-    manifestUrl: String,
-): ManifestFetchResult {
+internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl: String): ManifestFetchResult {
     val response = this.get(manifestUrl) {
         copyProxyHeaders(call.request.headers)
     }
@@ -43,10 +40,7 @@ internal suspend fun HttpClient.fetchManifest(
     )
 }
 
-internal suspend fun HttpClient.fetchSegment(
-    call: ApplicationCall,
-    segmentUrl: String,
-): ByteArray {
+internal suspend fun HttpClient.fetchSegment(call: ApplicationCall, segmentUrl: String): ByteArray {
     // If the URL contains a pipe '|', the part after is the byte range.
     // We strip it for the actual HTTP request, as the range header handles the rest.
     val cleanUrl = segmentUrl.substringBeforeLast("|")
@@ -66,10 +60,7 @@ private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
     }
 }
 
-internal suspend fun ApplicationCall.respondVideoSegment(
-    bytes: ByteArray,
-    byteRangeHeader: String?,
-) {
+internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteRangeHeader: String?) {
     if (byteRangeHeader != null) {
         respond(
             object : OutgoingContent.ByteArrayContent() {

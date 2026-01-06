@@ -70,10 +70,7 @@ class P2PMediaLoader(
      * @param event Event type to listen for
      * @param listener Callback function to invoke when the event occurs
      */
-    fun <T> addEventListener(
-        event: CoreEventMap<T>,
-        listener: EventListener<T>,
-    ) {
+    fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
         val isFirstListener = !eventEmitter.hasListeners(event)
         eventEmitter.addEventListener(event, listener)
 
@@ -88,10 +85,7 @@ class P2PMediaLoader(
      * @param event Event type to remove the listener from
      * @param listener Callback function to remove
      */
-    fun <T> removeEventListener(
-        event: CoreEventMap<T>,
-        listener: EventListener<T>,
-    ) {
+    fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
         eventEmitter.removeEventListener(event, listener)
 
         val isNowEmpty = !eventEmitter.hasListeners(event)

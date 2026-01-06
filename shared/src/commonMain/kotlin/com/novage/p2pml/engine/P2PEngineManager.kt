@@ -16,10 +16,8 @@ import kotlinx.serialization.json.Json
 
 private const val PLAYBACK_UPDATE_INTERVAL_MS = 1000L
 
-class P2PEngineManager(
-    private val webView: HeadlessWebView,
-    private val playbackProvider: PlaybackProvider,
-) : P2PEngine {
+class P2PEngineManager(private val webView: HeadlessWebView, private val playbackProvider: PlaybackProvider) :
+    P2PEngine {
 
     private val logger = CoreLogger("P2PEngineManager")
 

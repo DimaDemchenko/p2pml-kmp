@@ -307,20 +307,15 @@ internal class HlsPlaylistParser {
         return isLinebreak(last)
     }
 
-    private fun replaceVariableReferences(
-        string: String,
-        variableDefinitions: Map<String, String>,
-    ): String = REGEX_VARIABLE_REFERENCE.replace(string) { matchResult ->
-        val groupName = matchResult.groupValues[1]
-        variableDefinitions[groupName]?.let { Regex.escapeReplacement(it) } ?: ""
-    }
+    private fun replaceVariableReferences(string: String, variableDefinitions: Map<String, String>): String =
+        REGEX_VARIABLE_REFERENCE.replace(string) { matchResult ->
+            val groupName = matchResult.groupValues[1]
+            variableDefinitions[groupName]?.let { Regex.escapeReplacement(it) } ?: ""
+        }
 
-    private fun parseStringAttr(
-        line: String,
-        regex: Regex,
-        variableDefinitions: Map<String, String>,
-    ): String = parseOptionalStringAttr(line, regex, null, variableDefinitions)
-        ?: throw Exception("Missing required attribute")
+    private fun parseStringAttr(line: String, regex: Regex, variableDefinitions: Map<String, String>): String =
+        parseOptionalStringAttr(line, regex, null, variableDefinitions)
+            ?: throw Exception("Missing required attribute")
 
     private fun parseOptionalStringAttr(
         line: String,

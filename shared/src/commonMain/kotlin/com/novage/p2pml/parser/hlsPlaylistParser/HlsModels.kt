@@ -31,12 +31,7 @@ data class Variant(
     val captionGroupId: String? = null,
 )
 
-data class Rendition(
-    val url: String?,
-    val urlInManifest: String?,
-    val groupId: String,
-    val name: String,
-)
+data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)
 
 data class InitializationSegment(val url: String, val absoluteUrl: String)
 

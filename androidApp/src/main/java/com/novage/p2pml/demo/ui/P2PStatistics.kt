@@ -22,12 +22,7 @@ import androidx.compose.ui.unit.dp
 
 @Suppress("FunctionNaming")
 @Composable
-fun InfoCard(
-    title: String,
-    content: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-) {
+fun InfoCard(title: String, content: String, icon: ImageVector, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

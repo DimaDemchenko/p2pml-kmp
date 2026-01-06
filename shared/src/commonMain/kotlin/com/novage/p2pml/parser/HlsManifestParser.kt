@@ -74,20 +74,21 @@ internal class HlsManifestParser(
         currentMasterManifestUrl == manifestUrl || streams.containsKey(manifestUrl)
     }
 
-    private suspend fun parseHlsManifest(manifestUrl: String, manifest: String): String = when (val hlsPlaylist = parser.parse(manifestUrl, manifest)) {
-        is HlsMediaPlaylist -> {
-            logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
-            parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
+    private suspend fun parseHlsManifest(manifestUrl: String, manifest: String): String =
+        when (val hlsPlaylist = parser.parse(manifestUrl, manifest)) {
+            is HlsMediaPlaylist -> {
+                logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
+                parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
+            }
+            is HlsMultivariantPlaylist -> {
+                logger.d { "Type: Multivariant (Master) Playlist" }
+                parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
+            }
+            else -> {
+                logger.e { "Unsupported playlist type found for: $manifestUrl" }
+                error("Unsupported playlist type")
+            }
         }
-        is HlsMultivariantPlaylist -> {
-            logger.d { "Type: Multivariant (Master) Playlist" }
-            parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
-        }
-        else -> {
-            logger.e { "Unsupported playlist type found for: $manifestUrl" }
-            error("Unsupported playlist type")
-        }
-    }
 
     private fun parseMultivariantPlaylist(
         manifestUrl: String,
@@ -98,7 +99,9 @@ internal class HlsManifestParser(
 
         currentMasterManifestUrl = manifestUrl
 
-        logger.i { "Processing Master Playlist. Variants: ${hlsPlaylist.variants.size}, Audio: ${hlsPlaylist.audios.size}" }
+        logger.i {
+            "Processing Master Playlist. Variants: ${hlsPlaylist.variants.size}, Audio: ${hlsPlaylist.audios.size}"
+        }
 
         hlsPlaylist.variants.forEachIndexed { index, variant ->
             processStream(
@@ -158,10 +161,7 @@ internal class HlsManifestParser(
         return obsoleteSegments.values.map { it.runtimeId }
     }
 
-    private suspend fun getInitialStartTime(
-        isLive: Boolean,
-        mediaPlaylist: HlsMediaPlaylist,
-    ): Double {
+    private suspend fun getInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
         if (isLive) {
             val snapshot = PlaylistSnapshot(
                 mediaSequence = mediaPlaylist.mediaSequence,
@@ -301,11 +301,7 @@ internal class HlsManifestParser(
         replaceUrlInManifest(updatedManifestBuilder, streamUrlInManifest, newUrl)
     }
 
-    private fun replaceUrlInManifest(
-        updatedManifestBuilder: StringBuilder,
-        oldUrl: String,
-        newUrl: String,
-    ) {
+    private fun replaceUrlInManifest(updatedManifestBuilder: StringBuilder, oldUrl: String, newUrl: String) {
         val startIndex = updatedManifestBuilder.indexOf(oldUrl).takeIf { it != -1 }
 
         if (startIndex == null) {

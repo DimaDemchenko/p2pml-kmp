@@ -40,10 +40,7 @@ abstract class P2PMediaLoaderCore(
     protected var isEngineReady = false
         private set
 
-    protected fun initialize(
-        webView: HeadlessWebView,
-        provider: PlaybackProvider,
-    ) {
+    protected fun initialize(webView: HeadlessWebView, provider: PlaybackProvider) {
         if (engineManager != null) {
             logger.w { "Initialize called but engine is already created. Ignoring." }
             return

@@ -104,16 +104,11 @@ private class IosHeadlessWebView(
     }
 }
 
-private class NavigationDelegate(
-    private val onError: (String) -> Unit,
-) : NSObject(),
+private class NavigationDelegate(private val onError: (String) -> Unit) :
+    NSObject(),
     WKNavigationDelegateProtocol {
 
-    override fun webView(
-        webView: WKWebView,
-        didFailProvisionalNavigation: WKNavigation?,
-        withError: NSError,
-    ) {
+    override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
         onError("Network Error: ${withError.localizedDescription} (${withError.code})")
     }
 }

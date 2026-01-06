@@ -24,12 +24,7 @@ private const val VIDEO_ASPECT_RATIO = 16f / 9f
 
 @Suppress("FunctionNaming")
 @Composable
-fun ExoPlayerScreen(
-    player: ExoPlayer?,
-    videoTitle: String,
-    isLoading: Boolean,
-    stats: P2PStats,
-) {
+fun ExoPlayerScreen(player: ExoPlayer?, videoTitle: String, isLoading: Boolean, stats: P2PStats) {
     Column(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.8f))) {
         Box(
             modifier = Modifier

@@ -7,11 +7,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class DefaultPlaybackProvider(private val getPlaybackInfo: () -> PlaybackInfo) : PlaybackProvider {
-    override suspend fun getAbsolutePlaybackPosition(
-        snapshot: PlaylistSnapshot,
-    ): Double = withContext(Dispatchers.Main) {
-        return@withContext getPlaybackInfo().currentPlayPosition
-    }
+    override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double =
+        withContext(Dispatchers.Main) {
+            return@withContext getPlaybackInfo().currentPlayPosition
+        }
 
     override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo = withContext(Dispatchers.Main) {
         return@withContext getPlaybackInfo()

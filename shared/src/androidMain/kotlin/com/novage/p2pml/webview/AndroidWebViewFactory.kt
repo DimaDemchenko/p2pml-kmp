@@ -31,11 +31,7 @@ private class AndroidHeadlessWebView(
         settings.domStorageEnabled = true
 
         webViewClient = object : WebViewClient() {
-            override fun onReceivedError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                error: WebResourceError?,
-            ) {
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request == null || !request.isForMainFrame) return
 
                 onWebViewError("WebView Error: ${error?.description} (Code: ${error?.errorCode})")

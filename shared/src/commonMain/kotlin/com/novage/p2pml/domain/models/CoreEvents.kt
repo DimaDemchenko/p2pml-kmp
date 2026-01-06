@@ -117,11 +117,7 @@ data class SegmentLoadDetails(
  * @property peerId The ID of the peer from which the segment was downloaded.
  */
 @Serializable
-data class SegmentStartDetails(
-    val segment: Segment,
-    val downloadSource: String,
-    val peerId: String? = null,
-)
+data class SegmentStartDetails(val segment: Segment, val downloadSource: String, val peerId: String? = null)
 
 /**
  * Represents details about a segment error event.
@@ -165,11 +161,7 @@ data class SegmentAbortDetails(
  * @property peerId The ID of the peer from which the chunk was downloaded (if downloaded from a
  *   peer).
  */
-data class ChunkDownloadedDetails(
-    val bytesLength: Int,
-    val downloadSource: String,
-    val peerId: String?,
-)
+data class ChunkDownloadedDetails(val bytesLength: Int, val downloadSource: String, val peerId: String?)
 
 /**
  * Represents the details of a chunk uploaded event.

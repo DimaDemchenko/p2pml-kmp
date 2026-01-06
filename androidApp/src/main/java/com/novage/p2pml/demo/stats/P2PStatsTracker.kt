@@ -20,9 +20,7 @@ data class P2PStats(
 
 class P2PStatsTracker
 @OptIn(UnstableApi::class)
-constructor(
-    private val p2pMediaLoader: P2PMediaLoader,
-) {
+constructor(private val p2pMediaLoader: P2PMediaLoader) {
     private val _statsFlow = MutableStateFlow(P2PStats())
     val statsFlow: StateFlow<P2PStats> = _statsFlow
 

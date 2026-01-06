@@ -17,10 +17,10 @@ subprojects {
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         kotlin {
             target("**/*.kt")
-            targetExclude("**/generated/**/*.kt")
+            targetExclude("**/generated/**/*.kt", "**/demo/Streams.kt")
 
             ktlint().editorConfigOverride(mapOf(
-                "ktlint_standard_max-line-length" to "120",
+                "max_line_length" to "120",
                 "ktlint_standard_function-naming" to "disabled",
             ))
 
