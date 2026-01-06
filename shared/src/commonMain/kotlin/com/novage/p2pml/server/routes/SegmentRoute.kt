@@ -25,14 +25,18 @@ import kotlinx.coroutines.CompletableDeferred
 private val logger = CoreLogger("SegmentRoute")
 
 internal fun Route.registerSegmentRoutes(
-    httpClient: HttpClient, segmentService: SegmentService, parser: HlsManifestParser
+    httpClient: HttpClient,
+    segmentService: SegmentService,
+    parser: HlsManifestParser
 ) {
     segmentDownloadRoute(httpClient, segmentService, parser)
     segmentUploadRoute(segmentService)
 }
 
 private fun Route.segmentDownloadRoute(
-    httpClient: HttpClient, segmentService: SegmentService, parser: HlsManifestParser
+    httpClient: HttpClient,
+    segmentService: SegmentService,
+    parser: HlsManifestParser
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
