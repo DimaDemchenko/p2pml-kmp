@@ -11,11 +11,13 @@ import com.novage.p2pml.domain.models.SegmentLoadDetails
 import com.novage.p2pml.domain.models.SegmentStartDetails
 import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
-import com.novage.p2pml.events.*
+import com.novage.p2pml.events.EventEmitter
 import com.novage.p2pml.utils.decodeFromNSDictionary
 import kotlinx.serialization.json.Json
-import platform.Foundation.*
-import platform.WebKit.*
+import platform.Foundation.NSDictionary
+import platform.WebKit.WKScriptMessage
+import platform.WebKit.WKScriptMessageHandlerProtocol
+import platform.WebKit.WKUserContentController
 import platform.darwin.NSObject
 
 class WebViewEventDispatcher(

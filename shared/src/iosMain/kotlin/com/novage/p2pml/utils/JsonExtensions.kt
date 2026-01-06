@@ -3,7 +3,12 @@ package com.novage.p2pml.utils
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.serialization.json.Json
-import platform.Foundation.*
+import platform.Foundation.NSDictionary
+import platform.Foundation.NSJSONSerialization
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.create
+
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal fun dictionaryToJson(dict: NSDictionary): NSString {
