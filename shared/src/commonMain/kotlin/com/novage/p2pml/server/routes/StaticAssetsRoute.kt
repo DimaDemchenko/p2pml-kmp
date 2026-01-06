@@ -12,10 +12,10 @@ import io.ktor.util.decodeBase64Bytes
 internal fun Route.registerWebAssets() {
     get("/${RoutePaths.STATIC}/{path...}") {
         val path = call.parameters.getAll("path")?.joinToString("/")?.ifEmpty { null }
-            ?: "index.html"
+            ?: P2PAssets.HTML_FILENAME
 
         val bytes = when (path) {
-            "index.html" -> P2PAssets.INDEX_HTML_BASE64.decodeBase64Bytes()
+            P2PAssets.HTML_FILENAME -> P2PAssets.INDEX_HTML_BASE64.decodeBase64Bytes()
             P2PAssets.JS_FILENAME -> P2PAssets.CORE_JS_BASE64.decodeBase64Bytes()
             else -> null
         }

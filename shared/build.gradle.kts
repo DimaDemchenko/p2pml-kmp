@@ -31,8 +31,8 @@ val generateAssetsTask = tasks.register("generateP2PAssets") {
         val jsFile = folder.listFiles()?.firstOrNull { it.name.endsWith(".js") }
             ?: throw GradleException("No .js file found in ${folder.absolutePath}")
 
-        val htmlFile = folder.resolve("index.html")
-        if (!htmlFile.exists()) throw GradleException("index.html missing")
+        val htmlFile = folder.listFiles()?.firstOrNull { it.name.endsWith(".html") }
+            ?: throw GradleException("No .html file found in ${folder.absolutePath}")
 
         val indexHtmlB64 = Base64.getEncoder().encodeToString(htmlFile.readBytes())
         val coreJsB64 = Base64.getEncoder().encodeToString(jsFile.readBytes())
@@ -51,7 +51,8 @@ val generateAssetsTask = tasks.register("generateP2PAssets") {
             
             internal object P2PAssets {
                 const val JS_FILENAME = "${jsFile.name}"
-
+                const val HTML_FILENAME = "${htmlFile.name}"
+                
                 private val HTML_CHUNKS = listOf(
                     ${chunkData(indexHtmlB64)}
                 )
