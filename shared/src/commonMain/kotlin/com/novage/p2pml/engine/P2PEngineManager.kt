@@ -14,6 +14,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
+private const val PLAYBACK_UPDATE_INTERVAL_MS = 1000L
+
 class P2PEngineManager(
     private val webView: HeadlessWebView,
     private val playbackProvider: PlaybackProvider,
@@ -94,8 +96,10 @@ class P2PEngineManager(
 
                     evaluate("window.p2p.updatePlaybackInfo('$json');")
 
-                    delay(1000)
+                    delay(PLAYBACK_UPDATE_INTERVAL_MS)
                 } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+
                     logger.w { "Playback info update loop error: ${e.message}" }
                 }
             }

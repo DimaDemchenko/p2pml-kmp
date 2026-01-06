@@ -56,10 +56,7 @@ internal class ServerModule(
             runBlocking {
                 val assignedPort = serverInstance.engine.resolvedConnectors()
                     .firstOrNull()?.port
-
-                if (assignedPort == null) {
-                    throw IllegalStateException("Server started but failed to retrieve assigned port")
-                }
+                    ?: error("Server started but failed to retrieve assigned port")
 
                 logger.i { "Server successfully bound to port: $assignedPort" }
                 onServerStarted(assignedPort)

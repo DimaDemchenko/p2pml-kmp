@@ -10,7 +10,7 @@ internal class LocalUrlFactory {
     }
 
     private fun getBaseUrl(): String {
-        if (port == -1) throw IllegalStateException("P2P Server not ready")
+        check(port != -1) { "P2P Server not ready" }
         return "http://127.0.0.1:$port"
     }
 

@@ -44,7 +44,7 @@ internal class HlsPlaylistParser {
         try {
             if (!checkPlaylistHeader(reader)) {
                 logger.e { "Playlist missing #EXTM3U header: $playlistUri" }
-                throw Exception("Invalid playlist header")
+                error("Invalid playlist header")
             }
 
             var line = reader.readLine()
@@ -79,7 +79,7 @@ internal class HlsPlaylistParser {
         }
 
         logger.e { "Failed to parse playlist: No valid tags found." }
-        throw Exception("Failed to parse playlist: No valid tags found")
+        error("Failed to parse playlist: No valid tags found")
     }
 
     private fun parseMediaPlaylist(iterator: LineIterator, playlistUri: String): HlsPlaylist {

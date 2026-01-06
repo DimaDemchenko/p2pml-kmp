@@ -1,6 +1,5 @@
 package com.novage.p2pml.server.utils
 
-import com.novage.p2pml.server.routes.ManifestFetchResult
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
@@ -27,6 +26,8 @@ private val EXCLUDED_PROXY_HEADERS =
         "Keep-Alive",
         HttpHeaders.AcceptEncoding,
     )
+
+internal data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
 
 internal suspend fun HttpClient.fetchManifest(
     call: ApplicationCall,
@@ -70,7 +71,6 @@ internal suspend fun ApplicationCall.respondVideoSegment(
     byteRangeHeader: String?,
 ) {
     if (byteRangeHeader != null) {
-        // Player requested a specific byte range (common in HLS)
         respond(
             object : OutgoingContent.ByteArrayContent() {
                 override val contentType = ContentType.parse("video/mp2t")
@@ -80,7 +80,6 @@ internal suspend fun ApplicationCall.respondVideoSegment(
             },
         )
     } else {
-        // Standard full segment response
         respondBytes(bytes, ContentType.Application.OctetStream)
     }
 }
@@ -94,7 +93,6 @@ internal suspend fun ApplicationCall.respondFallback(
         val bytes = httpClient.fetchSegment(this, segmentUrl)
         respondVideoSegment(bytes, byteRangeHeader)
     } catch (e: Exception) {
-        // If even the fallback fails, we must return a BadGateway
         respond(HttpStatusCode.BadGateway, "Fallback failed: ${e.message}")
     }
 }

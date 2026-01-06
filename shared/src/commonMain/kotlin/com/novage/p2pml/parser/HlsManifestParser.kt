@@ -18,13 +18,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
-internal const val MAIN_STREAM = "main"
-internal const val SECONDARY_STREAM = "secondary"
-
 internal class HlsManifestParser(
     private val playbackProvider: PlaybackProvider,
     private val urlFactory: LocalUrlFactory,
 ) {
+    private companion object {
+        const val MAIN_STREAM = "main"
+        const val SECONDARY_STREAM = "secondary"
+    }
+
     private val logger = CoreLogger("HlsManifestParser")
     private val parser = HlsPlaylistParser()
     private val mutex = Mutex()
@@ -83,7 +85,7 @@ internal class HlsManifestParser(
         }
         else -> {
             logger.e { "Unsupported playlist type found for: $manifestUrl" }
-            throw IllegalStateException("Unsupported playlist type")
+            error("Unsupported playlist type")
         }
     }
 

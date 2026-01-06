@@ -214,7 +214,6 @@ internal fun getUriIndices(uriString: String): IntArray {
  * prefix.
  */
 internal fun getRelativePath(baseUri: String, targetUri: String): String {
-    // For opaque URIs or if schemes/authorities differ, return targetUri.
     val baseIndices = getUriIndices(baseUri)
     val targetIndices = getUriIndices(targetUri)
     val baseScheme =

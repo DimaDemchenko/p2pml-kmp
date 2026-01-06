@@ -8,7 +8,9 @@ import com.novage.p2pml.domain.models.ChunkDownloadedDetails
 import com.novage.p2pml.domain.models.ChunkUploadedDetails
 import com.novage.p2pml.domain.models.CoreEventMap
 import com.novage.p2pml.events.EventEmitter
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import org.json.JSONException
 import org.json.JSONObject
 
 class AndroidWebViewEventDispatcher(
@@ -67,8 +69,8 @@ class AndroidWebViewEventDispatcher(
                 "onTrackerWarning" -> emitEvent(CoreEventMap.OnTrackerWarning, payloadStr)
                 else -> Log.w("P2PML", "Unknown event type received: $type")
             }
-        } catch (e: Exception) {
-            Log.e("P2PML", "Failed to handle generic message: ${e.message}")
+        } catch (e: JSONException) {
+            Log.e("P2PML", "Failed to parse message JSON: ${e.message}")
         }
     }
 
@@ -79,8 +81,10 @@ class AndroidWebViewEventDispatcher(
         try {
             val data = json.decodeFromString<T>(jsonStr)
             eventEmitter.emit(event, data)
-        } catch (e: Exception) {
+        } catch (e: SerializationException) {
             Log.e("P2PML", "Failed to deserialize payload for ${event.eventName}: ${e.message}")
+        } catch (e: IllegalArgumentException) {
+            Log.e("P2PML", "Invalid arguments for ${event.eventName}: ${e.message}")
         }
     }
 }
