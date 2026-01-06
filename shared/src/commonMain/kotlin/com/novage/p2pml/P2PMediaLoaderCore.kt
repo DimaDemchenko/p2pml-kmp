@@ -1,11 +1,11 @@
 package com.novage.p2pml
 
 import com.novage.p2pml.domain.interfaces.P2PEngine
-import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.events.EventEmitter
-import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.server.ServerModule
+import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.utils.CoreLogger
 import com.novage.p2pml.utils.LogConfig
 import com.novage.p2pml.webview.HeadlessWebView
@@ -15,8 +15,8 @@ import kotlinx.coroutines.runBlocking
 abstract class P2PMediaLoaderCore(
     private val onP2PReadyCallback: () -> Unit,
     private val onP2PReadyErrorCallback: (message: String) -> Unit,
-    private val coreConfigJson : String = "{}",
-    private val customEngineFileUrl: String? = null
+    private val coreConfigJson: String = "{}",
+    private val customEngineFileUrl: String? = null,
 ) {
     companion object {
         fun enableLogging() {
@@ -42,7 +42,7 @@ abstract class P2PMediaLoaderCore(
 
     protected fun initialize(
         webView: HeadlessWebView,
-        provider: PlaybackProvider
+        provider: PlaybackProvider,
     ) {
         if (engineManager != null) {
             logger.w { "Initialize called but engine is already created. Ignoring." }
@@ -69,7 +69,7 @@ abstract class P2PMediaLoaderCore(
                 urlFactory.setPort(port)
 
                 onServerReady()
-            }
+            },
         )
         this.serverModule = module
 
@@ -113,7 +113,7 @@ abstract class P2PMediaLoaderCore(
 
         engine.initCoreEngine(
             coreConfigJson = coreConfigJson,
-            uploadUrl = urlFactory.buildUploadUrl()
+            uploadUrl = urlFactory.buildUploadUrl(),
         )
 
         val subscribedEvents = eventEmitter.getSubscribedEventNames()
@@ -127,7 +127,6 @@ abstract class P2PMediaLoaderCore(
         isEngineReady = true
         onP2PReadyCallback()
     }
-
 
     protected fun failInitialization(message: String) {
         logger.e { "Initialization failed: $message" }

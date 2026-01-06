@@ -1,10 +1,16 @@
 package com.novage.p2pml.parser
 
-import com.novage.p2pml.domain.models.Segment
-import com.novage.p2pml.parser.hlsPlaylistParser.*
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.domain.models.PlaylistSnapshot
+import com.novage.p2pml.domain.models.Segment
 import com.novage.p2pml.parser.encoding.encodeUrlToBase64
+import com.novage.p2pml.parser.hlsPlaylistParser.HlsMediaPlaylist
+import com.novage.p2pml.parser.hlsPlaylistParser.HlsMultivariantPlaylist
+import com.novage.p2pml.parser.hlsPlaylistParser.HlsPlaylistParser
+import com.novage.p2pml.parser.hlsPlaylistParser.HlsSegment
+import com.novage.p2pml.parser.hlsPlaylistParser.InitializationSegment
+import com.novage.p2pml.parser.hlsPlaylistParser.Stream
+import com.novage.p2pml.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.utils.CoreLogger
 import io.ktor.http.encodeURLParameter
@@ -17,7 +23,7 @@ internal const val SECONDARY_STREAM = "secondary"
 
 internal class HlsManifestParser(
     private val playbackProvider: PlaybackProvider,
-    private val urlFactory: LocalUrlFactory
+    private val urlFactory: LocalUrlFactory,
 ) {
     private val logger = CoreLogger("HlsManifestParser")
     private val parser = HlsPlaylistParser()
@@ -33,11 +39,10 @@ internal class HlsManifestParser(
     private val currentVideoSegmentRuntimeIds = mutableSetOf<String>()
     private val currentAudioSegmentRuntimeIds = mutableSetOf<String>()
 
-    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String =
-        mutex.withLock {
-            logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
-            parseHlsManifest(manifestUrl, originalManifest)
-        }
+    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String = mutex.withLock {
+        logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
+        parseHlsManifest(manifestUrl, originalManifest)
+    }
 
     private fun addCurrentSegmentRuntimeId(streamType: String, runtimeId: String) {
         when (streamType) {
@@ -58,31 +63,27 @@ internal class HlsManifestParser(
         currentAudioSegmentRuntimeIds.clear()
     }
 
-    suspend fun isCurrentSegment(segmentUrl: String): Boolean =
-        mutex.withLock {
-            currentVideoSegmentRuntimeIds.contains(segmentUrl) ||
-                    currentAudioSegmentRuntimeIds.contains(segmentUrl)
-        }
+    suspend fun isCurrentSegment(segmentUrl: String): Boolean = mutex.withLock {
+        currentVideoSegmentRuntimeIds.contains(segmentUrl) ||
+            currentAudioSegmentRuntimeIds.contains(segmentUrl)
+    }
 
-    suspend fun isManifestTracked(manifestUrl: String): Boolean =
-        mutex.withLock {
-            currentMasterManifestUrl == manifestUrl || streams.containsKey(manifestUrl)
-        }
+    suspend fun isManifestTracked(manifestUrl: String): Boolean = mutex.withLock {
+        currentMasterManifestUrl == manifestUrl || streams.containsKey(manifestUrl)
+    }
 
-    private suspend fun parseHlsManifest(manifestUrl: String, manifest: String): String {
-        return when (val hlsPlaylist = parser.parse(manifestUrl, manifest)) {
-            is HlsMediaPlaylist -> {
-                logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
-                parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
-            }
-            is HlsMultivariantPlaylist -> {
-                logger.d { "Type: Multivariant (Master) Playlist" }
-                parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
-            }
-            else -> {
-                logger.e { "Unsupported playlist type found for: $manifestUrl" }
-                throw IllegalStateException("Unsupported playlist type")
-            }
+    private suspend fun parseHlsManifest(manifestUrl: String, manifest: String): String = when (val hlsPlaylist = parser.parse(manifestUrl, manifest)) {
+        is HlsMediaPlaylist -> {
+            logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
+            parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
+        }
+        is HlsMultivariantPlaylist -> {
+            logger.d { "Type: Multivariant (Master) Playlist" }
+            parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
+        }
+        else -> {
+            logger.e { "Unsupported playlist type found for: $manifestUrl" }
+            throw IllegalStateException("Unsupported playlist type")
         }
     }
 
@@ -165,7 +166,7 @@ internal class HlsManifestParser(
                 hasEndTag = mediaPlaylist.hasEndTag,
                 segmentDurations = mediaPlaylist.hlsSegments.map {
                     it.durationUs / 1_000_000.0
-                }
+                },
             )
             return playbackProvider.getAbsolutePlaybackPosition(snapshot)
         } else {
@@ -193,8 +194,9 @@ internal class HlsManifestParser(
         clearCurrentSegmentRuntimeIds(mediaType)
 
         mediaPlaylist.hlsSegments.forEachIndexed { index, segment ->
-            if (segment.initializationSegment != null)
+            if (segment.initializationSegment != null) {
                 initializationSegments.add(segment.initializationSegment)
+            }
 
             val segmentIndex = index + newMediaSequence
 
@@ -271,7 +273,7 @@ internal class HlsManifestParser(
         val segmentUrlInManifest = hlsSegment.url
 
         val encodedAbsoluteSegmentUrl = if (byteRange != null) {
-            encodeUrlToBase64("${absoluteSegmentUrl}|${byteRange.start}-${byteRange.end}")
+            encodeUrlToBase64("$absoluteSegmentUrl|${byteRange.start}-${byteRange.end}")
         } else {
             encodeUrlToBase64(absoluteSegmentUrl)
         }

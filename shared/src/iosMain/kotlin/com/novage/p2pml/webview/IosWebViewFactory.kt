@@ -21,10 +21,8 @@ class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (String) -> Unit
-    ): HeadlessWebView {
-        return IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
-    }
+        onWebViewError: (String) -> Unit,
+    ): HeadlessWebView = IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
 private class IosHeadlessWebView(
@@ -107,13 +105,14 @@ private class IosHeadlessWebView(
 }
 
 private class NavigationDelegate(
-    private val onError: (String) -> Unit
-) : NSObject(), WKNavigationDelegateProtocol {
+    private val onError: (String) -> Unit,
+) : NSObject(),
+    WKNavigationDelegateProtocol {
 
     override fun webView(
         webView: WKWebView,
         didFailProvisionalNavigation: WKNavigation?,
-        withError: NSError
+        withError: NSError,
     ) {
         onError("Network Error: ${withError.localizedDescription} (${withError.code})")
     }

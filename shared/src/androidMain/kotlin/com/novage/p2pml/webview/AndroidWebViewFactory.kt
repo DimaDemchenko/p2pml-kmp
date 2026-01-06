@@ -15,17 +15,15 @@ class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (String) -> Unit
-    ): HeadlessWebView {
-        return AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
-    }
+        onWebViewError: (String) -> Unit,
+    ): HeadlessWebView = AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
 private class AndroidHeadlessWebView(
     context: Context,
     eventEmitter: EventEmitter,
     private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (String) -> Unit
+    private val onWebViewError: (String) -> Unit,
 ) : HeadlessWebView {
     @SuppressLint("SetJavaScriptEnabled")
     private val webView: WebView = WebView(context).apply {
@@ -36,7 +34,7 @@ private class AndroidHeadlessWebView(
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
-                error: WebResourceError?
+                error: WebResourceError?,
             ) {
                 if (request == null || !request.isForMainFrame) return
 
@@ -46,7 +44,7 @@ private class AndroidHeadlessWebView(
             override fun onReceivedHttpError(
                 view: WebView?,
                 request: WebResourceRequest?,
-                errorResponse: WebResourceResponse?
+                errorResponse: WebResourceResponse?,
             ) {
                 if (request == null || !request.isForMainFrame) return
 
@@ -56,7 +54,7 @@ private class AndroidHeadlessWebView(
 
         val dispatcher = AndroidWebViewEventDispatcher(
             eventEmitter = eventEmitter,
-            onPageReady = onWebViewLoaded
+            onPageReady = onWebViewLoaded,
         )
 
         addJavascriptInterface(dispatcher, "P2PMLAndroid")
