@@ -14,7 +14,7 @@ private data class PlaybackSegment(
     val endTime: Double,
     val absoluteStartTime: Double,
     val absoluteEndTime: Double,
-    val externalId: Long,
+    val externalId: Long
 )
 
 private const val MILLISECONDS_IN_SECOND = 1000.0
@@ -50,7 +50,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
             endTime = relativeEndTime,
             absoluteStartTime = absoluteStartTime,
             absoluteEndTime = absoluteEndTime,
-            externalId = externalId,
+            externalId = externalId
         )
     }
 

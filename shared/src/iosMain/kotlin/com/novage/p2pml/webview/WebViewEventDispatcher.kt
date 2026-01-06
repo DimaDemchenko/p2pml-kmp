@@ -23,22 +23,19 @@ import platform.darwin.NSObject
 class WebViewEventDispatcher(
     private val eventEmitter: EventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
-    private val onPageReady: (() -> Unit)? = null,
+    private val onPageReady: (() -> Unit)? = null
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 
     override fun userContentController(
         userContentController: WKUserContentController,
-        didReceiveScriptMessage: WKScriptMessage,
+        didReceiveScriptMessage: WKScriptMessage
     ) {
         val body = didReceiveScriptMessage.body as? NSDictionary ?: return
         val type = body.objectForKey("type") as? String ?: return
 
         when (type) {
-            "onWebViewLoaded" -> {
-                println("✅ WebView reports: page ready")
-                onPageReady?.invoke()
-            }
+            "onWebViewLoaded" -> onPageReady?.invoke()
             "onChunkDownloaded" -> handleChunkDownloaded(body)
             "onChunkUploaded" -> handleChunkUploaded(body)
             else -> handleComplexEvent(type, body)
@@ -55,7 +52,7 @@ class WebViewEventDispatcher(
 
         eventEmitter.emit(
             CoreEventMap.OnChunkDownloaded,
-            ChunkDownloadedDetails(bytesLength, downloadSource, peerId),
+            ChunkDownloadedDetails(bytesLength, downloadSource, peerId)
         )
     }
 
@@ -78,34 +75,42 @@ class WebViewEventDispatcher(
                     val details = json.decodeFromNSDictionary<SegmentLoadDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnSegmentLoaded, details)
                 }
+
                 "onSegmentStart" -> {
                     val details = json.decodeFromNSDictionary<SegmentStartDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnSegmentStart, details)
                 }
+
                 "onSegmentAbort" -> {
                     val details = json.decodeFromNSDictionary<SegmentAbortDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnSegmentAbort, details)
                 }
+
                 "onSegmentError" -> {
                     val details = json.decodeFromNSDictionary<SegmentErrorDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnSegmentError, details)
                 }
+
                 "onPeerConnect" -> {
                     val details = json.decodeFromNSDictionary<PeerDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnPeerConnect, details)
                 }
+
                 "onPeerClose" -> {
                     val details = json.decodeFromNSDictionary<PeerDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnPeerClose, details)
                 }
+
                 "onPeerError" -> {
                     val details = json.decodeFromNSDictionary<PeerErrorDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnPeerError, details)
                 }
+
                 "onTrackerError" -> {
                     val details = json.decodeFromNSDictionary<TrackerErrorDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnTrackerError, details)
                 }
+
                 "onTrackerWarning" -> {
                     val details = json.decodeFromNSDictionary<TrackerWarningDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnTrackerWarning, details)

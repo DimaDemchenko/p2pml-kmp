@@ -103,7 +103,7 @@ object HlsConstants {
                 METHOD_SAMPLE_AES_CENC +
                 "|" +
                 METHOD_SAMPLE_AES_CTR +
-                ")\\s*(?:,|$)",
+                ")\\s*(?:,|$)"
         )
     val REGEX_KEYFORMAT: Regex = Regex("KEYFORMAT=\"(.+?)\"")
     val REGEX_KEYFORMATVERSIONS: Regex = Regex("KEYFORMATVERSIONS=\"(.+?)\"")
@@ -119,7 +119,7 @@ object HlsConstants {
                 TYPE_SUBTITLES +
                 "|" +
                 TYPE_CLOSED_CAPTIONS +
-                ")",
+                ")"
         )
     val REGEX_PRELOAD_HINT_TYPE: Regex = Regex("TYPE=($TYPE_PART|$TYPE_MAP)")
     val REGEX_LANGUAGE: Regex = Regex("LANGUAGE=\"(.+?)\"")

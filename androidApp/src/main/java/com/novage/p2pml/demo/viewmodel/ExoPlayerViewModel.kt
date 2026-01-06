@@ -21,11 +21,11 @@ import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.demo.Streams
 import com.novage.p2pml.demo.stats.P2PStats
 import com.novage.p2pml.demo.stats.P2PStatsTracker
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.io.IOException
 
 @UnstableApi
 class ExoPlayerViewModel(application: Application) : AndroidViewModel(application) {
@@ -47,7 +47,7 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
                     MIN_BUFFER_MS,
                     MAX_BUFFER_MS,
                     BUFFER_FOR_PLAYBACK_MS,
-                    BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                    BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
                 ).build()
 
         ExoPlayer
@@ -76,7 +76,7 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
                 },
                 onP2PReadyErrorCallback = { message ->
                     onReadyError(message)
-                },
+                }
             )
 
         p2pStatsTracker = P2PStatsTracker(p2pml!!)
@@ -114,7 +114,7 @@ class ExoPlayerViewModel(application: Application) : AndroidViewModel(applicatio
                             }
                         }
                     }
-                },
+                }
             )
         }
     }

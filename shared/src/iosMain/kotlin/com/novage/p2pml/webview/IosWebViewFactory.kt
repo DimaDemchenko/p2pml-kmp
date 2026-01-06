@@ -21,14 +21,14 @@ class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (String) -> Unit,
+        onWebViewError: (String) -> Unit
     ): HeadlessWebView = IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
 private class IosHeadlessWebView(
     private val eventEmitter: EventEmitter,
     private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (String) -> Unit,
+    private val onWebViewError: (String) -> Unit
 ) : HeadlessWebView {
     private var webView: WKWebView? = null
 

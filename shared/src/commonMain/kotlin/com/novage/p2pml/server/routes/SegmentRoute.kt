@@ -25,18 +25,14 @@ import kotlinx.coroutines.CompletableDeferred
 private val logger = CoreLogger("SegmentRoute")
 
 internal fun Route.registerSegmentRoutes(
-    httpClient: HttpClient,
-    segmentService: SegmentService,
-    parser: HlsManifestParser,
+    httpClient: HttpClient, segmentService: SegmentService, parser: HlsManifestParser
 ) {
     segmentDownloadRoute(httpClient, segmentService, parser)
     segmentUploadRoute(segmentService)
 }
 
 private fun Route.segmentDownloadRoute(
-    httpClient: HttpClient,
-    segmentService: SegmentService,
-    parser: HlsManifestParser,
+    httpClient: HttpClient, segmentService: SegmentService, parser: HlsManifestParser
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
@@ -95,22 +91,21 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         val error = call.request.queryParameters["error"]
 
         if (error != null) {
-            val deferredSegment = segmentService.getPendingRequest(segmentId)
-                ?: run {
-                    logger.w { "Received error for unknown segment ID: $segmentId" }
-                    call.respond(HttpStatusCode.NotFound)
-                    return@post
-                }
+            val deferredSegment = segmentService.getPendingRequest(segmentId) ?: run {
+                logger.w { "Received error for unknown segment ID: $segmentId" }
+                call.respond(HttpStatusCode.NotFound)
+                return@post
+            }
 
             if (error.contains("aborted")) {
                 logger.i { "Segment upload aborted: $segmentId" }
                 deferredSegment.completeExceptionally(
-                    SegmentAbortedException("Segment aborted - $segmentId"),
+                    SegmentAbortedException("Segment aborted - $segmentId")
                 )
             } else {
                 logger.w { "Error processing segment: $segmentId - $error" }
                 deferredSegment.completeExceptionally(
-                    Exception("Error processing segment - $segmentId - $error"),
+                    Exception("Error processing segment - $segmentId - $error")
                 )
                 segmentService.removeRequest(segmentId)
             }

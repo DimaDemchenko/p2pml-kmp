@@ -15,7 +15,7 @@ data class P2PStats(
     val bytesDownloadedHttp: Long = 0L,
     val bytesDownloadedP2p: Long = 0L,
     val bytesUploaded: Long = 0L,
-    val connectedPeers: Set<String> = emptySet(),
+    val connectedPeers: Set<String> = emptySet()
 )
 
 class P2PStatsTracker
@@ -30,12 +30,12 @@ constructor(private val p2pMediaLoader: P2PMediaLoader) {
                 if (data.downloadSource == "http") {
                     _statsFlow.value =
                         _statsFlow.value.copy(
-                            bytesDownloadedHttp = _statsFlow.value.bytesDownloadedHttp + data.bytesLength,
+                            bytesDownloadedHttp = _statsFlow.value.bytesDownloadedHttp + data.bytesLength
                         )
                 } else if (data.downloadSource == "p2p") {
                     _statsFlow.value =
                         _statsFlow.value.copy(
-                            bytesDownloadedP2p = _statsFlow.value.bytesDownloadedP2p + data.bytesLength,
+                            bytesDownloadedP2p = _statsFlow.value.bytesDownloadedP2p + data.bytesLength
                         )
                 }
             }
@@ -46,7 +46,7 @@ constructor(private val p2pMediaLoader: P2PMediaLoader) {
             override fun onEvent(data: ChunkUploadedDetails) {
                 _statsFlow.value =
                     _statsFlow.value.copy(
-                        bytesUploaded = _statsFlow.value.bytesUploaded + data.bytesLength,
+                        bytesUploaded = _statsFlow.value.bytesUploaded + data.bytesLength
                     )
             }
         }

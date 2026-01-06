@@ -9,7 +9,7 @@ import kotlinx.coroutines.sync.withLock
 internal class ManifestService(
     private val parser: HlsManifestParser,
     private val engineManager: P2PEngine,
-    private val onManifestChanged: suspend () -> Unit,
+    private val onManifestChanged: suspend () -> Unit
 ) {
     private val logger = CoreLogger("ManifestService")
 

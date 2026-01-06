@@ -17,12 +17,12 @@ class P2PMediaLoader(
     onP2PReadyCallback: OnP2PReadyCallback,
     onP2PReadyErrorCallback: OnP2PReadyErrorCallback,
     coreConfigJson: String = "{}",
-    customEngineFileUrl: String? = null,
+    customEngineFileUrl: String? = null
 ) : P2PMediaLoaderCore(
     onP2PReadyCallback = { onP2PReadyCallback.onReady() },
     onP2PReadyErrorCallback = { message -> onP2PReadyErrorCallback.onError(message) },
     coreConfigJson = coreConfigJson,
-    customEngineFileUrl = customEngineFileUrl,
+    customEngineFileUrl = customEngineFileUrl
 ) {
 
     companion object {
@@ -36,7 +36,7 @@ class P2PMediaLoader(
             onWebViewLoaded = ::onWebViewLoaded,
             onWebViewError = { errorMessage ->
                 failInitialization("WebView failed to load: $errorMessage")
-            },
+            }
         )
 
         initialize(webView, provider)

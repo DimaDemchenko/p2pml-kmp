@@ -19,13 +19,7 @@ subprojects {
             target("**/*.kt")
             targetExclude("**/generated/**/*.kt", "**/demo/Streams.kt")
 
-            ktlint().editorConfigOverride(mapOf(
-                "max_line_length" to "120",
-                "ktlint_standard_function-naming" to "disabled",
-            ))
-
-            trimTrailingWhitespace()
-            endWithNewline()
+            ktlint()
         }
 
         kotlinGradle {

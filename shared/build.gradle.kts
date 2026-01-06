@@ -1,9 +1,9 @@
 import com.android.build.api.dsl.androidLibrary
+import java.util.Base64
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
-import java.util.Base64
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -66,7 +66,7 @@ val generateAssetsTask =
                     val INDEX_HTML_BASE64: String get() = HTML_CHUNKS.joinToString("")
                     val CORE_JS_BASE64: String get() = JS_CHUNKS.joinToString("")
                 }
-                """.trimIndent(),
+                """.trimIndent()
             )
         }
     }

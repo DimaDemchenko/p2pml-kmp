@@ -12,14 +12,14 @@ internal class HlsMultivariantPlaylist(
     val videos: List<Rendition>,
     val audios: List<Rendition>,
     val subtitles: List<Rendition>,
-    val closedCaptions: List<Rendition>,
+    val closedCaptions: List<Rendition>
 ) : HlsPlaylist(baseUri)
 
 internal class HlsMediaPlaylist(
     baseUri: String,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
-    val hlsSegments: List<HlsSegment>,
+    val hlsSegments: List<HlsSegment>
 ) : HlsPlaylist(baseUri)
 
 data class Variant(
@@ -28,7 +28,7 @@ data class Variant(
     val videoGroupId: String? = null,
     val audioGroupId: String? = null,
     val subtitleGroupId: String? = null,
-    val captionGroupId: String? = null,
+    val captionGroupId: String? = null
 )
 
 data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)
@@ -41,7 +41,7 @@ internal data class HlsSegment(
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
-    val initializationSegment: InitializationSegment?,
+    val initializationSegment: InitializationSegment?
 ) {
     val byteRange: ByteRange?
         get() =
@@ -64,7 +64,7 @@ internal data class UpdateStreamParams(
     val streamRuntimeId: String,
     val addSegments: List<Segment>,
     val removeSegmentsIds: List<String>,
-    val isLive: Boolean,
+    val isLive: Boolean
 )
 
 @Serializable internal data class Stream(val runtimeId: String, val type: String, val index: Int)

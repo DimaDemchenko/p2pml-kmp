@@ -16,7 +16,7 @@ abstract class P2PMediaLoaderCore(
     private val onP2PReadyCallback: () -> Unit,
     private val onP2PReadyErrorCallback: (message: String) -> Unit,
     private val coreConfigJson: String = "{}",
-    private val customEngineFileUrl: String? = null,
+    private val customEngineFileUrl: String? = null
 ) {
     companion object {
         fun enableLogging() {
@@ -66,7 +66,7 @@ abstract class P2PMediaLoaderCore(
                 urlFactory.setPort(port)
 
                 onServerReady()
-            },
+            }
         )
         this.serverModule = module
 
@@ -110,7 +110,7 @@ abstract class P2PMediaLoaderCore(
 
         engine.initCoreEngine(
             coreConfigJson = coreConfigJson,
-            uploadUrl = urlFactory.buildUploadUrl(),
+            uploadUrl = urlFactory.buildUploadUrl()
         )
 
         val subscribedEvents = eventEmitter.getSubscribedEventNames()

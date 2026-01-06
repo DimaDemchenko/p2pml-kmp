@@ -11,7 +11,7 @@ internal fun Application.configureRoutes(
     client: HttpClient,
     manifestService: ManifestService,
     manifestParser: HlsManifestParser,
-    segmentService: SegmentService,
+    segmentService: SegmentService
 ) {
     routing {
         registerManifestRoute(client, manifestService)

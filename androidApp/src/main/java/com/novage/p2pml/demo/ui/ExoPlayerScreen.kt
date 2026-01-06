@@ -22,7 +22,6 @@ import com.novage.p2pml.demo.stats.P2PStats
 
 private const val VIDEO_ASPECT_RATIO = 16f / 9f
 
-@Suppress("FunctionNaming")
 @Composable
 fun ExoPlayerScreen(player: ExoPlayer?, videoTitle: String, isLoading: Boolean, stats: P2PStats) {
     Column(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.8f))) {
@@ -30,19 +29,19 @@ fun ExoPlayerScreen(player: ExoPlayer?, videoTitle: String, isLoading: Boolean, 
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(VIDEO_ASPECT_RATIO),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
                     PlayerView(context).apply { this.player = player }
                 },
-                update = { playerView -> playerView.player = player },
+                update = { playerView -> playerView.player = player }
             )
 
             if (isLoading) {
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -51,20 +50,20 @@ fun ExoPlayerScreen(player: ExoPlayer?, videoTitle: String, isLoading: Boolean, 
             text = videoTitle,
             style = MaterialTheme.typography.titleLarge,
             color = Color.White,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(16.dp)
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(16.dp)
         ) {
             P2PStatistics(
                 totalHttpDownloaded = stats.bytesDownloadedHttp / (1024 * 1024).toDouble(),
                 totalP2PDownloaded = stats.bytesDownloadedP2p / (1024 * 1024).toDouble(),
                 totalP2PUploaded = stats.bytesUploaded / (1024 * 1024).toDouble(),
                 activePeers = stats.connectedPeers.size,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

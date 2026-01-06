@@ -32,7 +32,7 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             val modifiedManifest =
                 manifestService.processManifest(
                     fetchResult.responseUrl,
-                    fetchResult.manifestContent,
+                    fetchResult.manifestContent
                 )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
@@ -41,7 +41,7 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
 
             call.respondText(
                 "Error processing manifest",
-                status = HttpStatusCode.InternalServerError,
+                status = HttpStatusCode.InternalServerError
             )
         }
     }

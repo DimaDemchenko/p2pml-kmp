@@ -6,7 +6,7 @@ interface WebViewFactory {
     fun createHeadlessWebView(
         eventEmitter: EventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (String) -> Unit,
+        onWebViewError: (String) -> Unit
     ): HeadlessWebView
 }
 

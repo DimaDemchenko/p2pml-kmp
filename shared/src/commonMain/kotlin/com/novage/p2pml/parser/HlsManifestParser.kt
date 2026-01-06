@@ -24,7 +24,7 @@ private const val MICROSECONDS_IN_SECOND = 1_000_000.0
 
 internal class HlsManifestParser(
     private val playbackProvider: PlaybackProvider,
-    private val urlFactory: LocalUrlFactory,
+    private val urlFactory: LocalUrlFactory
 ) {
     private val logger = CoreLogger("HlsManifestParser")
     private val parser = HlsPlaylistParser()
@@ -92,7 +92,7 @@ internal class HlsManifestParser(
     private fun parseMultivariantPlaylist(
         manifestUrl: String,
         hlsPlaylist: HlsMultivariantPlaylist,
-        originalManifest: String,
+        originalManifest: String
     ): String {
         val updatedManifestBuilder = StringBuilder(originalManifest)
 
@@ -108,7 +108,7 @@ internal class HlsManifestParser(
                 variant.urlInManifest,
                 MAIN_STREAM,
                 index,
-                updatedManifestBuilder,
+                updatedManifestBuilder
             )
         }
 
@@ -120,7 +120,7 @@ internal class HlsManifestParser(
                 rendition.urlInManifest,
                 MAIN_STREAM,
                 index,
-                updatedManifestBuilder,
+                updatedManifestBuilder
             )
         }
 
@@ -132,7 +132,7 @@ internal class HlsManifestParser(
                 rendition.urlInManifest,
                 SECONDARY_STREAM,
                 index,
-                updatedManifestBuilder,
+                updatedManifestBuilder
             )
         }
 
@@ -167,7 +167,7 @@ internal class HlsManifestParser(
                 hasEndTag = mediaPlaylist.hasEndTag,
                 segmentDurations = mediaPlaylist.hlsSegments.map {
                     it.durationUs / MICROSECONDS_IN_SECOND
-                },
+                }
             )
             return playbackProvider.getAbsolutePlaybackPosition(snapshot)
         } else {
@@ -178,7 +178,7 @@ internal class HlsManifestParser(
     private suspend fun parseMediaPlaylist(
         manifestUrl: String,
         mediaPlaylist: HlsMediaPlaylist,
-        originalManifest: String,
+        originalManifest: String
     ): String {
         val mediaType = streams[manifestUrl]?.type ?: MAIN_STREAM
 
@@ -229,13 +229,13 @@ internal class HlsManifestParser(
         variantUrl: String,
         newSegments: List<Segment>,
         segmentsToRemove: List<String>,
-        isLive: Boolean,
+        isLive: Boolean
     ) {
         val updateStream = UpdateStreamParams(
             streamRuntimeId = variantUrl,
             addSegments = newSegments,
             removeSegmentsIds = segmentsToRemove,
-            isLive = isLive,
+            isLive = isLive
         )
         updateStreamParams[variantUrl] = updateStream
     }
@@ -244,7 +244,7 @@ internal class HlsManifestParser(
         variantUrl: String,
         segmentId: Long,
         initialStartTime: Double,
-        hlsSegment: HlsSegment,
+        hlsSegment: HlsSegment
     ): Segment? {
         val segmentsMap = streamSegments.getOrPut(variantUrl) { mutableMapOf() }
         if (segmentsMap.contains(segmentId)) return null
@@ -261,7 +261,7 @@ internal class HlsManifestParser(
             url = hlsSegment.absoluteUrl,
             byteRange = hlsSegment.byteRange,
             startTime = startTime,
-            endTime = endTime,
+            endTime = endTime
         )
 
         segmentsMap[segmentId] = newSegment
@@ -288,7 +288,7 @@ internal class HlsManifestParser(
         streamUrlInManifest: String,
         streamType: String,
         index: Int,
-        updatedManifestBuilder: StringBuilder,
+        updatedManifestBuilder: StringBuilder
     ) {
         if (!streams.containsKey(absoluteStreamUrl)) {
             streams[absoluteStreamUrl] = Stream(runtimeId = absoluteStreamUrl, type = streamType, index = index)

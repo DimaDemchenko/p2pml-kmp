@@ -8,7 +8,7 @@ internal enum class LogLevel {
     DEBUG,
     INFO,
     WARN,
-    ERROR,
+    ERROR
 }
 
 internal class CoreLogger(private val className: String) {

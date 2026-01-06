@@ -24,7 +24,7 @@ private val EXCLUDED_PROXY_HEADERS =
         HttpHeaders.Upgrade,
         "Proxy-Connection",
         "Keep-Alive",
-        HttpHeaders.AcceptEncoding,
+        HttpHeaders.AcceptEncoding
     )
 
 internal data class ManifestFetchResult(val manifestContent: String, val responseUrl: String)
@@ -36,7 +36,7 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
 
     return ManifestFetchResult(
         manifestContent = response.bodyAsText(),
-        responseUrl = response.request.url.toString(),
+        responseUrl = response.request.url.toString()
     )
 }
 
@@ -68,7 +68,7 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteR
                 override val contentLength = bytes.size.toLong()
                 override val status = HttpStatusCode.PartialContent
                 override fun bytes(): ByteArray = bytes
-            },
+            }
         )
     } else {
         respondBytes(bytes, ContentType.Application.OctetStream)
@@ -78,7 +78,7 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteR
 internal suspend fun ApplicationCall.respondFallback(
     httpClient: HttpClient,
     segmentUrl: String,
-    byteRangeHeader: String?,
+    byteRangeHeader: String?
 ) {
     try {
         val bytes = httpClient.fetchSegment(this, segmentUrl)

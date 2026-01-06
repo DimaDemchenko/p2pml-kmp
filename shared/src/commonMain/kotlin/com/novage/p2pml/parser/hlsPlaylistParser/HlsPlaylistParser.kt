@@ -128,7 +128,7 @@ internal class HlsPlaylistParser {
                         initializationSegment =
                             InitializationSegment(
                                 url = uri,
-                                absoluteUrl = resolve(playlistUri, uri),
+                                absoluteUrl = resolve(playlistUri, uri)
                             )
                     }
                 }
@@ -144,7 +144,7 @@ internal class HlsPlaylistParser {
                         byteRangeOffset = segmentByteRangeOffset,
                         byteRangeLength = segmentByteRangeLength,
                         durationUs = segmentDurationUs,
-                        initializationSegment = initializationSegment,
+                        initializationSegment = initializationSegment
                     )
 
                 hlsSegments.add(hlsSegment)
@@ -160,7 +160,7 @@ internal class HlsPlaylistParser {
             baseUri = playlistUri,
             mediaSequence = mediaSequence,
             hasEndTag = hasEndTag,
-            hlsSegments = hlsSegments,
+            hlsSegments = hlsSegments
         )
     }
 
@@ -221,8 +221,8 @@ internal class HlsPlaylistParser {
                             videoGroupId = videoGroupId,
                             audioGroupId = audioGroupId,
                             subtitleGroupId = subtitleGroupId,
-                            captionGroupId = captionGroupId,
-                        ),
+                            captionGroupId = captionGroupId
+                        )
                     )
                 }
             }
@@ -242,8 +242,8 @@ internal class HlsPlaylistParser {
                             url = resolvedUri,
                             urlInManifest = referenceUri,
                             groupId = groupId,
-                            name = name,
-                        ),
+                            name = name
+                        )
                     )
                 TYPE_AUDIO ->
                     audios.add(
@@ -251,8 +251,8 @@ internal class HlsPlaylistParser {
                             url = resolvedUri,
                             urlInManifest = referenceUri,
                             groupId = groupId,
-                            name = name,
-                        ),
+                            name = name
+                        )
                     )
                 TYPE_SUBTITLES ->
                     subtitles.add(
@@ -260,8 +260,8 @@ internal class HlsPlaylistParser {
                             url = resolvedUri,
                             urlInManifest = referenceUri,
                             groupId = groupId,
-                            name = name,
-                        ),
+                            name = name
+                        )
                     )
                 TYPE_CLOSED_CAPTIONS ->
                     closedCaptions.add(
@@ -269,8 +269,8 @@ internal class HlsPlaylistParser {
                             url = resolvedUri,
                             urlInManifest = referenceUri,
                             groupId = groupId,
-                            name = name,
-                        ),
+                            name = name
+                        )
                     )
             }
         }
@@ -281,7 +281,7 @@ internal class HlsPlaylistParser {
             videos = videos,
             audios = audios,
             subtitles = subtitles,
-            closedCaptions = closedCaptions,
+            closedCaptions = closedCaptions
         )
     }
 
@@ -321,17 +321,14 @@ internal class HlsPlaylistParser {
         parseOptionalStringAttr(line, regex, null, variableDefinitions)
             ?: throw Exception("Missing required attribute")
 
-    private fun parseOptionalStringAttr(
-        line: String,
-        regex: Regex,
-        variableDefinitions: Map<String, String>,
-    ): String? = parseOptionalStringAttr(line, regex, null, variableDefinitions)
+    private fun parseOptionalStringAttr(line: String, regex: Regex, variableDefinitions: Map<String, String>): String? =
+        parseOptionalStringAttr(line, regex, null, variableDefinitions)
 
     private fun parseOptionalStringAttr(
         line: String,
         regex: Regex,
         defaultValue: String?,
-        variableDefinitions: Map<String, String>,
+        variableDefinitions: Map<String, String>
     ): String? {
         val value = regex.find(line)?.groups?.get(1)?.value ?: defaultValue
         return if (variableDefinitions.isEmpty() || value == null) {

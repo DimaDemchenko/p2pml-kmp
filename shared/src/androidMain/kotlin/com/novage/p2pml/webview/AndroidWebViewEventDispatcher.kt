@@ -16,7 +16,7 @@ import org.json.JSONObject
 class AndroidWebViewEventDispatcher(
     private val eventEmitter: EventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
-    private val onPageReady: (() -> Unit)? = null,
+    private val onPageReady: (() -> Unit)? = null
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -58,6 +58,7 @@ class AndroidWebViewEventDispatcher(
                 "onWebViewLoaded" -> {
                     onPageReady?.invoke()
                 }
+
                 "onSegmentLoaded" -> emitEvent(CoreEventMap.OnSegmentLoaded, payloadStr)
                 "onSegmentStart" -> emitEvent(CoreEventMap.OnSegmentStart, payloadStr)
                 "onSegmentError" -> emitEvent(CoreEventMap.OnSegmentError, payloadStr)

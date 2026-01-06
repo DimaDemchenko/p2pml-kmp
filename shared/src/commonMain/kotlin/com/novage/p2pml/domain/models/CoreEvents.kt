@@ -1,7 +1,7 @@
 package com.novage.p2pml.domain.models
 
-import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmField
+import kotlinx.serialization.Serializable
 
 /**
  * CoreEventMap is a sealed class that represents the different types of events that can be emitted
@@ -106,7 +106,7 @@ data class SegmentLoadDetails(
     val bytesLength: Int,
     val downloadSource: String,
     val peerId: String? = null,
-    val streamType: String,
+    val streamType: String
 )
 
 /**
@@ -134,7 +134,7 @@ data class SegmentErrorDetails(
     val segment: Segment,
     val downloadSource: String,
     val peerId: String?,
-    val streamType: String,
+    val streamType: String
 )
 
 /**
@@ -150,7 +150,7 @@ data class SegmentAbortDetails(
     val segment: Segment,
     val downloadSource: String,
     val peerId: String? = null,
-    val streamType: String,
+    val streamType: String
 )
 
 /**

@@ -19,5 +19,5 @@ data class Segment(
     val url: String,
     val byteRange: ByteRange?,
     val startTime: Double,
-    val endTime: Double,
+    val endTime: Double
 )
