@@ -20,7 +20,7 @@ import platform.WebKit.WKScriptMessageHandlerProtocol
 import platform.WebKit.WKUserContentController
 import platform.darwin.NSObject
 
-class WebViewEventDispatcher(
+class IosWebViewEventDispatcher(
     private val eventEmitter: EventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null

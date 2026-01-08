@@ -44,7 +44,7 @@ private class IosHeadlessWebView(
     private fun initWebView() {
         val configuration = WKWebViewConfiguration()
 
-        val scriptMessageHandler = WebViewEventDispatcher(eventEmitter) { onWebViewLoaded() }
+        val scriptMessageHandler = IosWebViewEventDispatcher(eventEmitter) { onWebViewLoaded() }
         configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
 
         val preferences = WKPreferences()
