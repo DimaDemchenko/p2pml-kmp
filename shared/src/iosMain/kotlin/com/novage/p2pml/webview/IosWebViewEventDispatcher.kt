@@ -116,8 +116,10 @@ class IosWebViewEventDispatcher(
                     eventEmitter.emit(CoreEventMap.OnTrackerWarning, details)
                 }
             }
-        } catch (t: Throwable) {
-            println("Failed to handle '$type': ${t.message}")
+        } catch (e: kotlinx.serialization.SerializationException) {
+            println("JSON Decoding failed for '$type': ${e.message}")
+        } catch (e: RuntimeException) {
+            println("Logic error handling '$type': ${e.message}")
         }
     }
 }
