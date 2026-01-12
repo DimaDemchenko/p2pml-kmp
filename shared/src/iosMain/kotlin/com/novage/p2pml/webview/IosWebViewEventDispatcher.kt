@@ -119,8 +119,10 @@ class IosWebViewEventDispatcher(
             }
         } catch (e: SerializationException) {
             println("JSON Decoding failed for '$type': ${e.message}")
-        } catch (e: RuntimeException) {
-            println("Logic error handling '$type': ${e.message}")
+        } catch (e: IllegalArgumentException) {
+            println("Invalid argument for '$type': ${e.message}")
+        } catch (e: IllegalStateException) {
+            println("State error handling '$type': ${e.message}")
         }
     }
 }
