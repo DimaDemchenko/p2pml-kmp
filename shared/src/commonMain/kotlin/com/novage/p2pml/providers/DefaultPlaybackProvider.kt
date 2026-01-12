@@ -16,5 +16,7 @@ class DefaultPlaybackProvider(private val getPlaybackInfo: () -> PlaybackInfo) :
         return@withContext getPlaybackInfo()
     }
 
-    override suspend fun resetData() {}
+    override suspend fun resetData() {
+        // Intentionally empty for the default implementation
+    }
 }
