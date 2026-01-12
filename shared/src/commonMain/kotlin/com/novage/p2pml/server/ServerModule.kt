@@ -15,13 +15,15 @@ import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.IOException
 
 internal class ServerModule(
     private val playbackProvider: PlaybackProvider,
     engineManager: P2PEngine,
     urlFactory: LocalUrlFactory,
     private val enableCors: Boolean,
-    private val onServerStarted: (serverPort: Int) -> Unit
+    private val onServerStarted: (serverPort: Int) -> Unit,
+    private val onServerStartError: (error: String) -> Unit
 ) {
     private val logger = CoreLogger("ServerModule")
 
@@ -61,10 +63,10 @@ internal class ServerModule(
                 logger.i { "Server successfully bound to port: $assignedPort" }
                 onServerStarted(assignedPort)
             }
-        } catch (e: Exception) {
-            logger.e(e) { "P2P Server failed to start!" }
-            destroy()
-            throw e
+        } catch (e: IOException) {
+            onServerStartError("IO Error starting server: ${e.message}")
+        } catch (e: IllegalStateException) {
+            onServerStartError("Illegal State Error starting server: ${e.message}")
         }
     }
 
@@ -81,11 +83,6 @@ internal class ServerModule(
             server = null
         }
 
-        try {
-            client.close()
-            logger.d { "HTTP client closed." }
-        } catch (e: Exception) {
-            logger.w { "Error closing HTTP client: ${e.message}" }
-        }
+        client.close()
     }
 }

@@ -61,6 +61,7 @@ abstract class P2PMediaLoaderCore(
             engineManager = engine,
             urlFactory = urlFactory,
             enableCors = customEngineFileUrl != null,
+            onServerStartError = ::failInitialization,
             onServerStarted = { port ->
                 logger.i { "Local P2P Server started on port: $port" }
                 urlFactory.setPort(port)
@@ -70,11 +71,7 @@ abstract class P2PMediaLoaderCore(
         )
         this.serverModule = module
 
-        try {
-            module.start()
-        } catch (e: Exception) {
-            failInitialization("Failed to start local server: ${e.message}")
-        }
+        module.start()
     }
 
     fun getManifestUrl(manifestUrl: String): String {
