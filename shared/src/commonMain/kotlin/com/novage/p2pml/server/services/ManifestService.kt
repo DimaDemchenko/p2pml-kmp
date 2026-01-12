@@ -5,6 +5,7 @@ import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.SerializationException
 
 internal class ManifestService(
     private val parser: HlsManifestParser,
@@ -48,18 +49,13 @@ internal class ManifestService(
 
                 engineManager.setManifestUrl(manifestUrl)
                 engineManager.sendAllStreams(streamsJson)
-
-                updateStreamJson?.let { engineManager.sendStream(it) }
-            } else {
-                updateStreamJson?.let { json ->
-                    engineManager.sendStream(json)
-                } ?: run {
-                    logger.w { "Failed to get update parameters for active stream: $manifestUrl" }
-                    throw Exception("updateStreamJson is null")
-                }
             }
-        } catch (e: Exception) {
-            logger.e(e) { "Error syncing manifest with Engine" }
+
+            engineManager.sendStream(updateStreamJson)
+        } catch (e: IllegalStateException) {
+            logger.e(e) { "Failed to sync with Engine: State inconsistency" }
+        } catch (e: SerializationException) {
+            logger.e(e) { "Failed to sync with Engine: JSON serialization error" }
         }
     }
 
