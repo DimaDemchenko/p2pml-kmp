@@ -13,6 +13,7 @@ import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
 import com.novage.p2pml.events.EventEmitter
 import com.novage.p2pml.utils.decodeFromNSDictionary
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage
@@ -116,7 +117,7 @@ class IosWebViewEventDispatcher(
                     eventEmitter.emit(CoreEventMap.OnTrackerWarning, details)
                 }
             }
-        } catch (e: kotlinx.serialization.SerializationException) {
+        } catch (e: SerializationException) {
             println("JSON Decoding failed for '$type': ${e.message}")
         } catch (e: RuntimeException) {
             println("Logic error handling '$type': ${e.message}")
