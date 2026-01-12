@@ -35,7 +35,6 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
-
         } catch (e: IOException) {
             logger.e(e) { "Network error fetching manifest: $manifestUrl" }
             call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)

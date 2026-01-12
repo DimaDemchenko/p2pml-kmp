@@ -3,6 +3,7 @@ package com.novage.p2pml.server.routes
 import com.novage.p2pml.parser.HlsManifestParser
 import com.novage.p2pml.parser.encoding.decodeBase64Url
 import com.novage.p2pml.server.exceptions.SegmentAbortedException
+import com.novage.p2pml.server.exceptions.SegmentProcessingException
 import com.novage.p2pml.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.server.services.SegmentService
@@ -75,7 +76,7 @@ private fun Route.segmentDownloadRoute(
         } catch (_: TooManyRetriesException) {
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
-        } catch (e: Exception) {
+        } catch (e: SegmentProcessingException) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
         } finally {
@@ -109,7 +110,7 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
             } else {
                 logger.w { "Error processing segment: $segmentId - $error" }
                 deferredSegment.completeExceptionally(
-                    Exception("Error processing segment - $segmentId - $error")
+                    SegmentProcessingException("Error processing segment - $segmentId - $error")
                 )
                 segmentService.removeRequest(segmentId)
             }
