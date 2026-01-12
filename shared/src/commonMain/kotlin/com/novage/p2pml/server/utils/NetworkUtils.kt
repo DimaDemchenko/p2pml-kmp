@@ -1,6 +1,7 @@
 package com.novage.p2pml.server.utils
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
@@ -14,6 +15,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
+import kotlinx.io.IOException
 
 private val EXCLUDED_PROXY_HEADERS =
     setOf(
@@ -83,7 +85,9 @@ internal suspend fun ApplicationCall.respondFallback(
     try {
         val bytes = httpClient.fetchSegment(this, segmentUrl)
         respondVideoSegment(bytes, byteRangeHeader)
-    } catch (e: Exception) {
-        respond(HttpStatusCode.BadGateway, "Fallback failed: ${e.message}")
+    } catch (e: ResponseException) {
+        respond(HttpStatusCode.BadGateway, "Upstream server returned error: ${e.response.status}")
+    } catch (e: IOException) {
+        respond(HttpStatusCode.BadGateway, "Network failure: ${e.message}")
     }
 }
