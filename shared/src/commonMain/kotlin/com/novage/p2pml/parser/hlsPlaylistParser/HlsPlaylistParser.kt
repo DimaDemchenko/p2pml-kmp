@@ -227,7 +227,7 @@ internal class HlsPlaylistParser {
         }
 
         if (isValid) {
-            char = skipIgnorableWhitespace(reader, skipLinebreaks = true, char)
+            char = skipIgnorableWhitespace(reader, skipLinebreak = true, char)
             for (expectedChar in PLAYLIST_HEADER) {
                 if (char != expectedChar.code) {
                     isValid = false
@@ -238,7 +238,7 @@ internal class HlsPlaylistParser {
         }
 
         return if (isValid) {
-            val nextChar = skipIgnorableWhitespace(reader, skipLinebreaks = false, char)
+            val nextChar = skipIgnorableWhitespace(reader, skipLinebreak = false, char)
             isLinebreak(nextChar)
         } else {
             false
