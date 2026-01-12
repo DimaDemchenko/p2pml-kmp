@@ -12,15 +12,17 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 private const val PLAYBACK_UPDATE_INTERVAL_MS = 1000L
 
-class P2PEngineManager(private val webView: HeadlessWebView, private val playbackProvider: PlaybackProvider) :
-    P2PEngine {
+class P2PEngineManager(
+    private val webView: HeadlessWebView,
+    private val playbackProvider: PlaybackProvider
+) : P2PEngine {
 
     private val logger = CoreLogger("P2PEngineManager")
-
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var playbackInfoJob: Job? = null
 
@@ -55,6 +57,10 @@ class P2PEngineManager(private val webView: HeadlessWebView, private val playbac
         evaluate("window.p2p.parseAllStreams('$streamsJson');")
     }
 
+    override fun unsubscribeFromP2PEvent(eventName: String) {
+        evaluate("window.p2p.unsubscribeFromEvent('$eventName');")
+    }
+
     override fun setManifestUrl(manifestUrl: String) {
         logger.d { "Setting manifest URL in P2P Engine: $manifestUrl" }
         evaluate("window.p2p.setManifestUrl('$manifestUrl');")
@@ -69,16 +75,8 @@ class P2PEngineManager(private val webView: HeadlessWebView, private val playbac
         evaluate("window.p2p.subscribeToEvent('$eventName');")
     }
 
-    override fun unsubscribeFromP2PEvent(eventName: String) {
-        evaluate("window.p2p.unsubscribeFromEvent('$eventName');")
-    }
-
     private fun evaluate(script: String) {
-        try {
-            webView.evaluateJavascript("javascript:$script", null)
-        } catch (e: Exception) {
-            logger.e(e) { "WebView interaction failed. Script: ${script.take(100)}..." }
-        }
+        webView.evaluateJavascript("javascript:$script", null)
     }
 
     private fun startPlaybackInfoUpdate() {
@@ -95,10 +93,8 @@ class P2PEngineManager(private val webView: HeadlessWebView, private val playbac
                     evaluate("window.p2p.updatePlaybackInfo('$json');")
 
                     delay(PLAYBACK_UPDATE_INTERVAL_MS)
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-
-                    logger.w { "Playback info update loop error: ${e.message}" }
+                } catch (e: SerializationException) {
+                    logger.e { "Failed to serialize playback info: ${e.message}" }
                 }
             }
         }
