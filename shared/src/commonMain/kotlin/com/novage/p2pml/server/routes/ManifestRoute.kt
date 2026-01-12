@@ -9,6 +9,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import kotlinx.io.IOException
+import kotlinx.serialization.SerializationException
 
 private val logger = CoreLogger("ManifestRoute")
 
@@ -27,22 +29,19 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
         try {
             val fetchResult = httpClient.fetchManifest(call, manifestUrl)
 
-            logger.d { "Successfully fetched upstream manifest. Processing..." }
-
-            val modifiedManifest =
-                manifestService.processManifest(
-                    fetchResult.responseUrl,
-                    fetchResult.manifestContent
-                )
+            val modifiedManifest = manifestService.processManifest(
+                fetchResult.responseUrl,
+                fetchResult.manifestContent
+            )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
-        } catch (ex: Exception) {
-            logger.e(ex) { "Error processing manifest request for: $manifestUrl" }
 
-            call.respondText(
-                "Error processing manifest",
-                status = HttpStatusCode.InternalServerError
-            )
+        } catch (e: IOException) {
+            logger.e(e) { "Network error fetching manifest: $manifestUrl" }
+            call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)
+        } catch (e: IllegalStateException) {
+            logger.e(e) { "State error processing manifest: $manifestUrl" }
+            call.respondText("Invalid manifest state", status = HttpStatusCode.InternalServerError)
         }
     }
 }
