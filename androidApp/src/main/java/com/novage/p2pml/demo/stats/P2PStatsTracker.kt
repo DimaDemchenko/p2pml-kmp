@@ -24,7 +24,6 @@ constructor(private val p2pMediaLoader: P2PMediaLoader) {
 
     @OptIn(UnstableApi::class)
     fun startTracking() {
-
         subscriptions.add(
             p2pMediaLoader.onChunkDownloaded { data ->
                 val currentStats = _statsFlow.value
