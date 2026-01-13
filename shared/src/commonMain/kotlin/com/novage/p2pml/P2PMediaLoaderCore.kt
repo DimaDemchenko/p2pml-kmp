@@ -142,7 +142,26 @@ abstract class P2PMediaLoaderCore(
         release()
     }
 
-    private fun <T> bind(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
+    open fun release() {
+        logger.i { "Releasing P2PMediaLoaderCore resources..." }
+
+        eventEmitter.removeAllListeners()
+
+        engineManager?.destroy()
+        engineManager = null
+
+        serverModule?.destroy()
+        serverModule = null
+
+        runBlocking { playbackProvider?.resetData() }
+        isEngineReady = false
+
+        urlFactory.setPort(-1)
+
+        logger.d { "Release complete." }
+    }
+
+    private fun <T> registerListener(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
         val listener = EventListener<T> { block(it) }
         val isFirstListener = !eventEmitter.hasListeners(event)
 
@@ -164,37 +183,18 @@ abstract class P2PMediaLoaderCore(
         }
     }
 
-    fun onSegmentLoaded(block: (SegmentLoadDetails) -> Unit) = bind(CoreEventMap.OnSegmentLoaded, block)
-    fun onSegmentStart(block: (SegmentStartDetails) -> Unit) = bind(CoreEventMap.OnSegmentStart, block)
-    fun onSegmentError(block: (SegmentErrorDetails) -> Unit) = bind(CoreEventMap.OnSegmentError, block)
-    fun onSegmentAbort(block: (SegmentAbortDetails) -> Unit) = bind(CoreEventMap.OnSegmentAbort, block)
+    fun onSegmentLoaded(block: (SegmentLoadDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentLoaded, block)
+    fun onSegmentStart(block: (SegmentStartDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentStart, block)
+    fun onSegmentError(block: (SegmentErrorDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentError, block)
+    fun onSegmentAbort(block: (SegmentAbortDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentAbort, block)
 
-    fun onPeerConnect(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerConnect, block)
-    fun onPeerClose(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerClose, block)
-    fun onPeerError(block: (PeerErrorDetails) -> Unit) = bind(CoreEventMap.OnPeerError, block)
+    fun onPeerConnect(block: (PeerDetails) -> Unit) = registerListener(CoreEventMap.OnPeerConnect, block)
+    fun onPeerClose(block: (PeerDetails) -> Unit) = registerListener(CoreEventMap.OnPeerClose, block)
+    fun onPeerError(block: (PeerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnPeerError, block)
 
-    fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) = bind(CoreEventMap.OnChunkDownloaded, block)
-    fun onChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = bind(CoreEventMap.OnChunkUploaded, block)
+    fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) = registerListener(CoreEventMap.OnChunkDownloaded, block)
+    fun onChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = registerListener(CoreEventMap.OnChunkUploaded, block)
 
-    fun onTrackerError(block: (TrackerErrorDetails) -> Unit) = bind(CoreEventMap.OnTrackerError, block)
-    fun onTrackerWarning(block: (TrackerWarningDetails) -> Unit) = bind(CoreEventMap.OnTrackerWarning, block)
-
-    open fun release() {
-        logger.i { "Releasing P2PMediaLoaderCore resources..." }
-
-        eventEmitter.removeAllListeners()
-
-        engineManager?.destroy()
-        engineManager = null
-
-        serverModule?.destroy()
-        serverModule = null
-
-        runBlocking { playbackProvider?.resetData() }
-        isEngineReady = false
-
-        urlFactory.setPort(-1)
-
-        logger.d { "Release complete." }
-    }
+    fun onTrackerError(block: (TrackerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnTrackerError, block)
+    fun onTrackerWarning(block: (TrackerWarningDetails) -> Unit) = registerListener(CoreEventMap.OnTrackerWarning, block)
 }
