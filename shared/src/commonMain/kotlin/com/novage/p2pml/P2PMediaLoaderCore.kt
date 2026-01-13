@@ -1,9 +1,22 @@
 package com.novage.p2pml
 
+import com.novage.p2pml.domain.interfaces.Cancellable
 import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
+import com.novage.p2pml.domain.models.ChunkDownloadedDetails
+import com.novage.p2pml.domain.models.ChunkUploadedDetails
+import com.novage.p2pml.domain.models.CoreEventMap
+import com.novage.p2pml.domain.models.PeerDetails
+import com.novage.p2pml.domain.models.PeerErrorDetails
+import com.novage.p2pml.domain.models.SegmentAbortDetails
+import com.novage.p2pml.domain.models.SegmentErrorDetails
+import com.novage.p2pml.domain.models.SegmentLoadDetails
+import com.novage.p2pml.domain.models.SegmentStartDetails
+import com.novage.p2pml.domain.models.TrackerErrorDetails
+import com.novage.p2pml.domain.models.TrackerWarningDetails
 import com.novage.p2pml.engine.P2PEngineManager
 import com.novage.p2pml.events.EventEmitter
+import com.novage.p2pml.events.EventListener
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.utils.CoreLogger
@@ -127,6 +140,43 @@ abstract class P2PMediaLoaderCore(
         onP2PReadyErrorCallback(message)
         release()
     }
+
+    private fun <T> bind(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
+        val listener = EventListener<T> { block(it) }
+        val isFirstListener = !eventEmitter.hasListeners(event)
+
+        eventEmitter.addEventListener(event, listener)
+
+        if (isEngineReady && isFirstListener) {
+            engineManager?.subscribeToP2PEvent(event.eventName)
+        }
+
+        return object : Cancellable {
+            override fun cancel() {
+                eventEmitter.removeEventListener(event, listener)
+
+                val isNowEmpty = !eventEmitter.hasListeners(event)
+                if (isEngineReady && isNowEmpty) {
+                    engineManager?.unsubscribeFromP2PEvent(event.eventName)
+                }
+            }
+        }
+    }
+
+    fun onSegmentLoaded(block: (SegmentLoadDetails) -> Unit) = bind(CoreEventMap.OnSegmentLoaded, block)
+    fun onSegmentStart(block: (SegmentStartDetails) -> Unit) = bind(CoreEventMap.OnSegmentStart, block)
+    fun onSegmentError(block: (SegmentErrorDetails) -> Unit) = bind(CoreEventMap.OnSegmentError, block)
+    fun onSegmentAbort(block: (SegmentAbortDetails) -> Unit) = bind(CoreEventMap.OnSegmentAbort, block)
+
+    fun onPeerConnect(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerConnect, block)
+    fun onPeerClose(block: (PeerDetails) -> Unit) = bind(CoreEventMap.OnPeerClose, block)
+    fun onPeerError(block: (PeerErrorDetails) -> Unit) = bind(CoreEventMap.OnPeerError, block)
+
+    fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) = bind(CoreEventMap.OnChunkDownloaded, block)
+    fun onChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = bind(CoreEventMap.OnChunkUploaded, block)
+
+    fun onTrackerError(block: (TrackerErrorDetails) -> Unit) = bind(CoreEventMap.OnTrackerError, block)
+    fun onTrackerWarning(block: (TrackerWarningDetails) -> Unit) = bind(CoreEventMap.OnTrackerWarning, block)
 
     open fun release() {
         logger.i { "Releasing P2PMediaLoaderCore resources..." }

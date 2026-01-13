@@ -10,7 +10,7 @@ struct ContentView: View {
     @State private var mediaLoader: P2PMediaLoader? = nil
     @State private var statusObserver: AnyCancellable? = nil
     @State private var isP2PReady = false
-
+    
     @State private var eventSubscriptions: [Shared.Cancellable] = []
 
     private let sampleManifest =
@@ -18,7 +18,7 @@ struct ContentView: View {
 
     private func startMediaLoader(_ loader: P2PMediaLoader) {
         loader.start(getPlaybackInfo: {
-            // Using weak self to prevent potential retain cycles within the closure
+            // Using weak self capture logic implicitly via class context or explicit guard
             guard let validPlayer = self.player else {
                 return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
             }
@@ -36,7 +36,6 @@ struct ContentView: View {
             VideoPlayer(player: player)
             .frame(height: 300)
             .onAppear {
-                // 1. Initialize the loader with the TWO required callbacks from your Kotlin file
                 let loader = P2PMediaLoader(
                     onP2PReadyCallback: {
                         print("P2P Engine is Ready!")
@@ -46,15 +45,15 @@ struct ContentView: View {
                     },
                     onP2PReadyErrorCallback: { errorMessage in
                         print("P2P Engine failed to start: \(errorMessage)")
-                        // Fallback logic: Create player without P2P if engine fails
+                        // Fallback to normal HTTP playback
                         self.createPlayer(with: nil)
                     }
                 )
 
-                // 2. Setup event listeners (OnSegmentLoaded, OnPeerConnect, etc.)
+                P2PMediaLoader.companion.enableLogging()
+
                 self.setupListeners(for: loader)
 
-                // 3. Store reference and start the loader
                 self.mediaLoader = loader
                 startMediaLoader(loader)
             }
@@ -83,22 +82,20 @@ struct ContentView: View {
         .padding()
     }
 
-    // MARK: - Helper Methods
-
     private func setupListeners(for loader: P2PMediaLoader) {
-        eventSubscriptions.append(loader.observeSegmentLoaded { details in
+        eventSubscriptions.append(loader.onSegmentLoaded { details in
             print("Segment loaded: \(details.bytesLength) bytes from \(details.downloadSource)")
         })
 
-        eventSubscriptions.append(loader.observePeerConnect { details in
+        eventSubscriptions.append(loader.onPeerConnect { details in
             print("Peer Connected: \(details.peerId)")
         })
 
-        eventSubscriptions.append(loader.observeSegmentError { details in
+        eventSubscriptions.append(loader.onSegmentError { details in
             print("Segment Error: \(details.error)")
         })
 
-        eventSubscriptions.append(loader.observeChunkDownloaded { details in
+        eventSubscriptions.append(loader.onChunkDownloaded { details in
             if let peerId = details.peerId {
                 print("Chunk from peer \(peerId): \(details.bytesLength) bytes")
             } else {
@@ -154,6 +151,7 @@ struct ContentView: View {
         player = nil
         statusObserver?.cancel()
         statusObserver = nil
+        mediaLoader?.release()
         mediaLoader = nil
         isP2PReady = false
     }

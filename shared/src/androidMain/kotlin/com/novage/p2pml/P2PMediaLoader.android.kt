@@ -3,9 +3,7 @@ package com.novage.p2pml
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
-import com.novage.p2pml.domain.models.CoreEventMap
 import com.novage.p2pml.domain.models.PlaybackInfo
-import com.novage.p2pml.events.EventListener
 import com.novage.p2pml.interop.OnP2PReadyCallback
 import com.novage.p2pml.interop.OnP2PReadyErrorCallback
 import com.novage.p2pml.providers.DefaultPlaybackProvider
@@ -62,35 +60,5 @@ class P2PMediaLoader(
     fun start(exoPlayer: ExoPlayer) {
         val provider = ExoPlayerPlaybackProvider(exoPlayer)
         startInternal(provider)
-    }
-
-    /**
-     * Adds an event listener to the P2P engine.
-     *
-     * @param event Event type to listen for
-     * @param listener Callback function to invoke when the event occurs
-     */
-    fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
-        val isFirstListener = !eventEmitter.hasListeners(event)
-        eventEmitter.addEventListener(event, listener)
-
-        if (isEngineReady && isFirstListener) {
-            engineManager?.subscribeToP2PEvent(event.eventName)
-        }
-    }
-
-    /**
-     * Removes an event listener from the P2P engine.
-     *
-     * @param event Event type to remove the listener from
-     * @param listener Callback function to remove
-     */
-    fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
-        eventEmitter.removeEventListener(event, listener)
-
-        val isNowEmpty = !eventEmitter.hasListeners(event)
-        if (isEngineReady && isNowEmpty) {
-            engineManager?.unsubscribeFromP2PEvent(event.eventName)
-        }
     }
 }

@@ -3,11 +3,7 @@ package com.novage.p2pml.demo.stats
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.novage.p2pml.P2PMediaLoader
-import com.novage.p2pml.domain.models.ChunkDownloadedDetails
-import com.novage.p2pml.domain.models.ChunkUploadedDetails
-import com.novage.p2pml.domain.models.CoreEventMap
-import com.novage.p2pml.domain.models.PeerDetails
-import com.novage.p2pml.events.EventListener
+import com.novage.p2pml.domain.interfaces.Cancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -24,68 +20,57 @@ constructor(private val p2pMediaLoader: P2PMediaLoader) {
     private val _statsFlow = MutableStateFlow(P2PStats())
     val statsFlow: StateFlow<P2PStats> = _statsFlow
 
-    private val chunkDownloadedListener =
-        object : EventListener<ChunkDownloadedDetails> {
-            override fun onEvent(data: ChunkDownloadedDetails) {
-                if (data.downloadSource == "http") {
-                    _statsFlow.value =
-                        _statsFlow.value.copy(
-                            bytesDownloadedHttp = _statsFlow.value.bytesDownloadedHttp + data.bytesLength
-                        )
-                } else if (data.downloadSource == "p2p") {
-                    _statsFlow.value =
-                        _statsFlow.value.copy(
-                            bytesDownloadedP2p = _statsFlow.value.bytesDownloadedP2p + data.bytesLength
-                        )
-                }
-            }
-        }
-
-    private val chunkUploadedListener =
-        object : EventListener<ChunkUploadedDetails> {
-            override fun onEvent(data: ChunkUploadedDetails) {
-                _statsFlow.value =
-                    _statsFlow.value.copy(
-                        bytesUploaded = _statsFlow.value.bytesUploaded + data.bytesLength
-                    )
-            }
-        }
-
-    private val peerConnectListener =
-        object : EventListener<PeerDetails> {
-            override fun onEvent(data: PeerDetails) {
-                val updatedPeers =
-                    _statsFlow.value.connectedPeers.toMutableSet().apply {
-                        add(data.peerId)
-                    }
-                _statsFlow.value = _statsFlow.value.copy(connectedPeers = updatedPeers)
-            }
-        }
-
-    private val peerCloseListener =
-        object : EventListener<PeerDetails> {
-            override fun onEvent(data: PeerDetails) {
-                val updatedPeers =
-                    _statsFlow.value.connectedPeers.toMutableSet().apply {
-                        remove(data.peerId)
-                    }
-                _statsFlow.value = _statsFlow.value.copy(connectedPeers = updatedPeers)
-            }
-        }
+    private val subscriptions = mutableListOf<Cancellable>()
 
     @OptIn(UnstableApi::class)
     fun startTracking() {
-        p2pMediaLoader.addEventListener(CoreEventMap.OnChunkDownloaded, chunkDownloadedListener)
-        p2pMediaLoader.addEventListener(CoreEventMap.OnChunkUploaded, chunkUploadedListener)
-        p2pMediaLoader.addEventListener(CoreEventMap.OnPeerConnect, peerConnectListener)
-        p2pMediaLoader.addEventListener(CoreEventMap.OnPeerClose, peerCloseListener)
+
+        subscriptions.add(
+            p2pMediaLoader.onChunkDownloaded { data ->
+                val currentStats = _statsFlow.value
+                if (data.downloadSource == "http") {
+                    _statsFlow.value = currentStats.copy(
+                        bytesDownloadedHttp = currentStats.bytesDownloadedHttp + data.bytesLength
+                    )
+                } else if (data.downloadSource == "p2p") {
+                    _statsFlow.value = currentStats.copy(
+                        bytesDownloadedP2p = currentStats.bytesDownloadedP2p + data.bytesLength
+                    )
+                }
+            }
+        )
+
+        subscriptions.add(
+            p2pMediaLoader.onChunkUploaded { data ->
+                val currentStats = _statsFlow.value
+                _statsFlow.value = currentStats.copy(
+                    bytesUploaded = currentStats.bytesUploaded + data.bytesLength
+                )
+            }
+        )
+
+        subscriptions.add(
+            p2pMediaLoader.onPeerConnect { data ->
+                val updatedPeers = _statsFlow.value.connectedPeers.toMutableSet().apply {
+                    add(data.peerId)
+                }
+                _statsFlow.value = _statsFlow.value.copy(connectedPeers = updatedPeers)
+            }
+        )
+
+        subscriptions.add(
+            p2pMediaLoader.onPeerClose { data ->
+                val updatedPeers = _statsFlow.value.connectedPeers.toMutableSet().apply {
+                    remove(data.peerId)
+                }
+                _statsFlow.value = _statsFlow.value.copy(connectedPeers = updatedPeers)
+            }
+        )
     }
 
     @OptIn(UnstableApi::class)
     fun stopTracking() {
-        p2pMediaLoader.removeEventListener(CoreEventMap.OnChunkDownloaded, chunkDownloadedListener)
-        p2pMediaLoader.removeEventListener(CoreEventMap.OnChunkUploaded, chunkUploadedListener)
-        p2pMediaLoader.removeEventListener(CoreEventMap.OnPeerConnect, peerConnectListener)
-        p2pMediaLoader.removeEventListener(CoreEventMap.OnPeerClose, peerCloseListener)
+        subscriptions.forEach { it.cancel() }
+        subscriptions.clear()
     }
 }
