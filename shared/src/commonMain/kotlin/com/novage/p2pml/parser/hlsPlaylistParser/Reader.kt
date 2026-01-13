@@ -1,6 +1,6 @@
 package com.novage.p2pml.parser.hlsPlaylistParser
 
-class Reader(private val text: String) {
+internal class Reader(private val text: String) {
     private var position = 0
 
     fun read(): Int = if (position < text.length) {

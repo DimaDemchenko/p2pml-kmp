@@ -11,7 +11,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.novage.p2pml.events.EventEmitter
 
-class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
+internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: EventEmitter,
         onWebViewLoaded: () -> Unit,

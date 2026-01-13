@@ -4,7 +4,7 @@ import com.novage.p2pml.domain.models.ByteRange
 import com.novage.p2pml.domain.models.Segment
 import kotlinx.serialization.Serializable
 
-abstract class HlsPlaylist(val baseUri: String)
+internal abstract class HlsPlaylist(val baseUri: String)
 
 internal class HlsMultivariantPlaylist(
     baseUri: String,

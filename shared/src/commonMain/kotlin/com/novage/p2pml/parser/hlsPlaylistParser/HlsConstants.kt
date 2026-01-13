@@ -1,6 +1,6 @@
 package com.novage.p2pml.parser.hlsPlaylistParser
 
-object HlsConstants {
+internal object HlsConstants {
     const val MICROS_PER_SECOND = 1_000_000L
     const val PLAYLIST_HEADER: String = "#EXTM3U"
     const val TAG_VERSION: String = "#EXT-X-VERSION"
