@@ -4,10 +4,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.webkit.JavascriptInterface
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.domain.models.ChunkDownloadedDetails
 import com.novage.p2pml.domain.models.ChunkUploadedDetails
 import com.novage.p2pml.domain.models.CoreEventMap
-import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.json.JSONException

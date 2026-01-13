@@ -1,6 +1,9 @@
 package com.novage.p2pml
 
 import com.novage.p2pml.domain.interfaces.Cancellable
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
+import com.novage.p2pml.domain.interfaces.EventListener
+import com.novage.p2pml.domain.interfaces.HeadlessWebView
 import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.domain.models.ChunkDownloadedDetails
@@ -15,14 +18,11 @@ import com.novage.p2pml.domain.models.SegmentStartDetails
 import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
 import com.novage.p2pml.engine.P2PEngineManager
-import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.events.EventEmitter
-import com.novage.p2pml.domain.interfaces.EventListener
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.utils.CoreLogger
 import com.novage.p2pml.utils.LogConfig
-import com.novage.p2pml.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.runBlocking
 
@@ -192,9 +192,11 @@ abstract class P2PMediaLoaderCore(
     fun onPeerClose(block: (PeerDetails) -> Unit) = registerListener(CoreEventMap.OnPeerClose, block)
     fun onPeerError(block: (PeerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnPeerError, block)
 
-    fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) = registerListener(CoreEventMap.OnChunkDownloaded, block)
+    fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) =
+        registerListener(CoreEventMap.OnChunkDownloaded, block)
     fun onChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = registerListener(CoreEventMap.OnChunkUploaded, block)
 
     fun onTrackerError(block: (TrackerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnTrackerError, block)
-    fun onTrackerWarning(block: (TrackerWarningDetails) -> Unit) = registerListener(CoreEventMap.OnTrackerWarning, block)
+    fun onTrackerWarning(block: (TrackerWarningDetails) -> Unit) =
+        registerListener(CoreEventMap.OnTrackerWarning, block)
 }

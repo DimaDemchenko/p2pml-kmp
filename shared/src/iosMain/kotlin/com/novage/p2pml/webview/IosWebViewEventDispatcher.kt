@@ -1,5 +1,6 @@
 package com.novage.p2pml.webview
 
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.domain.models.ChunkDownloadedDetails
 import com.novage.p2pml.domain.models.ChunkUploadedDetails
 import com.novage.p2pml.domain.models.CoreEventMap
@@ -11,7 +12,6 @@ import com.novage.p2pml.domain.models.SegmentLoadDetails
 import com.novage.p2pml.domain.models.SegmentStartDetails
 import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
-import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.utils.decodeFromNSDictionary
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -21,7 +21,7 @@ import platform.WebKit.WKScriptMessageHandlerProtocol
 import platform.WebKit.WKUserContentController
 import platform.darwin.NSObject
 
-class IosWebViewEventDispatcher(
+internal class IosWebViewEventDispatcher(
     private val eventEmitter: CoreEventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null

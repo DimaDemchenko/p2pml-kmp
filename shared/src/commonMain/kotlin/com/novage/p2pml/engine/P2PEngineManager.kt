@@ -1,9 +1,9 @@
 package com.novage.p2pml.engine
 
+import com.novage.p2pml.domain.interfaces.HeadlessWebView
 import com.novage.p2pml.domain.interfaces.P2PEngine
 import com.novage.p2pml.domain.interfaces.PlaybackProvider
 import com.novage.p2pml.utils.CoreLogger
-import com.novage.p2pml.webview.HeadlessWebView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

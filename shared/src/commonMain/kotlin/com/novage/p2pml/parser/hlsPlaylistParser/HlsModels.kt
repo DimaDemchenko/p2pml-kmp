@@ -22,7 +22,7 @@ internal class HlsMediaPlaylist(
     val hlsSegments: List<HlsSegment>
 ) : HlsPlaylist(baseUri)
 
-data class Variant(
+internal data class Variant(
     val url: String,
     val urlInManifest: String,
     val videoGroupId: String? = null,
@@ -31,9 +31,9 @@ data class Variant(
     val captionGroupId: String? = null
 )
 
-data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)
+internal data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)
 
-data class InitializationSegment(val url: String, val absoluteUrl: String)
+internal data class InitializationSegment(val url: String, val absoluteUrl: String)
 
 internal data class HlsSegment(
     val url: String,
