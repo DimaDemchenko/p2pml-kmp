@@ -7,14 +7,14 @@ import android.webkit.JavascriptInterface
 import com.novage.p2pml.domain.models.ChunkDownloadedDetails
 import com.novage.p2pml.domain.models.ChunkUploadedDetails
 import com.novage.p2pml.domain.models.CoreEventMap
-import com.novage.p2pml.events.EventEmitter
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.json.JSONException
 import org.json.JSONObject
 
 class AndroidWebViewEventDispatcher(
-    private val eventEmitter: EventEmitter,
+    private val eventEmitter: CoreEventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null
 ) {

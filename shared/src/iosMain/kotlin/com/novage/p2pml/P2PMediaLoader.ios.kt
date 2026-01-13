@@ -39,5 +39,4 @@ class P2PMediaLoader(
 
         initialize(webView, provider)
     }
-
 }

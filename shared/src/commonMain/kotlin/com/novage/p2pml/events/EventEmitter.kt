@@ -1,20 +1,18 @@
 package com.novage.p2pml.events
 
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
+import com.novage.p2pml.domain.interfaces.EventListener
 import com.novage.p2pml.domain.models.CoreEventMap
 
-fun interface EventListener<T> {
-    fun onEvent(data: T)
-}
-
-class EventEmitter {
+internal class EventEmitter : CoreEventEmitter {
     private val listeners = mutableMapOf<CoreEventMap<*>, MutableList<EventListener<*>>>()
 
-    fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
+    override fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
         val list = listeners.getOrPut(event) { mutableListOf() }
         list.add(listener)
     }
 
-    fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
+    override fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>) {
         listeners[event]?.let { list ->
             list.remove(listener)
 
@@ -24,18 +22,20 @@ class EventEmitter {
         }
     }
 
-    fun <T> emit(event: CoreEventMap<T>, data: T) {
+    override fun <T> emit(event: CoreEventMap<T>, data: T) {
         listeners[event]?.forEach {
             @Suppress("UNCHECKED_CAST")
             (it as EventListener<T>).onEvent(data)
         }
     }
 
-    fun removeAllListeners() {
+    override fun removeAllListeners() {
         listeners.clear()
     }
 
-    fun getSubscribedEventNames(): List<String> = listeners.filterValues { it.isNotEmpty() }.keys.map { it.eventName }
+    override fun getSubscribedEventNames(): List<String> = listeners.filterValues {
+        it.isNotEmpty()
+    }.keys.map { it.eventName }
 
-    fun <T> hasListeners(event: CoreEventMap<T>): Boolean = listeners[event]?.isNotEmpty() == true
+    override fun <T> hasListeners(event: CoreEventMap<T>): Boolean = listeners[event]?.isNotEmpty() == true
 }

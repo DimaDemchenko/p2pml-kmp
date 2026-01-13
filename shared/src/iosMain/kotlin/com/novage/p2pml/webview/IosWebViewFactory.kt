@@ -1,6 +1,6 @@
 package com.novage.p2pml.webview
 
-import com.novage.p2pml.events.EventEmitter
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
@@ -17,16 +17,16 @@ import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
-class IosWebViewFactory : WebViewFactory {
+internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
-        eventEmitter: EventEmitter,
+        eventEmitter: CoreEventEmitter,
         onWebViewLoaded: () -> Unit,
         onWebViewError: (String) -> Unit
     ): HeadlessWebView = IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
 private class IosHeadlessWebView(
-    private val eventEmitter: EventEmitter,
+    private val eventEmitter: CoreEventEmitter,
     private val onWebViewLoaded: () -> Unit,
     private val onWebViewError: (String) -> Unit
 ) : HeadlessWebView {

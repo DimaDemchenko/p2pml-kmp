@@ -11,7 +11,7 @@ import com.novage.p2pml.domain.models.SegmentLoadDetails
 import com.novage.p2pml.domain.models.SegmentStartDetails
 import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
-import com.novage.p2pml.events.EventEmitter
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.utils.decodeFromNSDictionary
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -22,7 +22,7 @@ import platform.WebKit.WKUserContentController
 import platform.darwin.NSObject
 
 class IosWebViewEventDispatcher(
-    private val eventEmitter: EventEmitter,
+    private val eventEmitter: CoreEventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null
 ) : NSObject(),

@@ -15,8 +15,9 @@ import com.novage.p2pml.domain.models.SegmentStartDetails
 import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
 import com.novage.p2pml.engine.P2PEngineManager
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.events.EventEmitter
-import com.novage.p2pml.events.EventListener
+import com.novage.p2pml.domain.interfaces.EventListener
 import com.novage.p2pml.server.ServerModule
 import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.utils.CoreLogger
@@ -43,7 +44,7 @@ abstract class P2PMediaLoaderCore(
 
     private val logger = CoreLogger("P2PMediaLoaderCore")
     private val urlFactory = LocalUrlFactory()
-    protected val eventEmitter = EventEmitter()
+    protected val eventEmitter: CoreEventEmitter = EventEmitter()
 
     protected var engineManager: P2PEngine? = null
         private set

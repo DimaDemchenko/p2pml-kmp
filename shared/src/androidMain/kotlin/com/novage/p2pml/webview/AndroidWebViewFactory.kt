@@ -9,11 +9,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.novage.p2pml.events.EventEmitter
+import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
-        eventEmitter: EventEmitter,
+        eventEmitter: CoreEventEmitter,
         onWebViewLoaded: () -> Unit,
         onWebViewError: (String) -> Unit
     ): HeadlessWebView = AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
@@ -21,7 +21,7 @@ internal class AndroidWebViewFactory(private val context: Context) : WebViewFact
 
 private class AndroidHeadlessWebView(
     context: Context,
-    eventEmitter: EventEmitter,
+    eventEmitter: CoreEventEmitter,
     private val onWebViewLoaded: () -> Unit,
     private val onWebViewError: (String) -> Unit
 ) : HeadlessWebView {
