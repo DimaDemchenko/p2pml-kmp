@@ -301,16 +301,14 @@ internal class HlsManifestParser(
     }
 
     private fun replaceUrlInManifest(updatedManifestBuilder: StringBuilder, oldUrl: String, newUrl: String) {
-        val startIndex = updatedManifestBuilder.indexOf(oldUrl).takeIf { it != -1 }
-
-        if (startIndex == null) {
-            logger.w { "Failed to rewrite URL. Original string not found in manifest: $oldUrl" }
+        val startIndex = updatedManifestBuilder.indexOf(oldUrl)
+        if (startIndex == -1) {
+            logger.w { "Failed to rewrite URL. Original string not found: $oldUrl" }
             return
         }
 
         val endIndex = startIndex + oldUrl.length
-        updatedManifestBuilder.deleteRange(startIndex, endIndex)
-        updatedManifestBuilder.insert(startIndex, newUrl)
+        updatedManifestBuilder.setRange(startIndex, endIndex, newUrl)
     }
 
     suspend fun getUpdateStreamParamsJson(variantUrl: String): String = mutex.withLock {
