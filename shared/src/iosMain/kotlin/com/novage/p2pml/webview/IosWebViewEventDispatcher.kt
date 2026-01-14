@@ -12,6 +12,7 @@ import com.novage.p2pml.domain.models.SegmentLoadDetails
 import com.novage.p2pml.domain.models.SegmentStartDetails
 import com.novage.p2pml.domain.models.TrackerErrorDetails
 import com.novage.p2pml.domain.models.TrackerWarningDetails
+import com.novage.p2pml.utils.CoreLogger
 import com.novage.p2pml.utils.decodeFromNSDictionary
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -27,6 +28,8 @@ internal class IosWebViewEventDispatcher(
     private val onPageReady: (() -> Unit)? = null
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
+
+    private val logger = CoreLogger("IosWebViewEventDispatcher")
 
     override fun userContentController(
         userContentController: WKUserContentController,
@@ -116,13 +119,15 @@ internal class IosWebViewEventDispatcher(
                     val details = json.decodeFromNSDictionary<TrackerWarningDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnTrackerWarning, details)
                 }
+
+                else -> logger.w { "Unknown message type received from WebView: $type" }
             }
         } catch (e: SerializationException) {
-            println("JSON Decoding failed for '$type': ${e.message}")
+            logger.e { "JSON Decoding failed for '$type': ${e.message}" }
         } catch (e: IllegalArgumentException) {
-            println("Invalid argument for '$type': ${e.message}")
+            logger.e { "Invalid argument for '$type': ${e.message}" }
         } catch (e: IllegalStateException) {
-            println("State error handling '$type': ${e.message}")
+            logger.e { "State error handling '$type': ${e.message}" }
         }
     }
 }

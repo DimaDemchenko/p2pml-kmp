@@ -8,6 +8,7 @@ import com.novage.p2pml.domain.interfaces.CoreEventEmitter
 import com.novage.p2pml.domain.models.ChunkDownloadedDetails
 import com.novage.p2pml.domain.models.ChunkUploadedDetails
 import com.novage.p2pml.domain.models.CoreEventMap
+import com.novage.p2pml.utils.CoreLogger
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.json.JSONException
@@ -18,6 +19,7 @@ class AndroidWebViewEventDispatcher(
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null
 ) {
+    private val logger = CoreLogger("AndroidWebViewEventDispatcher")
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @JavascriptInterface
@@ -68,10 +70,10 @@ class AndroidWebViewEventDispatcher(
                 "onPeerError" -> emitEvent(CoreEventMap.OnPeerError, payloadStr)
                 "onTrackerError" -> emitEvent(CoreEventMap.OnTrackerError, payloadStr)
                 "onTrackerWarning" -> emitEvent(CoreEventMap.OnTrackerWarning, payloadStr)
-                else -> Log.w("P2PML", "Unknown event type received: $type")
+                else -> logger.w { "Unknown message type received from WebView: $type" }
             }
         } catch (e: JSONException) {
-            Log.e("P2PML", "Failed to parse message JSON: ${e.message}")
+            logger.e { "Failed to parse message JSON: ${e.message}" }
         }
     }
 
@@ -83,9 +85,9 @@ class AndroidWebViewEventDispatcher(
             val data = json.decodeFromString<T>(jsonStr)
             eventEmitter.emit(event, data)
         } catch (e: SerializationException) {
-            Log.e("P2PML", "Failed to deserialize payload for ${event.eventName}: ${e.message}")
+            logger.e { "Failed to deserialize payload for ${event.eventName}: ${e.message}" }
         } catch (e: IllegalArgumentException) {
-            Log.e("P2PML", "Invalid arguments for ${event.eventName}: ${e.message}")
+            logger.e { "Invalid arguments for ${event.eventName}: ${e.message}" }
         }
     }
 }
