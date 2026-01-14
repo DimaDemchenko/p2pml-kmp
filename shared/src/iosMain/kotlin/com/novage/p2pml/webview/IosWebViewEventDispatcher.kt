@@ -119,8 +119,6 @@ internal class IosWebViewEventDispatcher(
                     val details = json.decodeFromNSDictionary<TrackerWarningDetails>(payloadDict)
                     eventEmitter.emit(CoreEventMap.OnTrackerWarning, details)
                 }
-
-                else -> logger.w { "Unknown message type received from WebView: $type" }
             }
         } catch (e: SerializationException) {
             logger.e { "JSON Decoding failed for '$type': ${e.message}" }
