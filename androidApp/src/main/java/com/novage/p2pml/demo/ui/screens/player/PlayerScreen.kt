@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.novage.p2pml.demo.ui.components.StatCard
+import com.novage.p2pml.demo.ui.screens.player.components.QualityDialog
 import com.novage.p2pml.demo.ui.theme.BackgroundDark
 import com.novage.p2pml.demo.ui.theme.HttpBlue
 import com.novage.p2pml.demo.ui.theme.P2PGreen
@@ -54,6 +59,8 @@ private const val BYTES_PER_KB = 1024.0
 fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+
+    var showQualityDialog by remember { mutableStateOf(false) }
 
     PlayerLifecycleObserver(viewModel)
 
@@ -95,12 +102,25 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
                 )
             }
 
+            IconButton(
+                onClick = { showQualityDialog = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Quality Settings",
+                    tint = Color.White
+                )
+            }
+
             if (uiState.isP2PActive) {
                 Badge(
                     containerColor = P2PGreen.copy(alpha = 0.8f),
                     contentColor = TextWhite,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
+                        .align(Alignment.TopStart)
                         .padding(8.dp)
                 ) {
                     Text("P2P ON", modifier = Modifier.padding(4.dp))
@@ -163,6 +183,17 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+
+    if (showQualityDialog) {
+        QualityDialog(
+            qualities = uiState.qualities,
+            onDismiss = { showQualityDialog = false },
+            onQualitySelected = { quality ->
+                viewModel.changeQuality(quality)
+                showQualityDialog = false
+            }
+        )
     }
 }
 
