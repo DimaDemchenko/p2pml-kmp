@@ -40,6 +40,7 @@ internal class ManifestService(
 
     private suspend fun syncWithEngine(manifestUrl: String, needsInitialSetup: Boolean) {
         try {
+            val updateStreamJson = parser.getUpdateStreamParamsJson(manifestUrl)
             if (needsInitialSetup) {
                 logger.d { "Performing initial P2P Engine setup for master manifest." }
 
@@ -47,10 +48,14 @@ internal class ManifestService(
 
                 engineManager.setManifestUrl(manifestUrl)
                 engineManager.sendAllStreams(streamsJson)
+
+                updateStreamJson?.let { engineManager.sendStream(it) }
+            } else {
+                updateStreamJson?.let { json ->
+                    engineManager.sendStream(json)
+                } ?: error("No stream parameters found for URL: $manifestUrl")
             }
 
-            val updateStreamJson = parser.getUpdateStreamParamsJson(manifestUrl)
-            engineManager.sendStream(updateStreamJson)
         } catch (e: IllegalStateException) {
             logger.e(e) { "Failed to sync with Engine: State inconsistency" }
         } catch (e: SerializationException) {

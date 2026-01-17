@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber")
+
 package com.novage.p2pml.demo.ui.theme
 
 import androidx.compose.ui.graphics.Color

@@ -81,15 +81,13 @@ class PlayerViewModel : ViewModel() {
     }
 
     @OptIn(UnstableApi::class)
-    private fun configureBufferSettings(): LoadControl {
-        return DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                PLAYER_MIN_BUFFER_MS,
-                PLAYER_MAX_BUFFER_MS,
-                BUFFER_FOR_PLAYBACK_MS,
-                BUFFER_FOR_REBUFFER_MS
-            ).build()
-    }
+    private fun configureBufferSettings(): LoadControl = DefaultLoadControl.Builder()
+        .setBufferDurationsMs(
+            PLAYER_MIN_BUFFER_MS,
+            PLAYER_MAX_BUFFER_MS,
+            BUFFER_FOR_PLAYBACK_MS,
+            BUFFER_FOR_REBUFFER_MS
+        ).build()
 
     private fun startPlayback(exoPlayer: ExoPlayer, url: String) {
         exoPlayer.setMediaItem(MediaItem.fromUri(url))

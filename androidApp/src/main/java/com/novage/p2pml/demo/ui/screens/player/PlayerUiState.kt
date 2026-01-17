@@ -2,6 +2,8 @@ package com.novage.p2pml.demo.ui.screens.player
 
 import com.novage.p2pml.domain.models.PeerDetails
 
+private const val PERCENT_MULTIPLIER = 100
+
 data class PlayerUiState(
     val isInitializing: Boolean = true,
     // Stats
@@ -15,7 +17,10 @@ data class PlayerUiState(
     val isP2PActive: Boolean = false,
     val errorMessage: String? = null
 ) {
-    // Helper to calculate percentage for the UI badge
     val p2pPercentage: Int
-        get() = if (totalDownloaded > 0) ((p2pDownloaded.toFloat() / totalDownloaded) * 100).toInt() else 0
+        get() = if (totalDownloaded > 0) {
+            ((p2pDownloaded.toFloat() / totalDownloaded) * PERCENT_MULTIPLIER).toInt()
+        } else {
+            0
+        }
 }

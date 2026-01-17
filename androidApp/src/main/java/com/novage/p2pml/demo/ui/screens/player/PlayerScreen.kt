@@ -2,13 +2,30 @@ package com.novage.p2pml.demo.ui.screens.player
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,6 +47,7 @@ import kotlin.math.ln
 import kotlin.math.pow
 
 private const val ASPECT_RATIO = 16f / 9f
+private const val BYTES_PER_KB = 1024.0
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -152,10 +170,10 @@ fun PlayerScreen(
 
 
 fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
+    if (bytes < BYTES_PER_KB) return "$bytes B"
 
-    val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt()
+    val exp = (ln(bytes.toDouble()) / ln(BYTES_PER_KB)).toInt()
     val pre = "KMGTPE"[exp - 1]
 
-    return String.format(Locale.US, "%.1f %sB", bytes / 1024.0.pow(exp.toDouble()), pre)
+    return String.format(Locale.US, "%.1f %sB", bytes / BYTES_PER_KB.pow(exp.toDouble()), pre)
 }

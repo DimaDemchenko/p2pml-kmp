@@ -311,9 +311,8 @@ internal class HlsManifestParser(
         updatedManifestBuilder.setRange(startIndex, endIndex, newUrl)
     }
 
-    suspend fun getUpdateStreamParamsJson(variantUrl: String): String = mutex.withLock {
-        val params = updateStreamParams[variantUrl]
-            ?: error("No stream parameters found for URL: $variantUrl")
+    suspend fun getUpdateStreamParamsJson(variantUrl: String): String? = mutex.withLock {
+        val params = updateStreamParams[variantUrl] ?: return@withLock null
         Json.encodeToString(params)
     }
 
