@@ -10,17 +10,17 @@ import com.novage.p2pml.providers.DefaultPlaybackProvider
 import com.novage.p2pml.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.webview.AndroidWebViewFactory
 
-class P2PMediaLoader(
+class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,
-    onP2PReadyCallback: OnP2PReadyCallback,
-    onP2PReadyErrorCallback: OnP2PReadyErrorCallback,
+    onReady: OnP2PReadyCallback,
+    onError: OnP2PReadyErrorCallback,
     coreConfigJson: String = "{}",
-    customEngineFileUrl: String? = null
+    customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
-    onP2PReadyCallback = { onP2PReadyCallback.onReady() },
-    onP2PReadyErrorCallback = { message -> onP2PReadyErrorCallback.onError(message) },
+    onReady = { onReady.onReady() },
+    onError = { message -> onError.onError(message) },
     coreConfigJson = coreConfigJson,
-    customEngineFileUrl = customEngineFileUrl
+    customEngineUrl = customEngineUrl
 ) {
 
     companion object {

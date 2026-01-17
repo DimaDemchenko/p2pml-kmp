@@ -27,10 +27,10 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.runBlocking
 
 abstract class P2PMediaLoaderCore(
-    private val onP2PReadyCallback: () -> Unit,
-    private val onP2PReadyErrorCallback: (message: String) -> Unit,
+    private val onReady: () -> Unit,
+    private val onError: (message: String) -> Unit,
     private val coreConfigJson: String = "{}",
-    private val customEngineFileUrl: String? = null
+    private val customEngineUrl: String? = null
 ) {
     companion object {
         fun enableLogging() {
@@ -74,7 +74,7 @@ abstract class P2PMediaLoaderCore(
             playbackProvider = provider,
             engineManager = engine,
             urlFactory = urlFactory,
-            enableCors = customEngineFileUrl != null,
+            enableCors = customEngineUrl != null,
             onServerStartError = ::failInitialization,
             onServerStarted = { port ->
                 logger.i { "Local P2P Server started on port: $port" }
@@ -106,7 +106,7 @@ abstract class P2PMediaLoaderCore(
     private fun onServerReady() {
         val engine = engineManager ?: return
 
-        val engineFileUrl = customEngineFileUrl ?: urlFactory.buildStaticPageUrl()
+        val engineFileUrl = customEngineUrl ?: urlFactory.buildStaticPageUrl()
         logger.d { "Loading P2P Engine from: $engineFileUrl" }
         engine.loadUrl(engineFileUrl)
     }
@@ -133,12 +133,12 @@ abstract class P2PMediaLoaderCore(
         }
 
         isEngineReady = true
-        onP2PReadyCallback()
+        onReady()
     }
 
     protected fun failInitialization(message: String) {
         logger.e { "Initialization failed: $message" }
-        onP2PReadyErrorCallback(message)
+        onError(message)
         release()
     }
 

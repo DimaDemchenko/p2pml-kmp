@@ -50,7 +50,7 @@ class PlayerViewModel : ViewModel() {
         val loader = P2PMediaLoader(
             context = context,
             coreConfigJson = "{\"highDemandTimeWindow\": $HIGH_DEMAND_WINDOW_SEC }",
-            onP2PReadyCallback = {
+            onReady = {
                 val activeLoader = p2pLoader ?: return@P2PMediaLoader
                 val p2pUrl = try {
                     activeLoader.getManifestUrl(manifestUrl)
@@ -61,7 +61,7 @@ class PlayerViewModel : ViewModel() {
                 startPlayback(exoPlayer, p2pUrl)
                 _uiState.update { it.copy(isP2PActive = true) }
             },
-            onP2PReadyErrorCallback = { error ->
+            onError = { error ->
                 if (p2pLoader == null) return@P2PMediaLoader
 
                 startPlayback(exoPlayer, manifestUrl)
