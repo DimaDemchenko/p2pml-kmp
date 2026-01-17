@@ -92,13 +92,11 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
 
     suspend fun reset() {
         mutex.withLock {
-            val count = requests.size
-            if (count > 0) {
-                logger.i { "Resetting service. Cancelling $count pending downloads." }
+            if (requests.isNotEmpty()) {
+                logger.i { "Resetting service. Cancelling ${requests.size} pending downloads." }
             }
 
-            val resetException = Exception("Engine Resetting")
-            requests.values.forEach { it.deferred.completeExceptionally(resetException) }
+            requests.values.forEach { it.deferred.cancel() }
             requests.clear()
         }
     }

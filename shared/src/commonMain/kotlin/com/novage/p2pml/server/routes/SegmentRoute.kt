@@ -21,6 +21,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 
 private val logger = CoreLogger("SegmentRoute")
@@ -82,6 +83,9 @@ private fun Route.segmentDownloadRoute(
         } catch (_: SegmentAbortedException) {
             logger.w { "P2P Engine aborted segment. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
+        } catch (_: CancellationException) {
+            logger.i { "Request cancelled (Service Reset). Terminating connection." }
+            call.respond(HttpStatusCode.ServiceUnavailable)
         } finally {
             if (deferred?.isActive == true) {
                 logger.d { "Cleaning up active request." }
