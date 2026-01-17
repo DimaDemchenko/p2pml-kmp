@@ -79,6 +79,9 @@ private fun Route.segmentDownloadRoute(
         } catch (e: SegmentProcessingException) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, byteRange)
+        } catch (_: SegmentAbortedException) {
+            logger.w { "P2P Engine aborted segment. Falling back to HTTP." }
+            call.respondFallback(httpClient, segmentUrl, byteRange)
         } finally {
             if (deferred?.isActive == true) {
                 logger.d { "Cleaning up active request." }
@@ -107,6 +110,7 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
                 deferredSegment.completeExceptionally(
                     SegmentAbortedException("Segment aborted - $segmentId")
                 )
+                segmentService.removeRequest(segmentId)
             } else {
                 logger.w { "Error processing segment: $segmentId - $error" }
                 deferredSegment.completeExceptionally(

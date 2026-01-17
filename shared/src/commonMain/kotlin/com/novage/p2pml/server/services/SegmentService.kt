@@ -43,7 +43,9 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
             val newDeferred = CompletableDeferred<ByteArray>()
             requests[segmentUrl] = RequestState(newDeferred, currentAttempts + 1)
 
-            p2pEngine.requestSegmentBytes(segmentUrl)
+            if (previousState == null) {
+                p2pEngine.requestSegmentBytes(segmentUrl)
+            }
 
             return newDeferred
         }
