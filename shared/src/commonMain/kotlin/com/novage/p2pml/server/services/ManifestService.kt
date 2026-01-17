@@ -55,7 +55,6 @@ internal class ManifestService(
                     engineManager.sendStream(json)
                 } ?: error("No stream parameters found for URL: $manifestUrl")
             }
-
         } catch (e: IllegalStateException) {
             logger.e(e) { "Failed to sync with Engine: State inconsistency" }
         } catch (e: SerializationException) {

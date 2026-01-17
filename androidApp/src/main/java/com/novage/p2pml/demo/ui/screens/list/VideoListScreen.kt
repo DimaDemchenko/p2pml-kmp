@@ -40,9 +40,7 @@ import com.novage.p2pml.demo.ui.theme.P2PGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideoListScreen(
-    onVideoSelected: (String) -> Unit
-) {
+fun VideoListScreen(onVideoSelected: (String) -> Unit) {
     var customUrl by remember { mutableStateOf("") }
 
     Scaffold(
@@ -63,7 +61,6 @@ fun VideoListScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
-
             OutlinedTextField(
                 value = customUrl,
                 onValueChange = { customUrl = it },
@@ -107,10 +104,7 @@ fun VideoListScreen(
 }
 
 @Composable
-fun StreamListItem(
-    stream: com.novage.p2pml.demo.data.VideoStream,
-    onClick: () -> Unit
-) {
+fun StreamListItem(stream: com.novage.p2pml.demo.data.VideoStream, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier
             .clickable { onClick() }

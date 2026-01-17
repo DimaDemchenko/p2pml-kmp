@@ -51,11 +51,7 @@ private const val BYTES_PER_KB = 1024.0
 
 @OptIn(UnstableApi::class)
 @Composable
-fun PlayerScreen(
-    videoUrl: String,
-    onBackClick: () -> Unit,
-    viewModel: PlayerViewModel = viewModel()
-) {
+fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
@@ -167,7 +163,6 @@ fun PlayerScreen(
         }
     }
 }
-
 
 fun formatBytes(bytes: Long): String {
     if (bytes < BYTES_PER_KB) return "$bytes B"
