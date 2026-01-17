@@ -66,6 +66,7 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
             .fillMaxSize()
             .background(BackgroundDark)
             .systemBarsPadding()
+            .verticalScroll(rememberScrollState())
     ) {
         IconButton(onClick = onBackClick) {
             Icon(
@@ -109,8 +110,7 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .fillMaxWidth()
                 .padding(16.dp)
         ) {
             Text(
@@ -160,6 +160,8 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
                     color = MaterialTheme.colorScheme.error
                 )
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
