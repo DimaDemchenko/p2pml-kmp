@@ -37,13 +37,13 @@ struct ContentView: View {
             .frame(height: 300)
             .onAppear {
                 let loader = P2PMediaLoader(
-                    onP2PReadyCallback: {
+                    onReady: {
                         print("P2P Engine is Ready!")
                         self.isP2PReady = true
                         self.createPlayer(with: self.mediaLoader)
                         self.player?.play()
                     },
-                    onP2PReadyErrorCallback: { errorMessage in
+                    onError: { errorMessage in
                         print("P2P Engine failed to start: \(errorMessage)")
                         // Fallback to normal HTTP playback
                         self.createPlayer(with: nil)
