@@ -10,7 +10,6 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import kotlinx.io.IOException
-import kotlinx.serialization.SerializationException
 
 private val logger = CoreLogger("ManifestRoute")
 

@@ -7,7 +7,6 @@ import com.novage.p2pml.server.exceptions.SegmentProcessingException
 import com.novage.p2pml.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.server.services.SegmentService
-import com.novage.p2pml.server.utils.fetchSegment
 import com.novage.p2pml.server.utils.respondFallback
 import com.novage.p2pml.server.utils.respondVideoSegment
 import com.novage.p2pml.utils.CoreLogger
@@ -55,9 +54,7 @@ private fun Route.segmentDownloadRoute(
 
         if (!parser.isCurrentSegment(segmentUrl)) {
             logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
-            val fetchedSegmentBytes = httpClient.fetchSegment(call, segmentUrl)
-
-            call.respondVideoSegment(fetchedSegmentBytes, byteRange)
+            call.respondFallback(httpClient, segmentUrl, byteRange)
             return@get
         }
 

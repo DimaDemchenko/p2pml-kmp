@@ -12,6 +12,7 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
+import io.ktor.http.isSuccess
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -36,6 +37,10 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
         copyProxyHeaders(call.request.headers)
     }
 
+    if (!response.status.isSuccess()) {
+        throw IOException("Upstream returned error ${response.status} for manifest: $manifestUrl")
+    }
+
     return ManifestFetchResult(
         manifestContent = response.bodyAsText(),
         responseUrl = response.request.url.toString()
@@ -49,6 +54,10 @@ internal suspend fun HttpClient.fetchSegment(call: ApplicationCall, segmentUrl: 
 
     val response = this.get(cleanUrl) {
         copyProxyHeaders(call.request.headers)
+    }
+
+    if (!response.status.isSuccess()) {
+        throw IOException("Upstream returned error ${response.status} for segment: $cleanUrl")
     }
 
     return response.bodyAsBytes()
