@@ -145,17 +145,17 @@ abstract class P2PMediaLoaderCore(
     open fun release() {
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
-        eventEmitter.removeAllListeners()
+        isEngineReady = false
 
-        engineManager?.destroy()
-        engineManager = null
+        eventEmitter.removeAllListeners()
 
         serverModule?.destroy()
         serverModule = null
 
-        runBlocking { playbackProvider?.resetData() }
-        isEngineReady = false
+        engineManager?.destroy()
+        engineManager = null
 
+        runBlocking { playbackProvider?.resetData() }
         urlFactory.setPort(-1)
 
         logger.d { "Release complete." }
