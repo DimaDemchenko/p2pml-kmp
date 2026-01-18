@@ -31,6 +31,8 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
 
     override fun destroy() {
         logger.d { "Destroying P2PEngineManager..." }
+
+        playbackInfoJob?.cancel()
         scope.cancel()
         webView.destroy()
     }

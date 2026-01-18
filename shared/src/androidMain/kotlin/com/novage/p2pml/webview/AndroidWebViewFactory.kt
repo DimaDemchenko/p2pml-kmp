@@ -28,7 +28,7 @@ private class AndroidHeadlessWebView(
     private val onWebViewError: (String) -> Unit
 ) : HeadlessWebView {
     @SuppressLint("SetJavaScriptEnabled")
-    private val webView: WebView = WebView(context).apply {
+    private var webView: WebView? = WebView(context).apply {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
@@ -58,15 +58,17 @@ private class AndroidHeadlessWebView(
         addJavascriptInterface(dispatcher, "P2PMLAndroid")
     }
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     override fun loadUrl(url: String) {
         runOnUiThread {
-            webView.loadUrl(url)
+            webView?.loadUrl(url)
         }
     }
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
         runOnUiThread {
-            webView.evaluateJavascript(script) { result ->
+            webView?.evaluateJavascript(script) { result ->
                 callback?.invoke(result)
             }
         }
@@ -74,7 +76,9 @@ private class AndroidHeadlessWebView(
 
     override fun destroy() {
         runOnUiThread {
-            webView.destroy()
+            webView?.stopLoading()
+            webView?.destroy()
+            webView = null
         }
     }
 
@@ -82,7 +86,7 @@ private class AndroidHeadlessWebView(
         if (Looper.myLooper() == Looper.getMainLooper()) {
             action()
         } else {
-            Handler(Looper.getMainLooper()).post(action)
+            mainHandler.post(action)
         }
     }
 }
