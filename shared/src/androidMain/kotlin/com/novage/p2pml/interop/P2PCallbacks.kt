@@ -1,9 +1,9 @@
 package com.novage.p2pml.interop
 
-fun interface OnP2PReadyCallback {
+fun interface OnReady {
     fun onReady()
 }
 
-fun interface OnP2PReadyErrorCallback {
+fun interface OnError {
     fun onError(error: String)
 }

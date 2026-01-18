@@ -16,9 +16,9 @@ class P2PMediaLoader(
     customEngineUrl
 ) {
     constructor(
-        onP2PReadyCallback: () -> Unit,
-        onP2PReadyErrorCallback: (String) -> Unit
-    ) : this(onP2PReadyCallback, onP2PReadyErrorCallback, "{}", null)
+        onReady: () -> Unit,
+        onError: (String) -> Unit
+    ) : this(onReady, onError, "{}", null)
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
@@ -26,17 +26,14 @@ class P2PMediaLoader(
     }
 
     fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        val webViewFactory = IosWebViewFactory()
-        val webView = webViewFactory.createHeadlessWebView(
-            eventEmitter = eventEmitter,
-            onWebViewLoaded = ::onWebViewLoaded,
-            onWebViewError = { errorMessage ->
-                failInitialization("WebView failed to load: $errorMessage")
-            }
-        )
-
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
 
-        initialize(webView, provider)
+        initialize(provider) {
+            IosWebViewFactory().createHeadlessWebView(
+                eventEmitter = eventEmitter,
+                onWebViewLoaded = ::onWebViewLoaded,
+                onWebViewError = { msg -> failInitialization("WebView error: $msg") }
+            )
+        }
     }
 }

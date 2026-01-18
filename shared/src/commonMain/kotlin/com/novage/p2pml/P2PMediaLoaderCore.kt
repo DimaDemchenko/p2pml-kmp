@@ -24,7 +24,10 @@ import com.novage.p2pml.server.config.LocalUrlFactory
 import com.novage.p2pml.utils.CoreLogger
 import com.novage.p2pml.utils.LogConfig
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+
+enum class CoreStatus { IDLE, INITIALIZING, ACTIVE }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
@@ -51,18 +54,18 @@ abstract class P2PMediaLoaderCore(
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
 
-    protected var isEngineReady = false
-        private set
+    private val status = MutableStateFlow(CoreStatus.IDLE)
 
-    protected fun initialize(webView: HeadlessWebView, provider: PlaybackProvider) {
-        if (engineManager != null) {
-            logger.w { "Initialize called but engine is already created. Ignoring." }
+    protected fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
+        if (!status.compareAndSet(CoreStatus.IDLE, CoreStatus.INITIALIZING)) {
+            logger.w { "Initialization skipped: Core is already in state ${status.value}" }
             return
         }
 
         logger.d { "Initializing P2PMediaLoaderCore..." }
         this.playbackProvider = provider
 
+        val webView = webViewFactory()
         val engine = P2PEngineManager(webView, provider)
         this.engineManager = engine
 
@@ -89,15 +92,23 @@ abstract class P2PMediaLoaderCore(
     }
 
     fun getManifestUrl(manifestUrl: String): String {
+        if (status.value != CoreStatus.ACTIVE) {
+            logger.e {
+                "Attempted to build manifest URL but Core is not ACTIVE (Current: ${status.value}). Returning original URL."
+            }
+            return manifestUrl
+        }
+
         logger.d { "Building manifest URL for: $manifestUrl" }
         return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
 
     fun applyDynamicConfig(dynamicCoreConfigJson: String) {
-        val engine = engineManager ?: run {
-            logger.w { "Cannot apply dynamic config: engineManager is null." }
+        if (status.value != CoreStatus.ACTIVE) {
+            logger.w { "Ignored dynamic config: Core is not ACTIVE (Current: ${status.value})." }
             return
         }
+        val engine = engineManager ?: return
 
         logger.d { "Applying dynamic config: $dynamicCoreConfigJson" }
         engine.applyDynamicConfig(dynamicCoreConfigJson)
@@ -132,7 +143,7 @@ abstract class P2PMediaLoaderCore(
             }
         }
 
-        isEngineReady = true
+        status.value = CoreStatus.ACTIVE
         onReady()
     }
 
@@ -143,9 +154,9 @@ abstract class P2PMediaLoaderCore(
     }
 
     open fun release() {
-        logger.i { "Releasing P2PMediaLoaderCore resources..." }
+        status.value = CoreStatus.IDLE
 
-        isEngineReady = false
+        logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
         eventEmitter.removeAllListeners()
 
@@ -167,7 +178,7 @@ abstract class P2PMediaLoaderCore(
 
         eventEmitter.addEventListener(event, listener)
 
-        if (isEngineReady && isFirstListener) {
+        if (status.value == CoreStatus.ACTIVE && isFirstListener) {
             engineManager?.subscribeToP2PEvent(event.eventName)
         }
 
@@ -176,7 +187,7 @@ abstract class P2PMediaLoaderCore(
                 eventEmitter.removeEventListener(event, listener)
 
                 val isNowEmpty = !eventEmitter.hasListeners(event)
-                if (isEngineReady && isNowEmpty) {
+                if (status.value == CoreStatus.ACTIVE && isNowEmpty) {
                     engineManager?.unsubscribeFromP2PEvent(event.eventName)
                 }
             }
