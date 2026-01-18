@@ -76,29 +76,31 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         return@withLock checkNotNull(currentAbsoluteTime) { "Absolute time was not initialized" }
     }
 
-    override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo = mutex.withLock {
+    override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo {
         val (position, speed) = withContext(Dispatchers.Main) {
             (exoPlayer.currentPosition / MILLISECONDS_IN_SECOND) to exoPlayer.playbackParameters.speed
         }
 
-        val snapshot = currentSnapshot
-        if (snapshot == null || snapshot.hasEndTag) {
-            return PlaybackInfo(position, speed)
+        return mutex.withLock {
+            val snapshot = currentSnapshot
+            if (snapshot == null || snapshot.hasEndTag) {
+                return PlaybackInfo(position, speed)
+            }
+
+            val currentPlayback = position.coerceAtLeast(0.0)
+            val currentSegment = currentSegments.values.find {
+                currentPlayback >= it.startTime && currentPlayback <= it.endTime
+            }
+
+            if (currentSegment == null) {
+                return PlaybackInfo(0.0, speed)
+            }
+
+            val segmentPlayTime = currentPlayback - currentSegment.startTime
+            val segmentAbsolutePlayTime = currentSegment.absoluteStartTime + segmentPlayTime
+
+            PlaybackInfo(segmentAbsolutePlayTime, speed)
         }
-
-        val currentPlayback = position.coerceAtLeast(0.0)
-        val currentSegment = currentSegments.values.find {
-            currentPlayback >= it.startTime && currentPlayback <= it.endTime
-        }
-
-        if (currentSegment == null) {
-            return PlaybackInfo(0.0, speed)
-        }
-
-        val segmentPlayTime = currentPlayback - currentSegment.startTime
-        val segmentAbsolutePlayTime = currentSegment.absoluteStartTime + segmentPlayTime
-
-        return PlaybackInfo(segmentAbsolutePlayTime, speed)
     }
 
     override suspend fun resetData() = mutex.withLock {
