@@ -1,5 +1,6 @@
 package com.novage.p2pml.demo.ui.screens.list
 
+import android.util.Patterns
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +45,16 @@ import com.novage.p2pml.demo.ui.theme.P2PGreen
 @Composable
 fun VideoListScreen(onVideoSelected: (String) -> Unit) {
     var customUrl by remember { mutableStateOf("") }
+    val isUrlValid by remember(customUrl) {
+        derivedStateOf {
+            if (customUrl.isEmpty()) return@derivedStateOf true
+
+            val hasProtocol = customUrl.startsWith("http://") || customUrl.startsWith("https://")
+            val isWebUrl = Patterns.WEB_URL.matcher(customUrl).matches()
+
+            hasProtocol && isWebUrl
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -66,13 +79,35 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
                 onValueChange = { customUrl = it },
                 label = { Text("Paste Custom Manifest URL") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = !isUrlValid,
+                trailingIcon = if (!isUrlValid) {
+                    {
+                        Icon(
+                            Icons.Default.Warning,
+                            "Invalid URL", tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else {
+                    null
+                },
+                supportingText = {
+                    if (!isUrlValid) {
+                        Text(
+                            text = "Enter a valid URL starting with http:// or https://",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             )
 
             Button(
                 onClick = { if (customUrl.isNotBlank()) onVideoSelected(customUrl) },
                 enabled = customUrl.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = P2PGreen),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = P2PGreen,
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 12.dp)
