@@ -94,7 +94,8 @@ abstract class P2PMediaLoaderCore(
     fun getManifestUrl(manifestUrl: String): String {
         if (status.value != LoaderStatus.ACTIVE) {
             logger.e {
-                "Attempted to build manifest URL but Core is not ACTIVE (Current: ${status.value}). Returning original URL."
+                "Attempted to build manifest URL but Core is not ACTIVE " +
+                    "(Current: ${status.value}). Returning original URL."
             }
             return manifestUrl
         }
@@ -205,6 +206,7 @@ abstract class P2PMediaLoaderCore(
 
     fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) =
         registerListener(CoreEventMap.OnChunkDownloaded, block)
+
     fun onChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = registerListener(CoreEventMap.OnChunkUploaded, block)
 
     fun onTrackerError(block: (TrackerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnTrackerError, block)
