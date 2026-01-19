@@ -27,7 +27,7 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 
-enum class CoreStatus { IDLE, INITIALIZING, ACTIVE }
+private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
@@ -54,10 +54,10 @@ abstract class P2PMediaLoaderCore(
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
 
-    private val status = MutableStateFlow(CoreStatus.IDLE)
+    private val status = MutableStateFlow(LoaderStatus.IDLE)
 
     protected fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
-        if (!status.compareAndSet(CoreStatus.IDLE, CoreStatus.INITIALIZING)) {
+        if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
             logger.w { "Initialization skipped: Core is already in state ${status.value}" }
             return
         }
@@ -92,7 +92,7 @@ abstract class P2PMediaLoaderCore(
     }
 
     fun getManifestUrl(manifestUrl: String): String {
-        if (status.value != CoreStatus.ACTIVE) {
+        if (status.value != LoaderStatus.ACTIVE) {
             logger.e {
                 "Attempted to build manifest URL but Core is not ACTIVE (Current: ${status.value}). Returning original URL."
             }
@@ -104,7 +104,7 @@ abstract class P2PMediaLoaderCore(
     }
 
     fun applyDynamicConfig(dynamicCoreConfigJson: String) {
-        if (status.value != CoreStatus.ACTIVE) {
+        if (status.value != LoaderStatus.ACTIVE) {
             logger.w { "Ignored dynamic config: Core is not ACTIVE (Current: ${status.value})." }
             return
         }
@@ -143,7 +143,7 @@ abstract class P2PMediaLoaderCore(
             }
         }
 
-        status.value = CoreStatus.ACTIVE
+        status.value = LoaderStatus.ACTIVE
         onReady()
     }
 
@@ -154,7 +154,7 @@ abstract class P2PMediaLoaderCore(
     }
 
     open fun release() {
-        status.value = CoreStatus.IDLE
+        status.value = LoaderStatus.IDLE
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
@@ -178,7 +178,7 @@ abstract class P2PMediaLoaderCore(
 
         eventEmitter.addEventListener(event, listener)
 
-        if (status.value == CoreStatus.ACTIVE && isFirstListener) {
+        if (status.value == LoaderStatus.ACTIVE && isFirstListener) {
             engineManager?.subscribeToP2PEvent(event.eventName)
         }
 
@@ -187,7 +187,7 @@ abstract class P2PMediaLoaderCore(
                 eventEmitter.removeEventListener(event, listener)
 
                 val isNowEmpty = !eventEmitter.hasListeners(event)
-                if (status.value == CoreStatus.ACTIVE && isNowEmpty) {
+                if (status.value == LoaderStatus.ACTIVE && isNowEmpty) {
                     engineManager?.unsubscribeFromP2PEvent(event.eventName)
                 }
             }
