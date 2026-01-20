@@ -168,6 +168,8 @@ abstract class P2PMediaLoaderCore(
         engineManager = null
 
         runBlocking { playbackProvider?.resetData() }
+        playbackProvider = null
+
         urlFactory.setPort(-1)
 
         logger.d { "Release complete." }
