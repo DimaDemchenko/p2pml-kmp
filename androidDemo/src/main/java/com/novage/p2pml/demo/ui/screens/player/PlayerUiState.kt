@@ -3,8 +3,6 @@ package com.novage.p2pml.demo.ui.screens.player
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
 import com.novage.p2pml.domain.models.PeerDetails
 
-private const val PERCENT_MULTIPLIER = 100
-
 data class PlayerUiState(
     val isInitializing: Boolean = true,
     val isP2PActive: Boolean = false,
@@ -17,11 +15,4 @@ data class PlayerUiState(
     val peers: List<PeerDetails> = emptyList(),
 
     val qualities: List<VideoQuality> = emptyList()
-) {
-    val p2pPercentage: Int
-        get() = if (totalDownloaded > 0) {
-            ((p2pDownloaded.toFloat() / totalDownloaded) * PERCENT_MULTIPLIER).toInt()
-        } else {
-            0
-        }
-}
+)
