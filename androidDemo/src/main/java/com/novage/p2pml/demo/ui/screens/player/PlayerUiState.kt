@@ -4,7 +4,7 @@ import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
 import com.novage.p2pml.domain.models.PeerDetails
 
 data class PlayerUiState(
-    val isInitializing: Boolean = true,
+    val isVideoReady: Boolean = false,
     val isP2PActive: Boolean = false,
     val errorMessage: String? = null,
 

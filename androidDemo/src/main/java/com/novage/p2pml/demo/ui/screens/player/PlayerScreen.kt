@@ -68,6 +68,8 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
         viewModel.initializePlayer(context, videoUrl)
     }
 
+    val isInitialLoading = !uiState.isVideoReady
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -139,6 +141,7 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -146,13 +149,15 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
                     label = "HTTP",
                     value = formatBytes(uiState.httpDownloaded),
                     color = HttpBlue,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    isLoading = isInitialLoading
                 )
                 StatCard(
                     label = "P2P",
                     value = formatBytes(uiState.p2pDownloaded),
                     color = P2PGreen,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    isLoading = isInitialLoading
                 )
             }
 
@@ -163,13 +168,15 @@ fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerVie
                     label = "Upload",
                     value = formatBytes(uiState.uploadTotal),
                     color = Color.Gray,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    isLoading = isInitialLoading
                 )
                 StatCard(
                     label = "Peers",
                     value = "${uiState.peers.size}",
                     color = Color.White,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    isLoading = isInitialLoading
                 )
             }
 

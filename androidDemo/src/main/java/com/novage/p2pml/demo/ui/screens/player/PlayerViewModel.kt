@@ -55,6 +55,12 @@ class PlayerViewModel : ViewModel() {
                 currentTracks = tracks
                 refreshQualityList()
             }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState != Player.STATE_READY) return
+
+                _uiState.update { it.copy(isVideoReady = true) }
+            }
         })
 
         exoPlayer.playWhenReady = true
@@ -115,14 +121,10 @@ class PlayerViewModel : ViewModel() {
 
         for (groupIndex in tracks.groups.indices) {
             val group = tracks.groups[groupIndex]
-            if (group.type != C.TRACK_TYPE_VIDEO) {
-                continue
-            }
+            if (group.type != C.TRACK_TYPE_VIDEO) continue
 
             for (trackIndex in 0 until group.length) {
-                if (!group.isTrackSupported(trackIndex)) {
-                    continue
-                }
+                if (!group.isTrackSupported(trackIndex)) continue
 
                 val format = group.getTrackFormat(trackIndex)
 
@@ -194,8 +196,6 @@ class PlayerViewModel : ViewModel() {
     private fun startPlayback(exoPlayer: ExoPlayer, url: String) {
         exoPlayer.setMediaItem(MediaItem.fromUri(url))
         exoPlayer.prepare()
-
-        _uiState.update { it.copy(isInitializing = false) }
     }
 
     private fun setupP2PEvents(loader: P2PMediaLoader) {
