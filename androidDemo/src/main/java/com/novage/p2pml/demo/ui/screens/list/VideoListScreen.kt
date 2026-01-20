@@ -139,7 +139,7 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
 }
 
 @Composable
-fun StreamListItem(stream: com.novage.p2pml.demo.data.VideoStream, onClick: () -> Unit) {
+private fun StreamListItem(stream: com.novage.p2pml.demo.data.VideoStream, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier
             .clickable { onClick() }
