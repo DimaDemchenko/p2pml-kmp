@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server
 
-import com.novage.p2pml.api.interfaces.P2PEngine
+import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestParser

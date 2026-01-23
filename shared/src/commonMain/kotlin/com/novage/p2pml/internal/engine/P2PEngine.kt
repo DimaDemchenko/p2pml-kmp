@@ -1,4 +1,4 @@
-package com.novage.p2pml.api.interfaces
+package com.novage.p2pml.internal.engine
 
 internal interface P2PEngine {
     fun loadUrl(url: String)

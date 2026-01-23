@@ -9,9 +9,9 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.novage.p2pml.api.interfaces.CoreEventEmitter
-import com.novage.p2pml.api.interfaces.HeadlessWebView
-import com.novage.p2pml.api.interfaces.WebViewFactory
+import com.novage.p2pml.internal.events.CoreEventEmitter
+import com.novage.p2pml.internal.webview.HeadlessWebView
+import com.novage.p2pml.internal.webview.WebViewFactory
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(

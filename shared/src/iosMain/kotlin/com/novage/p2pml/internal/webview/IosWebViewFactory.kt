@@ -1,8 +1,8 @@
 package com.novage.p2pml.internal.webview
 
-import com.novage.p2pml.api.interfaces.CoreEventEmitter
-import com.novage.p2pml.api.interfaces.HeadlessWebView
-import com.novage.p2pml.api.interfaces.WebViewFactory
+import com.novage.p2pml.internal.events.CoreEventEmitter
+import com.novage.p2pml.internal.webview.HeadlessWebView
+import com.novage.p2pml.internal.webview.WebViewFactory
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
