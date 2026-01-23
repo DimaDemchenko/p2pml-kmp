@@ -47,16 +47,15 @@ abstract class P2PMediaLoaderCore(
 
     private val logger = CoreLogger("P2PMediaLoaderCore")
     private val urlFactory = LocalUrlFactory()
-    protected val eventEmitter: CoreEventEmitter = EventEmitter()
+    internal val eventEmitter: CoreEventEmitter = EventEmitter()
+    internal var engineManager: P2PEngine? = null
 
-    protected var engineManager: P2PEngine? = null
-        private set
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
 
-    protected fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
+    internal fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
         if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
             logger.w { "Initialization skipped: Core is already in state ${status.value}" }
             return

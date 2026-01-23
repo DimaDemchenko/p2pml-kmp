@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
 import org.json.JSONException
 import org.json.JSONObject
 
-class AndroidWebViewEventDispatcher(
+internal class AndroidWebViewEventDispatcher(
     private val eventEmitter: CoreEventEmitter,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null

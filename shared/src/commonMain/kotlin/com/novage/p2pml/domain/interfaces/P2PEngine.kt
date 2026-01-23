@@ -1,6 +1,6 @@
 package com.novage.p2pml.domain.interfaces
 
-interface P2PEngine {
+internal interface P2PEngine {
     fun loadUrl(url: String)
     fun initCoreEngine(coreConfigJson: String, uploadUrl: String)
     fun destroy()

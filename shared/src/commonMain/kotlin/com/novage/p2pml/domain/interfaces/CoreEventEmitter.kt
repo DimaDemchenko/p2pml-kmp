@@ -2,7 +2,7 @@ package com.novage.p2pml.domain.interfaces
 
 import com.novage.p2pml.domain.models.CoreEventMap
 
-interface CoreEventEmitter {
+internal interface CoreEventEmitter {
     fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>)
     fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>)
     fun <T> emit(event: CoreEventMap<T>, data: T)
