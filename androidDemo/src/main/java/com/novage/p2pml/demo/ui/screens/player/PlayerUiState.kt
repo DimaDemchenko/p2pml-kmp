@@ -1,7 +1,7 @@
 package com.novage.p2pml.demo.ui.screens.player
 
+import com.novage.p2pml.api.models.PeerDetails
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
-import com.novage.p2pml.domain.models.PeerDetails
 
 data class PlayerUiState(
     val isVideoReady: Boolean = false,

@@ -1,8 +1,8 @@
 package com.novage.p2pml
 
-import com.novage.p2pml.domain.models.PlaybackInfo
-import com.novage.p2pml.providers.DefaultPlaybackProvider
-import com.novage.p2pml.webview.IosWebViewFactory
+import com.novage.p2pml.api.models.PlaybackInfo
+import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
+import com.novage.p2pml.internal.webview.IosWebViewFactory
 
 class P2PMediaLoader(
     onReady: () -> Unit,

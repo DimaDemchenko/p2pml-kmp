@@ -2,13 +2,13 @@ package com.novage.p2pml
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
-import com.novage.p2pml.domain.interfaces.PlaybackProvider
-import com.novage.p2pml.domain.models.PlaybackInfo
-import com.novage.p2pml.interop.OnError
-import com.novage.p2pml.interop.OnReady
-import com.novage.p2pml.providers.DefaultPlaybackProvider
-import com.novage.p2pml.providers.ExoPlayerPlaybackProvider
-import com.novage.p2pml.webview.AndroidWebViewFactory
+import com.novage.p2pml.api.interfaces.PlaybackProvider
+import com.novage.p2pml.api.models.PlaybackInfo
+import com.novage.p2pml.internal.interop.OnError
+import com.novage.p2pml.internal.interop.OnReady
+import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
+import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
+import com.novage.p2pml.internal.webview.AndroidWebViewFactory
 
 class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,

@@ -13,8 +13,8 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
 import com.novage.p2pml.P2PMediaLoader
+import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
-import com.novage.p2pml.domain.interfaces.Cancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
