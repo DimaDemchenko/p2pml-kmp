@@ -5,8 +5,6 @@ package com.novage.p2pml
  * Use this to determine if you need to retry, show a UI message, or restart playback.
  */
 enum class MediaLoaderErrorType {
-    UNKNOWN,
-
     /**
      * The player failed to fetch the Master or Media Playlist.
      */
