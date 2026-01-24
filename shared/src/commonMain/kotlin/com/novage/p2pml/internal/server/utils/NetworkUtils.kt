@@ -13,10 +13,11 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
-import io.ktor.http.isSuccess
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 private val EXCLUDED_PROXY_HEADERS =
@@ -38,10 +39,6 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
         copyProxyHeaders(call.request.headers)
     }
 
-    if (!response.status.isSuccess()) {
-        throw IOException("Upstream returned error ${response.status} for manifest: $manifestUrl")
-    }
-
     return ManifestFetchResult(
         manifestContent = response.bodyAsText(),
         responseUrl = response.request.url.toString()
@@ -55,10 +52,6 @@ internal suspend fun HttpClient.fetchSegment(call: ApplicationCall, segmentUrl: 
 
     val response = this.get(cleanUrl) {
         copyProxyHeaders(call.request.headers)
-    }
-
-    if (!response.status.isSuccess()) {
-        throw IOException("Upstream returned error ${response.status} for segment: $cleanUrl")
     }
 
     return response.bodyAsBytes()
@@ -97,16 +90,24 @@ internal suspend fun ApplicationCall.respondFallback(
         val bytes = httpClient.fetchSegment(this, segmentUrl)
         respondVideoSegment(bytes, byteRangeHeader)
     } catch (e: ResponseException) {
-        onError(
-            MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
-            "Failed to fetch segment fallback: $segmentUrl - ${e.response.status}"
-        )
-        respond(HttpStatusCode.BadGateway, "Upstream server returned error: ${e.response.status}")
+        val status = e.response.status
+        withContext(Dispatchers.Main) {
+            onError(
+                MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+                "Fallback failed (HTTP $status) for: [$segmentUrl]"
+            )
+        }
+
+        respond(HttpStatusCode.BadGateway, "Upstream error: $status")
     } catch (e: IOException) {
-        onError(
-            MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
-            "Network failure fetching segment fallback: $segmentUrl - ${e.message}"
-        )
-        respond(HttpStatusCode.BadGateway, "Network failure: ${e.message}")
+        val errorDetail = e.message ?: "Connection lost"
+        withContext(Dispatchers.Main) {
+            onError(
+                MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+                "Fallback network failure: $errorDetail for: [$segmentUrl]"
+            )
+        }
+
+        respond(HttpStatusCode.BadGateway, "Network failure: $errorDetail")
     }
 }

@@ -77,7 +77,12 @@ abstract class P2PMediaLoaderCore(
             engineManager = engine,
             urlFactory = urlFactory,
             enableCors = customEngineUrl != null,
-            onError = ::failInitialization,
+            onError = { errorType, message ->
+                when (errorType) {
+                    MediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
+                    else -> onError(errorType, message)
+                }
+            },
             onServerStarted = { port ->
                 logger.i { "Local P2P Server started on port: $port" }
                 urlFactory.setPort(port)
