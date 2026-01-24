@@ -1,8 +1,7 @@
 package com.novage.p2pml.internal.webview
 
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.internal.events.CoreEventEmitter
-import com.novage.p2pml.internal.webview.HeadlessWebView
-import com.novage.p2pml.internal.webview.WebViewFactory
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
@@ -23,14 +22,14 @@ internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: CoreEventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (String) -> Unit
+        onWebViewError: (MediaLoaderErrorType, String) -> Unit
     ): HeadlessWebView = IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
 private class IosHeadlessWebView(
     private val eventEmitter: CoreEventEmitter,
     private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (String) -> Unit
+    private val onWebViewError: (MediaLoaderErrorType, String) -> Unit
 ) : HeadlessWebView {
     private var webView: WKWebView? = null
 
@@ -106,11 +105,14 @@ private class IosHeadlessWebView(
     }
 }
 
-private class NavigationDelegate(private val onError: (String) -> Unit) :
+private class NavigationDelegate(private val onError: (MediaLoaderErrorType, String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
 
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
-        onError("Network Error: ${withError.localizedDescription} (${withError.code})")
+        onError(
+            MediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+            "WebView Error: ${withError.code} ${withError.localizedDescription}"
+        )
     }
 }

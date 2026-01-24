@@ -9,15 +9,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.internal.events.CoreEventEmitter
-import com.novage.p2pml.internal.webview.HeadlessWebView
-import com.novage.p2pml.internal.webview.WebViewFactory
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: CoreEventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (String) -> Unit
+        onWebViewError: (MediaLoaderErrorType, String) -> Unit
     ): HeadlessWebView = AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
@@ -25,7 +24,7 @@ private class AndroidHeadlessWebView(
     context: Context,
     eventEmitter: CoreEventEmitter,
     private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (String) -> Unit
+    private val onWebViewError: (MediaLoaderErrorType, String) -> Unit
 ) : HeadlessWebView {
     @SuppressLint("SetJavaScriptEnabled")
     private var webView: WebView? = WebView(context).apply {
@@ -36,7 +35,10 @@ private class AndroidHeadlessWebView(
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request == null || !request.isForMainFrame) return
 
-                onWebViewError("WebView Error: ${error?.description} (Code: ${error?.errorCode})")
+                onWebViewError(
+                    MediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+                    "WebView Error: ${error?.errorCode} ${error?.description}"
+                )
             }
 
             override fun onReceivedHttpError(
@@ -46,7 +48,10 @@ private class AndroidHeadlessWebView(
             ) {
                 if (request == null || !request.isForMainFrame) return
 
-                onWebViewError("HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}")
+                onWebViewError(
+                    MediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+                    "WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}"
+                )
             }
         }
 

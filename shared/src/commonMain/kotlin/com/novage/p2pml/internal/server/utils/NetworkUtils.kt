@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.utils
 
+import com.novage.p2pml.MediaLoaderErrorType
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
@@ -89,14 +90,23 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteR
 internal suspend fun ApplicationCall.respondFallback(
     httpClient: HttpClient,
     segmentUrl: String,
+    onError: (MediaLoaderErrorType, String) -> Unit,
     byteRangeHeader: String?
 ) {
     try {
         val bytes = httpClient.fetchSegment(this, segmentUrl)
         respondVideoSegment(bytes, byteRangeHeader)
     } catch (e: ResponseException) {
+        onError(
+            MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+            "Failed to fetch segment fallback: $segmentUrl - ${e.response.status}"
+        )
         respond(HttpStatusCode.BadGateway, "Upstream server returned error: ${e.response.status}")
     } catch (e: IOException) {
+        onError(
+            MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+            "Network failure fetching segment fallback: $segmentUrl - ${e.message}"
+        )
         respond(HttpStatusCode.BadGateway, "Network failure: ${e.message}")
     }
 }

@@ -1,7 +1,8 @@
 package com.novage.p2pml.internal.server
 
-import com.novage.p2pml.internal.engine.P2PEngine
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.PlaybackProvider
+import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestParser
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
@@ -30,7 +31,7 @@ internal class ServerModule(
     urlFactory: LocalUrlFactory,
     private val enableCors: Boolean,
     private val onServerStarted: (serverPort: Int) -> Unit,
-    private val onServerStartError: (error: String) -> Unit
+    private val onError: (errorType: MediaLoaderErrorType, message: String) -> Unit
 ) {
     private val logger = CoreLogger("ServerModule")
 
@@ -58,7 +59,7 @@ internal class ServerModule(
             try {
                 val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
                     if (enableCors) configureCORS()
-                    configureRoutes(client, manifestService, hlsManifestParser, segmentService)
+                    configureRoutes(client, manifestService, hlsManifestParser, segmentService, onError)
                 }.start(wait = false)
                 server = serverInstance
 
@@ -72,11 +73,17 @@ internal class ServerModule(
                 }
             } catch (e: IOException) {
                 withContext(Dispatchers.Main) {
-                    onServerStartError("IO Error starting server: ${e.message}")
+                    onError(
+                        MediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                        "Network Error starting server: ${e.message}"
+                    )
                 }
             } catch (e: IllegalStateException) {
                 withContext(Dispatchers.Main) {
-                    onServerStartError("Illegal State Error starting server: ${e.message}")
+                    onError(
+                        MediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                        "Invalid server state: ${e.message}"
+                    )
                 }
             }
         }

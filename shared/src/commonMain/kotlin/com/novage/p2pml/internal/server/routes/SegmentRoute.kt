@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.internal.parser.HlsManifestParser
 import com.novage.p2pml.internal.parser.encoding.decodeBase64Url
 import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
@@ -28,16 +29,18 @@ private val logger = CoreLogger("SegmentRoute")
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestParser
+    parser: HlsManifestParser,
+    onError: (MediaLoaderErrorType, String) -> Unit
 ) {
-    segmentDownloadRoute(httpClient, segmentService, parser)
+    segmentDownloadRoute(httpClient, segmentService, parser, onError)
     segmentUploadRoute(segmentService)
 }
 
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestParser
+    parser: HlsManifestParser,
+    onError: (MediaLoaderErrorType, String) -> Unit
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
@@ -54,7 +57,7 @@ private fun Route.segmentDownloadRoute(
 
         if (!parser.isCurrentSegment(segmentUrl)) {
             logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
-            call.respondFallback(httpClient, segmentUrl, byteRange)
+            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
             return@get
         }
 
@@ -73,13 +76,13 @@ private fun Route.segmentDownloadRoute(
             call.respond(HttpStatusCode.RequestTimeout)
         } catch (_: TooManyRetriesException) {
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, byteRange)
+            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
         } catch (e: SegmentProcessingException) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, byteRange)
+            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
         } catch (_: SegmentAbortedException) {
             logger.w { "P2P Engine aborted segment. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, byteRange)
+            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
         } catch (_: CancellationException) {
             logger.i { "Request cancelled (Service Reset). Terminating connection." }
             call.respond(HttpStatusCode.ServiceUnavailable)

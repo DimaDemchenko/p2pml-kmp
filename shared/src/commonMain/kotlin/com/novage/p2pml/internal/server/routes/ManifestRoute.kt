@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.utils.fetchManifest
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -13,7 +14,11 @@ import kotlinx.io.IOException
 
 private val logger = CoreLogger("ManifestRoute")
 
-internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService: ManifestService) {
+internal fun Route.registerManifestRoute(
+    httpClient: HttpClient,
+    manifestService: ManifestService,
+    onError: (MediaLoaderErrorType, String) -> Unit
+) {
     get("/${RoutePaths.MANIFEST}/{manifestUrl}") {
         val manifestUrl = call.parameters["manifestUrl"]
 
@@ -35,10 +40,15 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
         } catch (e: IOException) {
-            logger.e(e) { "Network error fetching manifest: $manifestUrl" }
+            logger.e { "Network error fetching manifest: ${e.message}" }
+            onError(MediaLoaderErrorType.MANIFEST_LOAD_ERROR, "Failed to fetch manifest: $manifestUrl - ${e.message}")
             call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)
         } catch (e: IllegalStateException) {
-            logger.e(e) { "State error processing manifest: $manifestUrl" }
+            logger.e(e) { "Error processing manifest: ${e.message}" }
+            onError(
+                MediaLoaderErrorType.MANIFEST_PARSE_ERROR,
+                "Failed to process manifest: $manifestUrl - ${e.message}"
+            )
             call.respondText("Invalid manifest state", status = HttpStatusCode.InternalServerError)
         }
     }

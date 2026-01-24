@@ -18,7 +18,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
     onReady = { onReady.onReady() },
-    onError = { message -> onError.onError(message) },
+    onError = { errorType, message -> onError.onError(errorType, message) },
     coreConfigJson = coreConfigJson,
     customEngineUrl = customEngineUrl
 ) {
@@ -33,7 +33,7 @@ class P2PMediaLoader @JvmOverloads constructor(
             AndroidWebViewFactory(context).createHeadlessWebView(
                 eventEmitter = eventEmitter,
                 onWebViewLoaded = ::onWebViewLoaded,
-                onWebViewError = { msg -> failInitialization("WebView error: $msg") }
+                onWebViewError = ::failInitialization
             )
         }
     }

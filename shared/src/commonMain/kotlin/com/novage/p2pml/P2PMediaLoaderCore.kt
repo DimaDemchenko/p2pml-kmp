@@ -1,14 +1,9 @@
 package com.novage.p2pml
 
 import com.novage.p2pml.api.interfaces.Cancellable
-import com.novage.p2pml.internal.events.CoreEventEmitter
-import com.novage.p2pml.internal.events.EventListener
-import com.novage.p2pml.internal.webview.HeadlessWebView
-import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.internal.events.CoreEventMap
 import com.novage.p2pml.api.models.PeerDetails
 import com.novage.p2pml.api.models.PeerErrorDetails
 import com.novage.p2pml.api.models.SegmentAbortDetails
@@ -17,12 +12,17 @@ import com.novage.p2pml.api.models.SegmentLoadDetails
 import com.novage.p2pml.api.models.SegmentStartDetails
 import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
+import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
+import com.novage.p2pml.internal.events.CoreEventEmitter
+import com.novage.p2pml.internal.events.CoreEventMap
 import com.novage.p2pml.internal.events.EventEmitter
+import com.novage.p2pml.internal.events.EventListener
 import com.novage.p2pml.internal.server.ServerModule
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
+import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -31,7 +31,7 @@ private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
-    private val onError: (message: String) -> Unit,
+    private val onError: (MediaLoaderErrorType, String) -> Unit,
     private val coreConfigJson: String = "{}",
     private val customEngineUrl: String? = null
 ) {
@@ -77,7 +77,7 @@ abstract class P2PMediaLoaderCore(
             engineManager = engine,
             urlFactory = urlFactory,
             enableCors = customEngineUrl != null,
-            onServerStartError = ::failInitialization,
+            onError = ::failInitialization,
             onServerStarted = { port ->
                 logger.i { "Local P2P Server started on port: $port" }
                 urlFactory.setPort(port)
@@ -147,9 +147,9 @@ abstract class P2PMediaLoaderCore(
         onReady()
     }
 
-    protected fun failInitialization(message: String) {
+    protected fun failInitialization(errorType: MediaLoaderErrorType, message: String) {
         logger.e { "Initialization failed: $message" }
-        onError(message)
+        onError(errorType, message)
         release()
     }
 

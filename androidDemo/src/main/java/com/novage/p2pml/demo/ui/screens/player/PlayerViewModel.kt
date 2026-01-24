@@ -82,13 +82,13 @@ class PlayerViewModel : ViewModel() {
                 startPlayback(exoPlayer, p2pUrl)
                 _uiState.update { it.copy(isP2PActive = true) }
             },
-            onError = { error ->
+            onError = { _, msg ->
                 if (p2pLoader == null) return@P2PMediaLoader
 
                 startPlayback(exoPlayer, manifestUrl)
                 _uiState.update {
                     it.copy(
-                        errorMessage = "P2P Failed. Using HTTP.",
+                        errorMessage = msg,
                         isP2PActive = false
                     )
                 }

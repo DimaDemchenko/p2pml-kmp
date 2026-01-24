@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.internal.parser.HlsManifestParser
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
@@ -11,11 +12,12 @@ internal fun Application.configureRoutes(
     client: HttpClient,
     manifestService: ManifestService,
     manifestParser: HlsManifestParser,
-    segmentService: SegmentService
+    segmentService: SegmentService,
+    onError: (MediaLoaderErrorType, String) -> Unit
 ) {
     routing {
-        registerManifestRoute(client, manifestService)
-        registerSegmentRoutes(client, segmentService, manifestParser)
+        registerManifestRoute(client, manifestService, onError)
+        registerSegmentRoutes(client, segmentService, manifestParser, onError)
         registerWebAssets()
     }
 }

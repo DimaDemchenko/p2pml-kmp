@@ -3,9 +3,9 @@ package com.novage.p2pml.internal.webview
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
-import com.novage.p2pml.internal.events.CoreEventEmitter
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
+import com.novage.p2pml.internal.events.CoreEventEmitter
 import com.novage.p2pml.internal.events.CoreEventMap
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.serialization.SerializationException
