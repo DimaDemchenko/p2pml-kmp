@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
-import com.novage.p2pml.internal.interop.OnError
-import com.novage.p2pml.internal.interop.OnReady
+import com.novage.p2pml.api.interop.OnError
+import com.novage.p2pml.api.interop.OnReady
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory

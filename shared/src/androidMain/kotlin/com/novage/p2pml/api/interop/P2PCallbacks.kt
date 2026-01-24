@@ -1,4 +1,4 @@
-package com.novage.p2pml.internal.interop
+package com.novage.p2pml.api.interop
 
 import com.novage.p2pml.MediaLoaderErrorType
 
