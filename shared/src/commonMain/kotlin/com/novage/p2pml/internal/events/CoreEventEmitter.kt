@@ -1,8 +1,5 @@
 package com.novage.p2pml.internal.events
 
-import com.novage.p2pml.internal.events.EventListener
-import com.novage.p2pml.api.models.CoreEventMap
-
 internal interface CoreEventEmitter {
     fun <T> addEventListener(event: CoreEventMap<T>, listener: EventListener<T>)
     fun <T> removeEventListener(event: CoreEventMap<T>, listener: EventListener<T>)

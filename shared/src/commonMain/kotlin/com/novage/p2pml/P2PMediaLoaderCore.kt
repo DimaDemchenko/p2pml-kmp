@@ -8,7 +8,7 @@ import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.api.models.CoreEventMap
+import com.novage.p2pml.internal.events.CoreEventMap
 import com.novage.p2pml.api.models.PeerDetails
 import com.novage.p2pml.api.models.PeerErrorDetails
 import com.novage.p2pml.api.models.SegmentAbortDetails
