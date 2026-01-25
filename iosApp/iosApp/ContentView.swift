@@ -1,6 +1,6 @@
 import SwiftUI
 import WebKit
-import Shared
+import P2PML
 import AVKit
 import Combine
 

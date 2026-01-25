@@ -40,7 +40,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.shared)
+    implementation(projects.p2pml)
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)

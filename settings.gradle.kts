@@ -28,5 +28,5 @@ dependencyResolutionManagement {
     }
 }
 
-include(":shared")
+include(":p2pml")
 include(":androidDemo")

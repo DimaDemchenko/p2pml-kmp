@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
-import com.novage.p2pml.shared.generated.P2PAssets
+import com.novage.p2pml.generated.P2PAssets
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
