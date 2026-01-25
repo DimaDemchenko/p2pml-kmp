@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.parser.HlsManifestParser
 import com.novage.p2pml.internal.parser.encoding.decodeBase64Url
 import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
@@ -30,7 +30,7 @@ internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
     parser: HlsManifestParser,
-    onError: (MediaLoaderErrorType, String) -> Unit
+    onError: (P2PMediaLoaderErrorType, String) -> Unit
 ) {
     segmentDownloadRoute(httpClient, segmentService, parser, onError)
     segmentUploadRoute(segmentService)
@@ -40,7 +40,7 @@ private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
     parser: HlsManifestParser,
-    onError: (MediaLoaderErrorType, String) -> Unit
+    onError: (P2PMediaLoaderErrorType, String) -> Unit
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]

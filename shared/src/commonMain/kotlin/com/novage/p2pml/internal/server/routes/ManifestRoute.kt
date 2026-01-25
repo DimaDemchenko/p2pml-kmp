@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.utils.fetchManifest
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -20,7 +20,7 @@ private val logger = CoreLogger("ManifestRoute")
 internal fun Route.registerManifestRoute(
     httpClient: HttpClient,
     manifestService: ManifestService,
-    onError: (MediaLoaderErrorType, String) -> Unit
+    onError: (P2PMediaLoaderErrorType, String) -> Unit
 ) {
     get("/${RoutePaths.MANIFEST}/{manifestUrl}") {
         val manifestUrl = call.parameters["manifestUrl"]
@@ -48,7 +48,7 @@ internal fun Route.registerManifestRoute(
 
             withContext(Dispatchers.Main) {
                 onError(
-                    MediaLoaderErrorType.MANIFEST_LOAD_ERROR,
+                    P2PMediaLoaderErrorType.MANIFEST_LOAD_ERROR,
                     "Manifest load failed (HTTP $status)"
                 )
             }
@@ -59,7 +59,7 @@ internal fun Route.registerManifestRoute(
 
             withContext(Dispatchers.Main) {
                 onError(
-                    MediaLoaderErrorType.MANIFEST_LOAD_ERROR,
+                    P2PMediaLoaderErrorType.MANIFEST_LOAD_ERROR,
                     "Failed to download manifest. Host unreachable or connection lost."
                 )
             }
@@ -69,7 +69,7 @@ internal fun Route.registerManifestRoute(
 
             withContext(Dispatchers.Main) {
                 onError(
-                    MediaLoaderErrorType.MANIFEST_PARSE_ERROR,
+                    P2PMediaLoaderErrorType.MANIFEST_PARSE_ERROR,
                     "Invalid manifest format. Parser failed: ${e.message}"
                 )
             }

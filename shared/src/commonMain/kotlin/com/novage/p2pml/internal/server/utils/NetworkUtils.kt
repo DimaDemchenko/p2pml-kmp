@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server.utils
 
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
@@ -83,7 +83,7 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteR
 internal suspend fun ApplicationCall.respondFallback(
     httpClient: HttpClient,
     segmentUrl: String,
-    onError: (MediaLoaderErrorType, String) -> Unit,
+    onError: (P2PMediaLoaderErrorType, String) -> Unit,
     byteRangeHeader: String?
 ) {
     try {
@@ -93,7 +93,7 @@ internal suspend fun ApplicationCall.respondFallback(
         val status = e.response.status
         withContext(Dispatchers.Main) {
             onError(
-                MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+                P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
                 "Fallback failed (HTTP $status) for: [$segmentUrl]"
             )
         }
@@ -103,7 +103,7 @@ internal suspend fun ApplicationCall.respondFallback(
         val errorDetail = e.message ?: "Connection lost"
         withContext(Dispatchers.Main) {
             onError(
-                MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+                P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
                 "Fallback network failure: $errorDetail for: [$segmentUrl]"
             )
         }

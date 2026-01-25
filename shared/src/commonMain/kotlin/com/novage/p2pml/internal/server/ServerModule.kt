@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server
 
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.http.createHttpClient
@@ -31,7 +31,7 @@ internal class ServerModule(
     urlFactory: LocalUrlFactory,
     private val enableCors: Boolean,
     private val onServerStarted: (serverPort: Int) -> Unit,
-    private val onError: (errorType: MediaLoaderErrorType, message: String) -> Unit
+    private val onError: (errorType: P2PMediaLoaderErrorType, message: String) -> Unit
 ) {
     private val logger = CoreLogger("ServerModule")
 
@@ -74,14 +74,14 @@ internal class ServerModule(
             } catch (e: IOException) {
                 withContext(Dispatchers.Main) {
                     onError(
-                        MediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
                         "Network Error starting server: ${e.message}"
                     )
                 }
             } catch (e: IllegalStateException) {
                 withContext(Dispatchers.Main) {
                     onError(
-                        MediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
                         "Invalid server state: ${e.message}"
                     )
                 }

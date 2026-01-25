@@ -6,7 +6,7 @@ import com.novage.p2pml.internal.webview.IosWebViewFactory
 
 class P2PMediaLoader(
     onReady: () -> Unit,
-    onError: (MediaLoaderErrorType, String) -> Unit,
+    onError: (P2PMediaLoaderErrorType, String) -> Unit,
     coreConfigJson: String = "{}",
     customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
@@ -17,7 +17,7 @@ class P2PMediaLoader(
 ) {
     constructor(
         onReady: () -> Unit,
-        onError: (MediaLoaderErrorType, String) -> Unit
+        onError: (P2PMediaLoaderErrorType, String) -> Unit
     ) : this(onReady, onError, "{}", null)
 
     companion object {

@@ -9,14 +9,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.events.CoreEventEmitter
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: CoreEventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (MediaLoaderErrorType, String) -> Unit
+        onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
     ): HeadlessWebView = AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
@@ -24,7 +24,7 @@ private class AndroidHeadlessWebView(
     context: Context,
     eventEmitter: CoreEventEmitter,
     private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (MediaLoaderErrorType, String) -> Unit
+    private val onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
 ) : HeadlessWebView {
     @SuppressLint("SetJavaScriptEnabled")
     private var webView: WebView? = WebView(context).apply {
@@ -36,7 +36,7 @@ private class AndroidHeadlessWebView(
                 if (request == null || !request.isForMainFrame) return
 
                 onWebViewError(
-                    MediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+                    P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
                     "WebView Error: ${error?.errorCode} ${error?.description}"
                 )
             }
@@ -49,7 +49,7 @@ private class AndroidHeadlessWebView(
                 if (request == null || !request.isForMainFrame) return
 
                 onWebViewError(
-                    MediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+                    P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
                     "WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}"
                 )
             }

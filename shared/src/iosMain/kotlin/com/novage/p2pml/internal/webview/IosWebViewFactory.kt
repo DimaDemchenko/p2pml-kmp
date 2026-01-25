@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.webview
 
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.events.CoreEventEmitter
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
@@ -22,14 +22,14 @@ internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
         eventEmitter: CoreEventEmitter,
         onWebViewLoaded: () -> Unit,
-        onWebViewError: (MediaLoaderErrorType, String) -> Unit
+        onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
     ): HeadlessWebView = IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
 }
 
 private class IosHeadlessWebView(
     private val eventEmitter: CoreEventEmitter,
     private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (MediaLoaderErrorType, String) -> Unit
+    private val onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
 ) : HeadlessWebView {
     private var webView: WKWebView? = null
 
@@ -105,13 +105,13 @@ private class IosHeadlessWebView(
     }
 }
 
-private class NavigationDelegate(private val onError: (MediaLoaderErrorType, String) -> Unit) :
+private class NavigationDelegate(private val onError: (P2PMediaLoaderErrorType, String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
 
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
         onError(
-            MediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
             "WebView Error: ${withError.code} ${withError.localizedDescription}"
         )
     }

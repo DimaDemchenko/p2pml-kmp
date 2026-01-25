@@ -31,7 +31,7 @@ private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
-    private val onError: (MediaLoaderErrorType, String) -> Unit,
+    private val onError: (P2PMediaLoaderErrorType, String) -> Unit,
     private val coreConfigJson: String = "{}",
     private val customEngineUrl: String? = null
 ) {
@@ -79,7 +79,7 @@ abstract class P2PMediaLoaderCore(
             enableCors = customEngineUrl != null,
             onError = { errorType, message ->
                 when (errorType) {
-                    MediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
+                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
                     else -> onError(errorType, message)
                 }
             },
@@ -152,7 +152,7 @@ abstract class P2PMediaLoaderCore(
         onReady()
     }
 
-    protected fun failInitialization(errorType: MediaLoaderErrorType, message: String) {
+    protected fun failInitialization(errorType: P2PMediaLoaderErrorType, message: String) {
         logger.e { "Initialization failed: $message" }
         onError(errorType, message)
         release()

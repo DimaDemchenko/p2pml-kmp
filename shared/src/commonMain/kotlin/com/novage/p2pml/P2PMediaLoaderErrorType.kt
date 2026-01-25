@@ -4,7 +4,7 @@ package com.novage.p2pml
  * Categorizes errors that occur during the media loading process.
  * Use this to determine if you need to retry, show a UI message, or restart playback.
  */
-enum class MediaLoaderErrorType {
+enum class P2PMediaLoaderErrorType {
     /**
      * The player failed to fetch the Master or Media Playlist.
      */
@@ -26,7 +26,7 @@ enum class MediaLoaderErrorType {
     ENGINE_RUNTIME_ERROR,
 
     /**
-     * Critical: The internal proxy server failed to start.
+     * The internal proxy server failed to start.
      */
     ENGINE_STARTUP_ERROR
 }

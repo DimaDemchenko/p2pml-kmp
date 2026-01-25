@@ -12,7 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
-import com.novage.p2pml.MediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
@@ -98,12 +98,12 @@ class PlayerViewModel : ViewModel() {
         _uiState.update { it.copy(userMessage = null) }
     }
 
-    private fun handleP2PError(type: MediaLoaderErrorType, msg: String, originalUrl: String) {
+    private fun handleP2PError(type: P2PMediaLoaderErrorType, msg: String, originalUrl: String) {
         val exoPlayer = player ?: return
 
         when (type) {
-            MediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-            MediaLoaderErrorType.ENGINE_RUNTIME_ERROR -> {
+            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR -> {
                 startPlayback(exoPlayer, originalUrl)
 
                 _uiState.update {
@@ -114,8 +114,8 @@ class PlayerViewModel : ViewModel() {
                 }
             }
 
-            MediaLoaderErrorType.MANIFEST_LOAD_ERROR,
-            MediaLoaderErrorType.MANIFEST_PARSE_ERROR -> {
+            P2PMediaLoaderErrorType.MANIFEST_LOAD_ERROR,
+            P2PMediaLoaderErrorType.MANIFEST_PARSE_ERROR -> {
                 _uiState.update {
                     it.copy(
                         fatalError = "Video unavailable: $msg"
@@ -123,7 +123,7 @@ class PlayerViewModel : ViewModel() {
                 }
             }
 
-            MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> TODO()
+            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> TODO()
         }
     }
 
