@@ -112,7 +112,6 @@ class PlayerViewModel : ViewModel() {
                         userMessage = "P2P Engine failed. Switched to HTTP mode."
                     )
                 }
-
             }
 
             MediaLoaderErrorType.MANIFEST_LOAD_ERROR,

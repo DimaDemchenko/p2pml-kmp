@@ -1,0 +1,81 @@
+package com.novage.p2pml.demo.ui.screens.player.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.PlayerView
+import com.novage.p2pml.demo.ui.screens.player.PlayerViewModel
+import com.novage.p2pml.demo.ui.theme.P2PGreen
+import com.novage.p2pml.demo.ui.theme.TextWhite
+
+private const val ASPECT_RATIO = 16f / 9f
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun VideoPlayerSurface(
+    viewModel: PlayerViewModel,
+    isP2PActive: Boolean,
+    isVideoReady: Boolean,
+    onSettingsClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(ASPECT_RATIO)
+            .background(Color.Black)
+    ) {
+        if (viewModel.player != null) {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = viewModel.player
+                        useController = true
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        IconButton(
+            onClick = onSettingsClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            Icon(Icons.Filled.Settings, "Quality Settings", tint = Color.White)
+        }
+
+        if (isVideoReady) {
+            val badgeColor = if (isP2PActive) P2PGreen else MaterialTheme.colorScheme.error
+            val badgeText = if (isP2PActive) "P2P ON" else "P2P OFF"
+
+            Badge(
+                containerColor = badgeColor.copy(alpha = 0.8f),
+                contentColor = TextWhite,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+            ) {
+                Text(badgeText, modifier = Modifier.padding(4.dp))
+            }
+        }
+    }
+}
