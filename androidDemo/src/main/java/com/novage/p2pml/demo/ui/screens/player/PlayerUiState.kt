@@ -6,7 +6,8 @@ import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
 data class PlayerUiState(
     val isVideoReady: Boolean = false,
     val isP2PActive: Boolean = false,
-    val errorMessage: String? = null,
+    val fatalError: String? = null,
+    val userMessage: String? = null,
 
     val totalDownloaded: Long = 0,
     val p2pDownloaded: Long = 0,

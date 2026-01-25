@@ -12,6 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
+import com.novage.p2pml.MediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
@@ -82,16 +83,8 @@ class PlayerViewModel : ViewModel() {
                 startPlayback(exoPlayer, p2pUrl)
                 _uiState.update { it.copy(isP2PActive = true) }
             },
-            onError = { _, msg ->
-                if (p2pLoader == null) return@P2PMediaLoader
-
-                startPlayback(exoPlayer, manifestUrl)
-                _uiState.update {
-                    it.copy(
-                        errorMessage = msg,
-                        isP2PActive = false
-                    )
-                }
+            onError = { type, msg ->
+                handleP2PError(type, msg, manifestUrl)
             }
         )
 
@@ -99,6 +92,40 @@ class PlayerViewModel : ViewModel() {
         loader.start(exoPlayer)
 
         p2pLoader = loader
+    }
+
+    fun onMessageConsumed() {
+        _uiState.update { it.copy(userMessage = null) }
+    }
+
+    private fun handleP2PError(type: MediaLoaderErrorType, msg: String, originalUrl: String) {
+        val exoPlayer = player ?: return
+
+        when (type) {
+            MediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+            MediaLoaderErrorType.ENGINE_RUNTIME_ERROR -> {
+                startPlayback(exoPlayer, originalUrl)
+
+                _uiState.update {
+                    it.copy(
+                        isP2PActive = false,
+                        userMessage = "P2P Engine failed. Switched to HTTP mode."
+                    )
+                }
+
+            }
+
+            MediaLoaderErrorType.MANIFEST_LOAD_ERROR,
+            MediaLoaderErrorType.MANIFEST_PARSE_ERROR -> {
+                _uiState.update {
+                    it.copy(
+                        fatalError = "Video unavailable: $msg"
+                    )
+                }
+            }
+
+            MediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> TODO()
+        }
     }
 
     @OptIn(UnstableApi::class)
