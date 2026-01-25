@@ -1,8 +1,10 @@
 package com.novage.p2pml.demo.ui.screens.player
 
 import android.content.Context
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -12,14 +14,19 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
-import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoader
+import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 private const val HIGH_DEMAND_WINDOW_SEC = 20
@@ -41,34 +48,46 @@ class PlayerViewModel : ViewModel() {
 
     private var p2pLoader: P2PMediaLoader? = null
     private val eventSubscriptions = mutableListOf<Cancellable>()
+    private var playerInitializationJob: Job? = null
 
     @OptIn(UnstableApi::class)
     fun initializePlayer(context: Context, manifestUrl: String) {
-        if (player != null) return
+        if (player != null || playerInitializationJob?.isActive == true) return
 
-        val loadControl = configureBufferSettings()
-        val exoPlayer = ExoPlayer.Builder(context)
-            .setLoadControl(loadControl)
-            .build()
-
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onTracksChanged(tracks: Tracks) {
-                currentTracks = tracks
-                refreshQualityList()
+        playerInitializationJob = viewModelScope.launch {
+            val exoPlayer = withContext(Dispatchers.IO) {
+                ExoPlayer.Builder(context.applicationContext)
+                    .setLoadControl(
+                        configureBufferSettings()
+                    )
+                    .setLooper(Looper.getMainLooper())
+                    .build()
             }
 
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState != Player.STATE_READY) return
+            ensureActive()
 
-                _uiState.update { it.copy(isVideoReady = true) }
-            }
-        })
+            exoPlayer.addListener(object : Player.Listener {
+                override fun onTracksChanged(tracks: Tracks) {
+                    currentTracks = tracks
+                    refreshQualityList()
+                }
 
-        exoPlayer.playWhenReady = true
-        player = exoPlayer
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState != Player.STATE_READY) return
 
+                    _uiState.update { it.copy(isVideoReady = true) }
+                }
+            })
+
+            exoPlayer.playWhenReady = true
+            player = exoPlayer
+
+            initializeP2PLoader(context, exoPlayer, manifestUrl)
+        }
+    }
+
+    private fun initializeP2PLoader(context: Context, exoPlayer: ExoPlayer, manifestUrl: String) {
         P2PMediaLoader.enableLogging()
-
         val loader = P2PMediaLoader(
             context = context,
             coreConfigJson = "{\"highDemandTimeWindow\": $HIGH_DEMAND_WINDOW_SEC }",
@@ -76,7 +95,7 @@ class PlayerViewModel : ViewModel() {
                 val activeLoader = p2pLoader ?: return@P2PMediaLoader
                 val p2pUrl = try {
                     activeLoader.getManifestUrl(manifestUrl)
-                } catch (_: Exception) {
+                } catch (_: IllegalStateException) {
                     manifestUrl
                 }
 
@@ -90,7 +109,6 @@ class PlayerViewModel : ViewModel() {
 
         setupP2PEvents(loader)
         loader.start(exoPlayer)
-
         p2pLoader = loader
     }
 
@@ -296,6 +314,8 @@ class PlayerViewModel : ViewModel() {
     }
 
     private fun releaseResources() {
+        playerInitializationJob?.cancel()
+
         eventSubscriptions.forEach { it.cancel() }
         eventSubscriptions.clear()
 
