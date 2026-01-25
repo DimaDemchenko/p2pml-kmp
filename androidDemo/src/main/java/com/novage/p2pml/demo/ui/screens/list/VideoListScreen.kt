@@ -47,13 +47,17 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
     var customUrl by remember { mutableStateOf("") }
     val isUrlValid by remember(customUrl) {
         derivedStateOf {
-            if (customUrl.isEmpty()) return@derivedStateOf true
+            if (customUrl.isBlank()) return@derivedStateOf true
 
             val hasProtocol = customUrl.startsWith("http://") || customUrl.startsWith("https://")
             val isWebUrl = Patterns.WEB_URL.matcher(customUrl).matches()
 
             hasProtocol && isWebUrl
         }
+    }
+
+    val canPlay = remember(customUrl, isUrlValid) {
+        customUrl.isNotBlank() && isUrlValid
     }
 
     Scaffold(
@@ -77,10 +81,10 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
             OutlinedTextField(
                 value = customUrl,
                 onValueChange = { customUrl = it },
-                label = { Text("Paste Custom Manifest URL") },
+                label = { Text("Paste Your Manifest URL") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = !isUrlValid,
+                isError = !isUrlValid && customUrl.isNotEmpty(),
                 trailingIcon = if (!isUrlValid) {
                     {
                         Icon(
@@ -102,8 +106,8 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
             )
 
             Button(
-                onClick = { if (customUrl.isNotBlank()) onVideoSelected(customUrl) },
-                enabled = customUrl.isNotBlank(),
+                onClick = { onVideoSelected(customUrl.trim()) },
+                enabled = canPlay,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = P2PGreen,
                     disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
