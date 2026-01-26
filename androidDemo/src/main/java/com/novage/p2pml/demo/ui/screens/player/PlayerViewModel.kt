@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -43,6 +44,8 @@ class PlayerViewModel : ViewModel() {
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     private var currentTracks: Tracks? = null
+
+    private var shouldAutoPlay = true
     var player: ExoPlayer? = null
         private set
 
@@ -79,7 +82,8 @@ class PlayerViewModel : ViewModel() {
                 }
             })
 
-            exoPlayer.playWhenReady = true
+            exoPlayer.playWhenReady = shouldAutoPlay
+            Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader shouldAutoPlay=$shouldAutoPlay")
             player = exoPlayer
 
             initializeP2PLoader(context, exoPlayer, manifestUrl)
@@ -294,11 +298,13 @@ class PlayerViewModel : ViewModel() {
     }
 
     fun play() {
+        shouldAutoPlay = true
         player?.play()
         setP2PEnabled(true)
     }
 
     fun pause() {
+        shouldAutoPlay = false
         player?.pause()
         setP2PEnabled(false)
     }

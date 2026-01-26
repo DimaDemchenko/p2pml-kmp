@@ -1,31 +1,19 @@
 package com.novage.p2pml.demo.ui.screens.player
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.compose.LifecycleEventEffect
 
 @Composable
 fun PlayerLifecycleObserver(viewModel: PlayerViewModel) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val currentViewModel by rememberUpdatedState(viewModel)
+    val appLifecycle = ProcessLifecycleOwner.get()
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                currentViewModel.pause()
-            } else if (event == Lifecycle.Event.ON_RESUME) {
-                currentViewModel.play()
-            }
-        }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE, appLifecycle) {
+        viewModel.pause()
+    }
 
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME, appLifecycle) {
+        viewModel.play()
     }
 }

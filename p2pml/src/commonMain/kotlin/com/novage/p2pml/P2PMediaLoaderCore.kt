@@ -54,6 +54,7 @@ abstract class P2PMediaLoaderCore(
     private var playbackProvider: PlaybackProvider? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
+    private var pendingDynamicConfig: String? = null
 
     internal fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
         if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
@@ -110,7 +111,8 @@ abstract class P2PMediaLoaderCore(
 
     fun applyDynamicConfig(dynamicCoreConfigJson: String) {
         if (status.value != LoaderStatus.ACTIVE) {
-            logger.w { "Ignored dynamic config: Core is not ACTIVE (Current: ${status.value})." }
+            logger.d { "Core not ready (Current: ${status.value}). Caching dynamic config for later application." }
+            pendingDynamicConfig = dynamicCoreConfigJson
             return
         }
         val engine = engineManager ?: return
@@ -149,6 +151,13 @@ abstract class P2PMediaLoaderCore(
         }
 
         status.value = LoaderStatus.ACTIVE
+
+        pendingDynamicConfig?.let {
+            logger.i { "Applying cached pending dynamic config..." }
+            engine.applyDynamicConfig(it)
+            pendingDynamicConfig = null
+        }
+
         onReady()
     }
 
