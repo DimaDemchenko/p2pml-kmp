@@ -14,12 +14,12 @@ class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,
     onReady: OnReady,
     onError: OnError,
-    coreConfigJson: String = "{}",
+    coreConfig: String = "{}",
     customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
     onReady = { onReady.onReady() },
     onError = { errorType, message -> onError.onError(errorType, message) },
-    coreConfigJson = coreConfigJson,
+    coreConfig = coreConfig,
     customEngineUrl = customEngineUrl
 ) {
 

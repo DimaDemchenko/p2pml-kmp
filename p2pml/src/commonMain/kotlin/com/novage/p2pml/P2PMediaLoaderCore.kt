@@ -32,7 +32,7 @@ private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
     private val onError: (P2PMediaLoaderErrorType, String) -> Unit,
-    private val coreConfigJson: String = "{}",
+    private val coreConfig: String = "{}",
     private val customEngineUrl: String? = null
 ) {
     companion object {
@@ -109,16 +109,16 @@ abstract class P2PMediaLoaderCore(
         return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
 
-    fun applyDynamicConfig(dynamicCoreConfigJson: String) {
+    fun applyDynamicConfig(dynamicCoreConfig: String) {
         if (status.value != LoaderStatus.ACTIVE) {
             logger.d { "Core not ready (Current: ${status.value}). Caching dynamic config for later application." }
-            pendingDynamicConfig = dynamicCoreConfigJson
+            pendingDynamicConfig = dynamicCoreConfig
             return
         }
         val engine = engineManager ?: return
 
-        logger.d { "Applying dynamic config: $dynamicCoreConfigJson" }
-        engine.applyDynamicConfig(dynamicCoreConfigJson)
+        logger.d { "Applying dynamic config: $dynamicCoreConfig" }
+        engine.applyDynamicConfig(dynamicCoreConfig)
     }
 
     private fun onServerReady() {
@@ -138,7 +138,7 @@ abstract class P2PMediaLoaderCore(
         logger.i { "WebView loaded. Initializing Core JS Engine." }
 
         engine.initCoreEngine(
-            coreConfigJson = coreConfigJson,
+            coreConfig = coreConfig,
             uploadUrl = urlFactory.buildUploadUrl()
         )
 

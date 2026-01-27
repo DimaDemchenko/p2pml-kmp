@@ -1,7 +1,6 @@
 package com.novage.p2pml.internal.engine
 
 import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import kotlinx.coroutines.CoroutineScope
@@ -37,9 +36,9 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
         webView.destroy()
     }
 
-    override fun initCoreEngine(coreConfigJson: String, uploadUrl: String) {
+    override fun initCoreEngine(coreConfig: String, uploadUrl: String) {
         logger.i { "Initializing JS Core Engine" }
-        evaluate("window.p2p.initP2P('$coreConfigJson', '$uploadUrl');")
+        evaluate("window.p2p.initP2P('$coreConfig', '$uploadUrl');")
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {
@@ -66,9 +65,9 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
         evaluate("window.p2p.setManifestUrl('$manifestUrl');")
     }
 
-    override fun applyDynamicConfig(dynamicConfigJson: String) {
-        logger.i { "Applying dynamic config: $dynamicConfigJson" }
-        evaluate("window.p2p.applyDynamicP2PCoreConfig('$dynamicConfigJson');")
+    override fun applyDynamicConfig(dynamicCoreConfig: String) {
+        logger.i { "Applying dynamic config: $dynamicCoreConfig" }
+        evaluate("window.p2p.applyDynamicP2PCoreConfig('$dynamicCoreConfig');")
     }
 
     override fun subscribeToP2PEvent(eventName: String) {
