@@ -7,22 +7,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import com.novage.p2pml.demo.ui.navigation.Player // <--- Import from new package
+import com.novage.p2pml.demo.ui.navigation.VideoList // <--- Import from new package
 import com.novage.p2pml.demo.ui.screens.list.VideoListScreen
 import com.novage.p2pml.demo.ui.screens.player.PlayerScreen
 import com.novage.p2pml.demo.ui.theme.BackgroundDark
 import com.novage.p2pml.demo.ui.theme.P2PDemoTheme
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableEdgeToEdge()
 
         setContent {
@@ -33,24 +30,17 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "list") {
-                        composable("list") {
+                    NavHost(navController = navController, startDestination = VideoList) {
+                        composable<VideoList> {
                             VideoListScreen(
                                 onVideoSelected = { url ->
-                                    val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
-                                    navController.navigate("player/$encodedUrl")
+                                    navController.navigate(Player(videoUrl = url))
                                 }
                             )
                         }
 
-                        composable(
-                            route = "player/{url}",
-                            arguments = listOf(navArgument("url") { type = NavType.StringType })
-                        ) { backStackEntry ->
-                            val url = backStackEntry.arguments?.getString("url") ?: ""
-
+                        composable<Player> {
                             PlayerScreen(
-                                videoUrl = url,
                                 onBackClick = { navController.popBackStack() }
                             )
                         }

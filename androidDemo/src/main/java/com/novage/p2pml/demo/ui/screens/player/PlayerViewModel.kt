@@ -1,9 +1,11 @@
 package com.novage.p2pml.demo.ui.screens.player
 
+import android.app.Application
 import android.content.Context
 import android.os.Looper
 import androidx.annotation.OptIn
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -15,9 +17,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
+import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
+import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,7 +41,7 @@ private const val BUFFER_FOR_REBUFFER_MS = 5_000
 
 private const val BITRATE_DIVISOR = 1000
 
-class PlayerViewModel : ViewModel() {
+class PlayerViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -52,13 +56,20 @@ class PlayerViewModel : ViewModel() {
     private val eventSubscriptions = mutableListOf<Cancellable>()
     private var playerInitializationJob: Job? = null
 
+    init {
+
+        val args = savedStateHandle.toRoute<PlayerRoute>()
+        initializePlayer(args.videoUrl)
+    }
+
     @OptIn(UnstableApi::class)
-    fun initializePlayer(context: Context, manifestUrl: String) {
+    fun initializePlayer(manifestUrl: String) {
         if (player != null || playerInitializationJob?.isActive == true) return
 
         playerInitializationJob = viewModelScope.launch {
+            val context = getApplication<Application>()
             val exoPlayer = withContext(Dispatchers.IO) {
-                ExoPlayer.Builder(context.applicationContext)
+                ExoPlayer.Builder(context)
                     .setLoadControl(
                         configureBufferSettings()
                     )

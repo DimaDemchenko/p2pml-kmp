@@ -20,14 +20,11 @@ import com.novage.p2pml.demo.ui.screens.player.components.VideoErrorView
 import com.novage.p2pml.demo.ui.theme.BackgroundDark
 
 @Composable
-fun PlayerScreen(videoUrl: String, onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
-    val context = LocalContext.current
+fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     PlayerLifecycleObserver(viewModel)
-
-    LaunchedEffect(videoUrl) { viewModel.initializePlayer(context, videoUrl) }
 
     uiState.userMessage?.let { message ->
         LaunchedEffect(message) {
