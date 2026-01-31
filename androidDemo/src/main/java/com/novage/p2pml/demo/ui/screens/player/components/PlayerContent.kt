@@ -8,18 +8,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.media3.common.Player
 import com.novage.p2pml.demo.ui.screens.player.PlayerUiState
-import com.novage.p2pml.demo.ui.screens.player.PlayerViewModel
-import com.novage.p2pml.demo.ui.theme.TextWhite
+import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
 
 @Composable
-fun PlayerContent(uiState: PlayerUiState, viewModel: PlayerViewModel, onBackClick: () -> Unit) {
+fun PlayerContent(
+    uiState: PlayerUiState,
+    player: Player?,
+    onBackClick: () -> Unit,
+    onQualitySelected: (VideoQuality) -> Unit
+) {
     var showQualityDialog by remember { mutableStateOf(false) }
     val isInitialLoading = !uiState.isVideoReady
 
@@ -29,11 +35,15 @@ fun PlayerContent(uiState: PlayerUiState, viewModel: PlayerViewModel, onBackClic
             .verticalScroll(rememberScrollState())
     ) {
         IconButton(onClick = onBackClick) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextWhite)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onBackground
+            )
         }
 
         VideoPlayerSurface(
-            viewModel = viewModel,
+            player = player,
             isP2PActive = uiState.isP2PActive,
             isVideoReady = uiState.isVideoReady,
             onSettingsClick = { showQualityDialog = true }
@@ -49,8 +59,8 @@ fun PlayerContent(uiState: PlayerUiState, viewModel: PlayerViewModel, onBackClic
         QualityDialog(
             qualities = uiState.qualities,
             onDismiss = { showQualityDialog = false },
-            onQualitySelected = {
-                viewModel.changeQuality(it)
+            onQualitySelected = { quality ->
+                onQualitySelected(quality)
                 showQualityDialog = false
             }
         )

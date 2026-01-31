@@ -24,18 +24,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
-import com.novage.p2pml.demo.ui.screens.player.PlayerViewModel
-import com.novage.p2pml.demo.ui.theme.P2PGreen
-import com.novage.p2pml.demo.ui.theme.TextWhite
 
 private const val ASPECT_RATIO = 16f / 9f
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerSurface(
-    viewModel: PlayerViewModel,
+    player: Player?,
     isP2PActive: Boolean,
     isVideoReady: Boolean,
     onSettingsClick: () -> Unit
@@ -46,14 +44,16 @@ fun VideoPlayerSurface(
             .aspectRatio(ASPECT_RATIO)
             .background(Color.Black)
     ) {
-        if (viewModel.player != null) {
+        if (player != null) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
-                        player = viewModel.player
                         useController = true
                         setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
                     }
+                },
+                update = { playerView ->
+                    playerView.player = player
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -73,12 +73,16 @@ fun VideoPlayerSurface(
         }
 
         if (isVideoReady) {
-            val badgeColor = if (isP2PActive) P2PGreen else MaterialTheme.colorScheme.error
+            val badgeColor = if (isP2PActive) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.error
+            }
             val badgeText = if (isP2PActive) "P2P ON" else "P2P OFF"
 
             Badge(
                 containerColor = badgeColor.copy(alpha = 0.8f),
-                contentColor = TextWhite,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(8.dp)
@@ -99,11 +103,17 @@ private fun LoadingOverlay() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(
-                color = P2PGreen,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp)
             )
+
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Loading Stream...", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+
+            Text(
+                text = "Loading Stream...",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }

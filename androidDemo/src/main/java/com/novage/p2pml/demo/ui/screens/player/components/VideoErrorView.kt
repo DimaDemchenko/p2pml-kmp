@@ -17,12 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.novage.p2pml.demo.ui.theme.TextWhite
 
 @Composable
 fun VideoErrorView(errorMessage: String, onBackClick: () -> Unit) {
@@ -43,20 +40,24 @@ fun VideoErrorView(errorMessage: String, onBackClick: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Unable to Play Video",
-                color = TextWhite,
-                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = errorMessage,
-                color = Color.LightGray,
-                textAlign = TextAlign.Center
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = onBackClick,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
             ) {
                 Text("Go Back")
             }

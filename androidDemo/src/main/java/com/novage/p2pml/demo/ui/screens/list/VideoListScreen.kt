@@ -36,10 +36,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.novage.p2pml.demo.data.VideoStreams
-import com.novage.p2pml.demo.ui.theme.P2PGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,8 +109,8 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
                 onClick = { onVideoSelected(customUrl.trim()) },
                 enabled = canPlay,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = P2PGreen,
-                    disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -119,12 +119,15 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
                 Text("Play URL")
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.DarkGray)
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
 
             Text(
                 text = "Samples",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -149,7 +152,7 @@ private fun StreamListItem(stream: com.novage.p2pml.demo.data.VideoStream, onCli
             .clickable { onClick() }
             .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.small),
         headlineContent = {
-            Text(stream.title, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Text(stream.title, fontWeight = FontWeight.Bold)
         },
         supportingContent = {
             Text(
@@ -162,14 +165,14 @@ private fun StreamListItem(stream: com.novage.p2pml.demo.data.VideoStream, onCli
             Icon(
                 imageVector = Icons.Default.PlayCircleOutline,
                 contentDescription = null,
-                tint = P2PGreen
+                tint = MaterialTheme.colorScheme.primary
             )
         },
         trailingContent = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint = Color.Gray
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         colors = ListItemDefaults.colors(

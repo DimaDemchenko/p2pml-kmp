@@ -18,15 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.novage.p2pml.demo.ui.components.StatCard
 import com.novage.p2pml.demo.ui.screens.player.PlayerUiState
-import com.novage.p2pml.demo.ui.theme.HttpBlue
-import com.novage.p2pml.demo.ui.theme.P2PGreen
-import com.novage.p2pml.demo.ui.theme.TextWhite
 import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.pow
@@ -53,7 +48,10 @@ fun StatsSection(uiState: PlayerUiState, isInitialLoading: Boolean) {
 @Composable
 private fun P2PDisabledBanner() {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -67,13 +65,12 @@ private fun P2PDisabledBanner() {
             Column {
                 Text(
                     text = "P2P Disabled",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "Engine failed. Playing via standard HTTP.",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }
@@ -84,8 +81,8 @@ private fun P2PDisabledBanner() {
 private fun LiveStatsGrid(uiState: PlayerUiState, isInitialLoading: Boolean) {
     Text(
         text = "Live Statistics",
-        color = TextWhite,
-        fontSize = 20.sp,
+        color = MaterialTheme.colorScheme.onBackground,
+        style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold
     )
 
@@ -95,14 +92,15 @@ private fun LiveStatsGrid(uiState: PlayerUiState, isInitialLoading: Boolean) {
         StatCard(
             label = "HTTP",
             value = formatBytes(uiState.httpDownloaded),
-            color = HttpBlue,
+            color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.weight(1f),
             isLoading = isInitialLoading
         )
+
         StatCard(
             label = "P2P",
             value = formatBytes(uiState.p2pDownloaded),
-            color = P2PGreen,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
             isLoading = isInitialLoading
         )
@@ -114,14 +112,14 @@ private fun LiveStatsGrid(uiState: PlayerUiState, isInitialLoading: Boolean) {
         StatCard(
             label = "Upload",
             value = formatBytes(uiState.uploadTotal),
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
             isLoading = isInitialLoading
         )
         StatCard(
             label = "Peers",
             value = "${uiState.peers.size}",
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
             isLoading = isInitialLoading
         )

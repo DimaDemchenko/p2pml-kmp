@@ -15,17 +15,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.novage.p2pml.demo.ui.theme.SurfaceDark
 
 @Composable
-fun StatCard(label: String, value: String, color: Color, modifier: Modifier = Modifier, isLoading: Boolean = false) {
+fun StatCard(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
+) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = label, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -37,7 +47,12 @@ fun StatCard(label: String, value: String, color: Color, modifier: Modifier = Mo
                         .skeleton(isLoading = true, shape = MaterialTheme.shapes.small)
                 )
             } else {
-                Text(text = value, color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = value,
+                    color = color,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

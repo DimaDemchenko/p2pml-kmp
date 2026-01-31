@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -13,11 +14,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.novage.p2pml.demo.ui.screens.player.components.PlayerContent
 import com.novage.p2pml.demo.ui.screens.player.components.VideoErrorView
-import com.novage.p2pml.demo.ui.theme.BackgroundDark
 
 @Composable
 fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
@@ -35,7 +34,7 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = BackgroundDark,
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = Modifier.systemBarsPadding()
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
@@ -47,8 +46,9 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
             } else {
                 PlayerContent(
                     uiState = uiState,
-                    viewModel = viewModel,
-                    onBackClick = onBackClick
+                    player = viewModel.player,
+                    onBackClick = onBackClick,
+                    onQualitySelected = { quality -> viewModel.changeQuality(quality) }
                 )
             }
         }

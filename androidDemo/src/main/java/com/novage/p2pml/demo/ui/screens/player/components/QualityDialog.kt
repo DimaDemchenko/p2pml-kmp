@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
@@ -17,20 +18,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
-import com.novage.p2pml.demo.ui.theme.P2PGreen
-import com.novage.p2pml.demo.ui.theme.SurfaceDark
 
 @Composable
 fun QualityDialog(qualities: List<VideoQuality>, onDismiss: () -> Unit, onQualitySelected: (VideoQuality) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        titleContentColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text("Select Quality", fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -46,8 +44,8 @@ fun QualityDialog(qualities: List<VideoQuality>, onDismiss: () -> Unit, onQualit
                             selected = quality.isSelected,
                             onClick = { onQualitySelected(quality) },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = P2PGreen,
-                                unselectedColor = Color.Gray
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
 
@@ -55,7 +53,11 @@ fun QualityDialog(qualities: List<VideoQuality>, onDismiss: () -> Unit, onQualit
 
                         Text(
                             text = quality.label,
-                            color = if (quality.isSelected) P2PGreen else Color.White,
+                            color = if (quality.isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
                             fontSize = 16.sp,
                             fontWeight = if (quality.isSelected) FontWeight.Bold else FontWeight.Normal
                         )
@@ -65,7 +67,7 @@ fun QualityDialog(qualities: List<VideoQuality>, onDismiss: () -> Unit, onQualit
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = P2PGreen)
+                Text("Close", color = MaterialTheme.colorScheme.primary)
             }
         }
     )
