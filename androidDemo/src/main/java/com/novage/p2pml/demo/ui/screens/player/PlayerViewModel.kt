@@ -21,7 +21,6 @@ import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
-import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 
 private const val HIGH_DEMAND_WINDOW_SEC = 20
 private const val PLAYER_MAX_BUFFER_MS = HIGH_DEMAND_WINDOW_SEC * 1000
@@ -59,11 +59,11 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     init {
 
         val args = savedStateHandle.toRoute<PlayerRoute>()
-        initializePlayer(args.videoUrl)
+        initializePlayer(args.videoUrl, args.customEngineUrl)
     }
 
     @OptIn(UnstableApi::class)
-    fun initializePlayer(manifestUrl: String) {
+    fun initializePlayer(manifestUrl: String, customEngineUrl: String?) {
         if (player != null || playerInitializationJob?.isActive == true) return
 
         playerInitializationJob = viewModelScope.launch {
@@ -96,11 +96,16 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader shouldAutoPlay=$shouldAutoPlay")
             player = exoPlayer
 
-            initializeP2PLoader(context, exoPlayer, manifestUrl)
+            initializeP2PLoader(context, exoPlayer, manifestUrl, customEngineUrl)
         }
     }
 
-    private fun initializeP2PLoader(context: Context, exoPlayer: ExoPlayer, manifestUrl: String) {
+    private fun initializeP2PLoader(
+        context: Context,
+        exoPlayer: ExoPlayer,
+        manifestUrl: String,
+        customEngineUrl: String?
+    ) {
         P2PMediaLoader.enableLogging()
 
         val coreConfig = """
@@ -121,6 +126,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         val loader = P2PMediaLoader(
             context = context,
             coreConfig = coreConfig,
+            customEngineUrl = customEngineUrl,
             onReady = {
                 val activeLoader = p2pLoader ?: return@P2PMediaLoader
                 val p2pUrl = try {

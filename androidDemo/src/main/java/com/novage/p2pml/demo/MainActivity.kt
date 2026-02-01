@@ -33,8 +33,8 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = VideoList) {
                         composable<VideoList> {
                             VideoListScreen(
-                                onVideoSelected = { url ->
-                                    navController.navigate(Player(videoUrl = url))
+                                onVideoSelected = { url, customEngineUrl ->
+                                    navController.navigate(Player(videoUrl = url, customEngineUrl = customEngineUrl))
                                 }
                             )
                         }

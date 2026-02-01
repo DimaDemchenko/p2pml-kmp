@@ -39,11 +39,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.novage.p2pml.demo.data.MediaSample
 import com.novage.p2pml.demo.data.VideoStreams
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideoListScreen(onVideoSelected: (String) -> Unit) {
+fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
     var customUrl by remember { mutableStateOf("") }
     val isUrlValid by remember(customUrl) {
         derivedStateOf {
@@ -106,7 +107,7 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
             )
 
             Button(
-                onClick = { onVideoSelected(customUrl.trim()) },
+                onClick = { onVideoSelected(customUrl.trim(), null) },
                 enabled = canPlay,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -137,7 +138,7 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
             ) {
                 items(VideoStreams.samples) { stream ->
                     StreamListItem(stream) {
-                        onVideoSelected(stream.uri)
+                        onVideoSelected(stream.uri, stream.customEngineUrl)
                     }
                 }
             }
@@ -146,7 +147,7 @@ fun VideoListScreen(onVideoSelected: (String) -> Unit) {
 }
 
 @Composable
-private fun StreamListItem(stream: com.novage.p2pml.demo.data.VideoStream, onClick: () -> Unit) {
+private fun StreamListItem(stream: MediaSample, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier
             .clickable { onClick() }

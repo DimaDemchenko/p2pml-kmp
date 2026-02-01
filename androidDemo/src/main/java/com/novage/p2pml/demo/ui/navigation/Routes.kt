@@ -6,4 +6,4 @@ import kotlinx.serialization.Serializable
 object VideoList
 
 @Serializable
-data class Player(val videoUrl: String)
+data class Player(val videoUrl: String, val customEngineUrl: String? = null)
