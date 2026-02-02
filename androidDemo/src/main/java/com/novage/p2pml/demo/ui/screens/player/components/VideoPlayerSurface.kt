@@ -32,12 +32,7 @@ private const val ASPECT_RATIO = 16f / 9f
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerSurface(
-    player: Player?,
-    isP2PActive: Boolean,
-    isVideoReady: Boolean,
-    onSettingsClick: () -> Unit
-) {
+fun VideoPlayerSurface(player: Player?, isP2PActive: Boolean, isVideoReady: Boolean, onSettingsClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()

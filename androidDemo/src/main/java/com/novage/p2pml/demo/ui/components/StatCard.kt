@@ -17,13 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun StatCard(
-    label: String,
-    value: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-    isLoading: Boolean = false
-) {
+fun StatCard(label: String, value: String, color: Color, modifier: Modifier = Modifier, isLoading: Boolean = false) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(

@@ -7,10 +7,8 @@ import androidx.annotation.OptIn
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -21,7 +19,10 @@ import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
+import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
+import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
+import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableQualities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -31,15 +32,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 
 private const val HIGH_DEMAND_WINDOW_SEC = 20
 private const val PLAYER_MAX_BUFFER_MS = HIGH_DEMAND_WINDOW_SEC * 1000
 private const val PLAYER_MIN_BUFFER_MS = 10_000
 private const val BUFFER_FOR_PLAYBACK_MS = 2_500
 private const val BUFFER_FOR_REBUFFER_MS = 5_000
-
-private const val BITRATE_DIVISOR = 1000
 
 class PlayerViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
@@ -82,7 +80,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             exoPlayer.addListener(object : Player.Listener {
                 override fun onTracksChanged(tracks: Tracks) {
                     currentTracks = tracks
-                    refreshQualityList()
+
+                    val qualities = getAvailableQualities(tracks, exoPlayer.trackSelectionParameters)
+                    _uiState.update { it.copy(qualities = qualities) }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -181,87 +181,14 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         }
     }
 
-    @OptIn(UnstableApi::class)
-    private fun refreshQualityList() {
-        val player = player ?: return
-        val tracks = currentTracks ?: return
-
-        val qualities = mutableListOf<VideoQuality>()
-        val params = player.trackSelectionParameters
-
-        val isAutoSelected = params.overrides.isEmpty()
-
-        qualities.add(
-            VideoQuality(
-                label = "Auto",
-                isSelected = isAutoSelected,
-                groupIndex = -1, trackIndex = -1, isAuto = true
-            )
-        )
-
-        for (groupIndex in tracks.groups.indices) {
-            val group = tracks.groups[groupIndex]
-            if (group.type != C.TRACK_TYPE_VIDEO) continue
-
-            for (trackIndex in 0 until group.length) {
-                if (!group.isTrackSupported(trackIndex)) continue
-
-                val format = group.getTrackFormat(trackIndex)
-
-                val isSelected = !isAutoSelected && group.isTrackSelected(trackIndex)
-
-                val height = format.height
-                val bitrate = format.bitrate
-
-                val resolution = if (height > 0) "${height}p" else "Unknown"
-                val bitrateStr = if (bitrate > 0) " • ${bitrate / BITRATE_DIVISOR} kbps" else ""
-                val label = "$resolution$bitrateStr"
-
-                qualities.add(
-                    VideoQuality(
-                        label = label,
-                        isSelected = isSelected,
-                        groupIndex = groupIndex,
-                        trackIndex = trackIndex
-                    )
-                )
-            }
-        }
-
-        val sortedQualities = qualities
-            .distinctBy { it.label }
-            .sortedWith(
-                compareBy(
-                    { !it.isAuto },
-                    {
-                        val height = it.label.substringBefore("p").toIntOrNull() ?: 0
-                        -height
-                    }
-                )
-            )
-
-        _uiState.update { it.copy(qualities = sortedQualities) }
-    }
-
-    @OptIn(UnstableApi::class)
     fun changeQuality(quality: VideoQuality) {
         val player = player ?: return
         val tracks = currentTracks ?: return
 
-        val newParams = player.trackSelectionParameters.buildUpon()
+        applyTrackSelection(player, quality, tracks)
 
-        if (quality.isAuto) {
-            newParams.clearOverrides()
-        } else {
-            val group = tracks.groups[quality.groupIndex].mediaTrackGroup
-            newParams
-                .clearOverrides()
-                .addOverride(TrackSelectionOverride(group, quality.trackIndex))
-        }
-
-        player.trackSelectionParameters = newParams.build()
-
-        refreshQualityList()
+        val updatedQualities = getAvailableQualities(tracks, player.trackSelectionParameters)
+        _uiState.update { it.copy(qualities = updatedQualities) }
     }
 
     @OptIn(UnstableApi::class)
