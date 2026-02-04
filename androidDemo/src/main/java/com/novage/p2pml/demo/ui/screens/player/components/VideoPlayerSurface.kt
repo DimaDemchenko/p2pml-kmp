@@ -1,5 +1,7 @@
 package com.novage.p2pml.demo.ui.screens.player.components
 
+import android.annotation.SuppressLint
+import android.view.LayoutInflater
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +29,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
+import com.novage.p2pml.demo.R
 
 private const val ASPECT_RATIO = 16f / 9f
 
+@SuppressLint("InflateParams")
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerSurface(player: Player?, isP2PActive: Boolean, isVideoReady: Boolean, onSettingsClick: () -> Unit) {
@@ -42,7 +46,11 @@ fun VideoPlayerSurface(player: Player?, isP2PActive: Boolean, isVideoReady: Bool
         if (player != null) {
             AndroidView(
                 factory = { ctx ->
-                    PlayerView(ctx).apply {
+                    // Inflate XML to force TextureView, resolving Z-order glitches during Compose animations
+                    val view = LayoutInflater.from(ctx)
+                        .inflate(R.layout.layout_player_view, null) as PlayerView
+
+                    view.apply {
                         useController = true
                         setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
                     }
