@@ -57,7 +57,7 @@ internal class ServerModule(
 
         serverScope.launch {
             try {
-                val serverInstance = embeddedServer(CIO, port = 0, host = "0.0.0.0") {
+                val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
                     if (enableCors) configureCORS()
                     configureRoutes(client, manifestService, hlsManifestParser, segmentService, onError)
                 }.start(wait = false)
