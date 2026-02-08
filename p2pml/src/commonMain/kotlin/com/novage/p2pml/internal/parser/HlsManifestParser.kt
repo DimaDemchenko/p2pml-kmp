@@ -165,7 +165,7 @@ internal class HlsManifestParser(
             val snapshot = PlaylistSnapshot(
                 mediaSequence = mediaPlaylist.mediaSequence,
                 hasEndTag = mediaPlaylist.hasEndTag,
-                segmentDurations = mediaPlaylist.hlsSegments.map {
+                segmentDurationsSec = mediaPlaylist.hlsSegments.map {
                     it.durationUs / MICROSECONDS_IN_SECOND
                 }
             )

@@ -10,8 +10,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private data class PlaybackSegment(
-    val startTime: Double,
-    val endTime: Double,
+    var startTime: Double,
+    var endTime: Double,
     val absoluteStartTime: Double,
     val absoluteEndTime: Double,
     val externalId: Long
@@ -21,8 +21,6 @@ private const val MILLISECONDS_IN_SECOND = 1000.0
 
 internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : PlaybackProvider {
     private var currentSnapshot: PlaylistSnapshot? = null
-    private var currentAbsoluteTime: Double? = null
-
     private var currentSegments = mutableMapOf<Long, PlaybackSegment>()
     private val mutex = Mutex()
 
@@ -33,17 +31,26 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         currentSegments.entries.removeIf { it.key < removeUntilId }
     }
 
-    private fun addSegment(duration: Double, externalId: Long) {
+    private fun updateExistingSegmentRelativeTime(segmentId: Long, durationSec: Double) {
+        val prevSegment = currentSegments[segmentId - 1]
+        val currentSegment =
+            currentSegments[segmentId] ?: return
+
+        val relativeStartTime = prevSegment?.endTime ?: 0.0
+        val relativeEndTime = relativeStartTime + durationSec
+
+        currentSegment.startTime = relativeStartTime
+        currentSegment.endTime = relativeEndTime
+    }
+
+    private fun addSegment(durationSec: Double, externalId: Long) {
         val prevSegment = currentSegments[externalId - 1]
 
         val relativeStartTime = prevSegment?.endTime ?: 0.0
-        val relativeEndTime = relativeStartTime + duration
+        val relativeEndTime = relativeStartTime + durationSec
 
-        val absoluteStartTime = prevSegment?.absoluteEndTime
-            ?: currentAbsoluteTime
-            ?: nowInSeconds
-
-        val absoluteEndTime = absoluteStartTime + duration
+        val absoluteStartTime = prevSegment?.absoluteEndTime ?: nowInSeconds
+        val absoluteEndTime = absoluteStartTime + durationSec
 
         currentSegments[externalId] = PlaybackSegment(
             startTime = relativeStartTime,
@@ -57,23 +64,21 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double = mutex.withLock {
         currentSnapshot = snapshot
 
-        if (currentAbsoluteTime == null) {
-            currentAbsoluteTime = nowInSeconds
-        }
-
         val newMediaSequence = snapshot.mediaSequence
 
-        snapshot.segmentDurations.forEachIndexed { index, duration ->
+        removeObsoleteSegments(newMediaSequence)
+
+        snapshot.segmentDurationsSec.forEachIndexed { index, duration ->
             val segmentIndex = newMediaSequence + index
 
-            if (!currentSegments.contains(segmentIndex)) {
+            if (currentSegments.contains(segmentIndex)) {
+                updateExistingSegmentRelativeTime(segmentIndex, duration)
+            } else {
                 addSegment(duration, segmentIndex)
             }
         }
 
-        removeObsoleteSegments(newMediaSequence)
-
-        return@withLock checkNotNull(currentAbsoluteTime) { "Absolute time was not initialized" }
+        return@withLock nowInSeconds
     }
 
     override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo {
@@ -106,6 +111,5 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     override suspend fun resetData() = mutex.withLock {
         currentSegments.clear()
         currentSnapshot = null
-        currentAbsoluteTime = null
     }
 }
