@@ -28,7 +28,8 @@ internal data class Variant(
     val videoGroupId: String? = null,
     val audioGroupId: String? = null,
     val subtitleGroupId: String? = null,
-    val captionGroupId: String? = null
+    val captionGroupId: String? = null,
+    val isIFrame: Boolean = false
 )
 
 internal data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)

@@ -191,7 +191,8 @@ internal class HlsPlaylistParser {
             videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars),
             audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, vars),
             subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, vars),
-            captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars)
+            captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars),
+            isIFrame = isIFrame
         )
     }
 

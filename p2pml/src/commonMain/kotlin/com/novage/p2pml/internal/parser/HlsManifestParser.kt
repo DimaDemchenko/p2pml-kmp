@@ -96,36 +96,39 @@ internal class HlsManifestParser(
         val updatedManifestBuilder = StringBuilder(originalManifest)
         currentMasterManifestUrl = manifestUrl
 
-        hlsPlaylist.variants.forEachIndexed { index, variant ->
+        hlsPlaylist.variants.forEach { variant ->
+            if (variant.isIFrame) {
+                if (variant.url === variant.urlInManifest) return@forEach
+                replaceUrlInManifest(updatedManifestBuilder, variant.urlInManifest, variant.url)
+            } else {
+                processStream(
+                    variant.url,
+                    variant.urlInManifest,
+                    MAIN_STREAM,
+                    updatedManifestBuilder
+                )
+            }
+        }
+
+        hlsPlaylist.videos.forEach { rendition ->
+            val urlInManifest = rendition.urlInManifest ?: return@forEach
+            val absUrl = rendition.url ?: return@forEach
+
             processStream(
-                variant.url,
-                variant.urlInManifest,
+                absUrl,
+                urlInManifest,
                 MAIN_STREAM,
-                index,
                 updatedManifestBuilder
             )
         }
 
-        hlsPlaylist.videos.forEachIndexed { index, rendition ->
-            if (rendition.url == null || rendition.urlInManifest == null) return@forEachIndexed
+        hlsPlaylist.audios.forEach { rendition ->
+            val urlInManifest = rendition.urlInManifest ?: return@forEach
+            val absUrl = rendition.url ?: return@forEach
 
-            processStream(
-                rendition.url,
-                rendition.urlInManifest,
-                MAIN_STREAM,
-                index,
-                updatedManifestBuilder
-            )
-        }
-
-        hlsPlaylist.audios.forEachIndexed { index, rendition ->
-            if (rendition.url == null || rendition.urlInManifest == null) return@forEachIndexed
-
-            processStream(
-                rendition.url,
-                rendition.urlInManifest,
+            processStream(absUrl,
+                urlInManifest,
                 SECONDARY_STREAM,
-                index,
                 updatedManifestBuilder
             )
         }
@@ -164,8 +167,8 @@ internal class HlsManifestParser(
 
         var searchOffset = 0
         var lastProcessedInitSegment: InitializationSegment? = null
-
-        mediaPlaylist.hlsSegments.forEachIndexed { index, segment ->
+        var segmentIndex = if (isStreamLive) newMediaSequence else 0
+        mediaPlaylist.hlsSegments.forEach { segment ->
             if (segment.initializationSegment != null && segment.initializationSegment !== lastProcessedInitSegment) {
                 val initSeg = segment.initializationSegment
                 val encodedInitUrl = encodeUrlToBase64(initSeg.absoluteUrl)
@@ -175,7 +178,7 @@ internal class HlsManifestParser(
                 lastProcessedInitSegment = initSeg
             }
 
-            val segmentIndex = index + newMediaSequence
+            println(">>>> Processing segment index: $segmentIndex, URL: ${segment.absoluteUrl}, ByteRange: ${segment.byteRange?.start}-${segment.byteRange?.end}")
             addCurrentSegmentRuntimeId(mediaType, segment.runtimeUrl)
 
             val encodedSegmentUrl = segment.byteRange?.let {
@@ -185,7 +188,7 @@ internal class HlsManifestParser(
             val newSegmentUrl = urlFactory.buildSegmentUrl(encodedSegmentUrl)
             searchOffset = replaceUrlInManifest(updatedManifestBuilder, segment.url, newSegmentUrl, searchOffset)
 
-            val newSegment = addNewSegment(manifestUrl, segmentIndex, initialStartTime, segment)
+            val newSegment = addNewSegment(manifestUrl, segmentIndex++, initialStartTime, segment)
             if (newSegment != null) segmentsToAdd.add(newSegment)
         }
 
@@ -247,11 +250,11 @@ internal class HlsManifestParser(
         absoluteStreamUrl: String,
         streamUrlInManifest: String,
         streamType: String,
-        index: Int,
         updatedManifestBuilder: StringBuilder
     ) {
         if (!streams.containsKey(absoluteStreamUrl)) {
-            streams[absoluteStreamUrl] = Stream(runtimeId = absoluteStreamUrl, type = streamType, index = index)
+            val nextIndex = streams.values.count { it.type == streamType }
+            streams[absoluteStreamUrl] = Stream(runtimeId = absoluteStreamUrl, type = streamType, index = nextIndex)
         }
 
         val encodedUrl = absoluteStreamUrl.encodeURLParameter()
