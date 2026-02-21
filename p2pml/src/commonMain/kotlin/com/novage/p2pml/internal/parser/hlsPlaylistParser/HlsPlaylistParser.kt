@@ -21,6 +21,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_DISCO
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_DISCONTINUITY_SEQUENCE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_ENDLIST
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_INIT_SEGMENT
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_I_FRAME_STREAM_INF
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_KEY
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA_DURATION
@@ -157,7 +158,7 @@ internal class HlsPlaylistParser {
                     vars[parseStringAttr(line, REGEX_NAME, vars)] = parseStringAttr(line, REGEX_VALUE, vars)
                 }
                 line.startsWith(TAG_MEDIA) -> mediaTags.add(line)
-                line.startsWith(TAG_STREAM_INF) -> {
+                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> {
                     variants.add(parseVariant(line, iterator, baseUri, vars))
                 }
             }
@@ -176,8 +177,13 @@ internal class HlsPlaylistParser {
     }
 
     private fun parseVariant(line: String, iterator: LineIterator, base: String, vars: Map<String, String>): Variant {
-        if (!iterator.hasNext()) throw NoSuchElementException("Unexpected end of variant")
-        val uriInManifest = replaceVariableReferences(iterator.next(), vars)
+        val isIFrame = line.startsWith(TAG_I_FRAME_STREAM_INF)
+        val uriInManifest = if (isIFrame) {
+            parseStringAttr(line, REGEX_URI, vars)
+        } else {
+            if (!iterator.hasNext()) throw NoSuchElementException("Unexpected end of variant")
+            replaceVariableReferences(iterator.next(), vars)
+        }
 
         return Variant(
             url = resolve(base, uriInManifest),
