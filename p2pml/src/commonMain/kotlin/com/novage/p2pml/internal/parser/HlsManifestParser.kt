@@ -31,12 +31,9 @@ internal class HlsManifestParser(
     private val mutex = Mutex()
 
     private var currentMasterManifestUrl: String? = null
-
     private val streams = mutableMapOf<String, Stream>()
-
     private val streamSegments = mutableMapOf<String, MutableMap<Long, Segment>>()
     private val updateStreamParams = mutableMapOf<String, UpdateStreamParams>()
-
     private val currentVideoSegmentRuntimeIds = mutableSetOf<String>()
     private val currentAudioSegmentRuntimeIds = mutableSetOf<String>()
 
@@ -79,10 +76,12 @@ internal class HlsManifestParser(
                 logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
                 parseMediaPlaylist(manifestUrl, hlsPlaylist, manifest)
             }
+
             is HlsMultivariantPlaylist -> {
                 logger.d { "Type: Multivariant (Master) Playlist" }
                 parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
             }
+
             else -> {
                 logger.e { "Unsupported playlist type found for: $manifestUrl" }
                 error("Unsupported playlist type")
@@ -95,12 +94,7 @@ internal class HlsManifestParser(
         originalManifest: String
     ): String {
         val updatedManifestBuilder = StringBuilder(originalManifest)
-
         currentMasterManifestUrl = manifestUrl
-
-        logger.i {
-            "Processing Master Playlist. Variants: ${hlsPlaylist.variants.size}, Audio: ${hlsPlaylist.audios.size}"
-        }
 
         hlsPlaylist.variants.forEachIndexed { index, variant ->
             processStream(
@@ -151,71 +145,52 @@ internal class HlsManifestParser(
         return updatedManifestBuilder.toString()
     }
 
-    private fun removeObsoleteSegments(variantUrl: String, removeUntilId: Long): List<String> {
-        val segmentsMap = streamSegments[variantUrl] ?: return emptyList()
-        val obsoleteSegments = segmentsMap.filterKeys { it < removeUntilId }
-
-        obsoleteSegments.forEach { (id, _) -> segmentsMap.remove(id) }
-
-        return obsoleteSegments.values.map { it.runtimeId }
-    }
-
-    private suspend fun getInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
-        if (isLive) {
-            val snapshot = PlaylistSnapshot(
-                mediaSequence = mediaPlaylist.mediaSequence,
-                hasEndTag = mediaPlaylist.hasEndTag,
-                segmentDurationsSec = mediaPlaylist.hlsSegments.map {
-                    it.durationUs / MICROSECONDS_IN_SECOND
-                }
-            )
-            return playbackProvider.getAbsolutePlaybackPosition(snapshot)
-        } else {
-            return 0.0
-        }
-    }
-
     private suspend fun parseMediaPlaylist(
         manifestUrl: String,
         mediaPlaylist: HlsMediaPlaylist,
         originalManifest: String
     ): String {
         val mediaType = streams[manifestUrl]?.type ?: MAIN_STREAM
-
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
         val updatedManifestBuilder = StringBuilder(originalManifest)
 
         val segmentsToRemove = removeObsoleteSegments(manifestUrl, newMediaSequence)
         val segmentsToAdd = mutableListOf<Segment>()
-        val initializationSegments = mutableSetOf<InitializationSegment>()
 
         val initialStartTime = getInitialStartTime(isStreamLive, mediaPlaylist)
-
         clearCurrentSegmentRuntimeIds(mediaType)
 
+
+        var searchOffset = 0
+        var lastProcessedInitSegment: InitializationSegment? = null
+
         mediaPlaylist.hlsSegments.forEachIndexed { index, segment ->
-            if (segment.initializationSegment != null) {
-                initializationSegments.add(segment.initializationSegment)
+            if (segment.initializationSegment != null && segment.initializationSegment !== lastProcessedInitSegment) {
+                val initSeg = segment.initializationSegment
+                val encodedInitUrl = encodeUrlToBase64(initSeg.absoluteUrl)
+                val newInitUrl = urlFactory.buildSegmentUrl(encodedInitUrl)
+
+                searchOffset = replaceUrlInManifest(updatedManifestBuilder, initSeg.url, newInitUrl, searchOffset)
+                lastProcessedInitSegment = initSeg
             }
 
             val segmentIndex = index + newMediaSequence
-
             addCurrentSegmentRuntimeId(mediaType, segment.runtimeUrl)
-            processSegment(segment, updatedManifestBuilder)
+
+            val encodedSegmentUrl = segment.byteRange?.let {
+                encodeUrlToBase64("${segment.absoluteUrl}|${it.start}-${it.end}")
+            } ?: encodeUrlToBase64(segment.absoluteUrl)
+
+            val newSegmentUrl = urlFactory.buildSegmentUrl(encodedSegmentUrl)
+            searchOffset = replaceUrlInManifest(updatedManifestBuilder, segment.url, newSegmentUrl, searchOffset)
 
             val newSegment = addNewSegment(manifestUrl, segmentIndex, initialStartTime, segment)
-
             if (newSegment != null) segmentsToAdd.add(newSegment)
         }
 
-        initializationSegments.forEach { segment ->
-            if (segment.url != segment.absoluteUrl) {
-                replaceUrlInManifest(updatedManifestBuilder, segment.url, segment.absoluteUrl)
-            }
-        }
-
         updateStreamData(manifestUrl, segmentsToAdd, segmentsToRemove, isStreamLive)
+
         if (!streams.containsKey(manifestUrl)) {
             streams[manifestUrl] = Stream(runtimeId = manifestUrl, type = MAIN_STREAM, index = 0)
         }
@@ -268,21 +243,6 @@ internal class HlsManifestParser(
         return newSegment
     }
 
-    private fun processSegment(hlsSegment: HlsSegment, manifestBuilder: StringBuilder) {
-        val byteRange = hlsSegment.byteRange
-        val absoluteSegmentUrl = hlsSegment.absoluteUrl
-        val segmentUrlInManifest = hlsSegment.url
-
-        val encodedAbsoluteSegmentUrl = if (byteRange != null) {
-            encodeUrlToBase64("$absoluteSegmentUrl|${byteRange.start}-${byteRange.end}")
-        } else {
-            encodeUrlToBase64(absoluteSegmentUrl)
-        }
-
-        val newSegmentUrl = urlFactory.buildSegmentUrl(encodedAbsoluteSegmentUrl)
-        replaceUrlInManifest(manifestBuilder, segmentUrlInManifest, newSegmentUrl)
-    }
-
     private fun processStream(
         absoluteStreamUrl: String,
         streamUrlInManifest: String,
@@ -300,15 +260,46 @@ internal class HlsManifestParser(
         replaceUrlInManifest(updatedManifestBuilder, streamUrlInManifest, newUrl)
     }
 
-    private fun replaceUrlInManifest(updatedManifestBuilder: StringBuilder, oldUrl: String, newUrl: String) {
-        val startIndex = updatedManifestBuilder.indexOf(oldUrl)
-        if (startIndex == -1) {
-            logger.w { "Failed to rewrite URL. Original string not found: $oldUrl" }
-            return
+    private fun replaceUrlInManifest(
+        updatedManifestBuilder: StringBuilder,
+        oldUrl: String,
+        newUrl: String,
+        startIndex: Int = 0
+    ): Int {
+        val foundIndex = updatedManifestBuilder.indexOf(oldUrl, startIndex)
+        if (foundIndex == -1) {
+            logger.w { "Failed to rewrite URL. Original string not found after index $startIndex: $oldUrl" }
+            return startIndex
         }
 
-        val endIndex = startIndex + oldUrl.length
-        updatedManifestBuilder.setRange(startIndex, endIndex, newUrl)
+        val endIndex = foundIndex + oldUrl.length
+        updatedManifestBuilder.setRange(foundIndex, endIndex, newUrl)
+
+        return foundIndex + newUrl.length
+    }
+
+    private fun removeObsoleteSegments(variantUrl: String, removeUntilId: Long): List<String> {
+        val segmentsMap = streamSegments[variantUrl] ?: return emptyList()
+        val obsoleteSegments = segmentsMap.filterKeys { it < removeUntilId }
+
+        obsoleteSegments.forEach { (id, _) -> segmentsMap.remove(id) }
+
+        return obsoleteSegments.values.map { it.runtimeId }
+    }
+
+    private suspend fun getInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
+        if (isLive) {
+            val snapshot = PlaylistSnapshot(
+                mediaSequence = mediaPlaylist.mediaSequence,
+                hasEndTag = mediaPlaylist.hasEndTag,
+                segmentDurationsSec = mediaPlaylist.hlsSegments.map {
+                    it.durationUs / MICROSECONDS_IN_SECOND
+                }
+            )
+            return playbackProvider.getAbsolutePlaybackPosition(snapshot)
+        } else {
+            return 0.0
+        }
     }
 
     suspend fun getUpdateStreamParamsJson(variantUrl: String): String? = mutex.withLock {
