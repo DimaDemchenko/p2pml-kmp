@@ -48,7 +48,7 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
                     uiState = uiState,
                     player = viewModel.player,
                     onBackClick = onBackClick,
-                    onQualitySelected = { quality -> viewModel.changeQuality(quality) }
+                    onQualitySelected = { track -> viewModel.changeTrack(track) }
                 )
             }
         }

@@ -1,7 +1,7 @@
 package com.novage.p2pml.demo.ui.screens.player
 
 import com.novage.p2pml.api.models.PeerDetails
-import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
+import com.novage.p2pml.demo.ui.screens.player.models.AvailableTracks
 
 data class PlayerUiState(
     val isVideoReady: Boolean = false,
@@ -15,5 +15,5 @@ data class PlayerUiState(
     val uploadTotal: Long = 0,
     val peers: List<PeerDetails> = emptyList(),
 
-    val qualities: List<VideoQuality> = emptyList()
+    val availableTracks: AvailableTracks = AvailableTracks()
 )

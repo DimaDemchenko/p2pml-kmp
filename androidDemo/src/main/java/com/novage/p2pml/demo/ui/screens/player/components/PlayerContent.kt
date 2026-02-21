@@ -17,14 +17,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.media3.common.Player
 import com.novage.p2pml.demo.ui.screens.player.PlayerUiState
-import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
+import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 
 @Composable
 fun PlayerContent(
     uiState: PlayerUiState,
     player: Player?,
     onBackClick: () -> Unit,
-    onQualitySelected: (VideoQuality) -> Unit
+    onQualitySelected: (MediaTrack) -> Unit
 ) {
     var showQualityDialog by remember { mutableStateOf(false) }
     val isInitialLoading = !uiState.isVideoReady
@@ -57,10 +57,10 @@ fun PlayerContent(
 
     if (showQualityDialog) {
         QualityDialog(
-            qualities = uiState.qualities,
+            availableTracks = uiState.availableTracks,
             onDismiss = { showQualityDialog = false },
-            onQualitySelected = { quality ->
-                onQualitySelected(quality)
+            onTrackSelected = { track ->
+                onQualitySelected(track)
                 showQualityDialog = false
             }
         )

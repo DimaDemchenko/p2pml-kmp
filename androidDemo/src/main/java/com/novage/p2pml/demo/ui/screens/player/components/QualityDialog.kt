@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -21,46 +22,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
+import com.novage.p2pml.demo.ui.screens.player.models.AvailableTracks
+import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 
 @Composable
-fun QualityDialog(qualities: List<VideoQuality>, onDismiss: () -> Unit, onQualitySelected: (VideoQuality) -> Unit) {
+fun QualityDialog(availableTracks: AvailableTracks, onDismiss: () -> Unit, onTrackSelected: (MediaTrack) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
-        title = { Text("Select Quality", fontWeight = FontWeight.Bold) },
+        title = { Text("Playback Settings", fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                qualities.forEach { quality ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onQualitySelected(quality) }
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = quality.isSelected,
-                            onClick = { onQualitySelected(quality) },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary,
-                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
+                if (availableTracks.videoTracks.isNotEmpty()) {
+                    Text(
+                        text = "Video Quality",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp)
+                    )
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                    availableTracks.videoTracks.forEach { track ->
+                        TrackRow(track = track, onTrackSelected = onTrackSelected)
+                    }
+                }
 
-                        Text(
-                            text = quality.label,
-                            color = if (quality.isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            fontSize = 16.sp,
-                            fontWeight = if (quality.isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
+                if (availableTracks.audioTracks.size > 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    Text(
+                        text = "Audio Track",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                    )
+
+                    availableTracks.audioTracks.forEach { track ->
+                        TrackRow(track = track, onTrackSelected = onTrackSelected)
                     }
                 }
             }
@@ -71,4 +69,33 @@ fun QualityDialog(qualities: List<VideoQuality>, onDismiss: () -> Unit, onQualit
             }
         }
     )
+}
+
+@Composable
+private fun TrackRow(track: MediaTrack, onTrackSelected: (MediaTrack) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onTrackSelected(track) }
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = track.isSelected,
+            onClick = { onTrackSelected(track) },
+            colors = RadioButtonDefaults.colors(
+                selectedColor = MaterialTheme.colorScheme.primary,
+                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Text(
+            text = track.label,
+            color = if (track.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp,
+            fontWeight = if (track.isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+    }
 }

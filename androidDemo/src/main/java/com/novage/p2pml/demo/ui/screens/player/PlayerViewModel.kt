@@ -20,9 +20,9 @@ import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
-import com.novage.p2pml.demo.ui.screens.player.models.VideoQuality
+import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
-import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableQualities
+import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableTracks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -81,8 +81,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 override fun onTracksChanged(tracks: Tracks) {
                     currentTracks = tracks
 
-                    val qualities = getAvailableQualities(tracks, exoPlayer.trackSelectionParameters)
-                    _uiState.update { it.copy(qualities = qualities) }
+                    val tracks = getAvailableTracks(tracks, exoPlayer.trackSelectionParameters)
+                    _uiState.update { it.copy(availableTracks = tracks) }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -181,14 +181,14 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         }
     }
 
-    fun changeQuality(quality: VideoQuality) {
+    fun changeTrack(track: MediaTrack) {
         val player = player ?: return
         val tracks = currentTracks ?: return
 
-        applyTrackSelection(player, quality, tracks)
+        applyTrackSelection(player, track, tracks)
 
-        val updatedQualities = getAvailableQualities(tracks, player.trackSelectionParameters)
-        _uiState.update { it.copy(qualities = updatedQualities) }
+        val updatedTracks = getAvailableTracks(tracks, player.trackSelectionParameters)
+        _uiState.update { it.copy(availableTracks = updatedTracks) }
     }
 
     @OptIn(UnstableApi::class)
