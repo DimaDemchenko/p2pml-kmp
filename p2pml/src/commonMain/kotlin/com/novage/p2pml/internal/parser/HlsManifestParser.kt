@@ -9,6 +9,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylis
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsPlaylistParser
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsSegment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.InitializationSegment
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.Rendition
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
@@ -110,42 +111,31 @@ internal class HlsManifestParser(
             }
         }
 
-        hlsPlaylist.videos.forEach { rendition ->
-            val urlInManifest = rendition.urlInManifest ?: return@forEach
-            val absUrl = rendition.url ?: return@forEach
+        processMediaRenditions(hlsPlaylist.videos, MAIN_STREAM, updatedManifestBuilder)
+        processMediaRenditions(hlsPlaylist.audios, SECONDARY_STREAM, updatedManifestBuilder)
 
-            processStream(
-                absUrl,
-                urlInManifest,
-                MAIN_STREAM,
-                updatedManifestBuilder
-            )
-        }
-
-        hlsPlaylist.audios.forEach { rendition ->
-            val urlInManifest = rendition.urlInManifest ?: return@forEach
-            val absUrl = rendition.url ?: return@forEach
-
-            processStream(absUrl,
-                urlInManifest,
-                SECONDARY_STREAM,
-                updatedManifestBuilder
-            )
-        }
-
-        hlsPlaylist.subtitles.forEach { rendition ->
-            if (rendition.url != null && rendition.urlInManifest != null && rendition.url != rendition.urlInManifest) {
-                replaceUrlInManifest(updatedManifestBuilder, rendition.urlInManifest, rendition.url)
-            }
-        }
-
-        hlsPlaylist.closedCaptions.forEach { rendition ->
-            if (rendition.url != null && rendition.urlInManifest != null && rendition.url != rendition.urlInManifest) {
-                replaceUrlInManifest(updatedManifestBuilder, rendition.urlInManifest, rendition.url)
-            }
-        }
+        replaceTextTrackUrls(hlsPlaylist.subtitles, updatedManifestBuilder)
+        replaceTextTrackUrls(hlsPlaylist.closedCaptions, updatedManifestBuilder)
 
         return updatedManifestBuilder.toString()
+    }
+
+    private fun processMediaRenditions(renditions: List<Rendition>, streamType: String, builder: StringBuilder) {
+        renditions.forEach { rendition ->
+            val urlInManifest = rendition.urlInManifest ?: return@forEach
+            val absUrl = rendition.url ?: return@forEach
+            processStream(absUrl, urlInManifest, streamType, builder)
+        }
+    }
+
+    private fun replaceTextTrackUrls(renditions: List<Rendition>, builder: StringBuilder) {
+        renditions.forEach { rendition ->
+            val manifestUrl = rendition.urlInManifest ?: return@forEach
+            val absUrl = rendition.url ?: return@forEach
+            if (absUrl != manifestUrl) {
+                replaceUrlInManifest(builder, manifestUrl, absUrl)
+            }
+        }
     }
 
     private suspend fun parseMediaPlaylist(
@@ -164,10 +154,10 @@ internal class HlsManifestParser(
         val initialStartTime = getInitialStartTime(isStreamLive, mediaPlaylist)
         clearCurrentSegmentRuntimeIds(mediaType)
 
-
         var searchOffset = 0
         var lastProcessedInitSegment: InitializationSegment? = null
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
+
         mediaPlaylist.hlsSegments.forEach { segment ->
             if (segment.initializationSegment != null && segment.initializationSegment !== lastProcessedInitSegment) {
                 val initSeg = segment.initializationSegment
@@ -178,7 +168,6 @@ internal class HlsManifestParser(
                 lastProcessedInitSegment = initSeg
             }
 
-            println(">>>> Processing segment index: $segmentIndex, URL: ${segment.absoluteUrl}, ByteRange: ${segment.byteRange?.start}-${segment.byteRange?.end}")
             addCurrentSegmentRuntimeId(mediaType, segment.runtimeUrl)
 
             val encodedSegmentUrl = segment.byteRange?.let {
