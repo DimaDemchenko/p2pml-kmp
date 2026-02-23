@@ -55,7 +55,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private var playerInitializationJob: Job? = null
 
     init {
-
         val args = savedStateHandle.toRoute<PlayerRoute>()
         initializePlayer(args.videoUrl, args.customEngineUrl)
     }
