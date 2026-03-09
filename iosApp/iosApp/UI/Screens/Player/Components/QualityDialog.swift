@@ -26,6 +26,17 @@ struct QualityDialog: View {
                             trackRow(track)
                         }
                     }
+
+                    if !availableTracks.audioTracks.isEmpty {
+                        Text("Audio Track")
+                            .font(.subheadline)
+                            .foregroundColor(AppTheme.primary)
+                            .padding(.horizontal).padding(.top, 8)
+
+                        ForEach(availableTracks.audioTracks) { track in
+                            trackRow(track)
+                        }
+                    }
                 }
             }
 

@@ -4,8 +4,12 @@ struct VideoListScreen: View {
     @State private var customUrl: String = ""
 
     var isUrlValid: Bool {
-        if customUrl.isEmpty { return true }
-        return customUrl.hasPrefix("http://") || customUrl.hasPrefix("https://")
+        guard !customUrl.isEmpty else { return true }
+        guard let url = URL(string: customUrl),
+              let scheme = url.scheme,
+              (scheme == "http" || scheme == "https"),
+              url.host != nil else { return false }
+        return true
     }
     var canPlay: Bool { !customUrl.isEmpty && isUrlValid }
 

@@ -10,7 +10,8 @@ class PlayerViewModel: ObservableObject {
 
     private var p2pLoader: P2PMediaLoader? = nil
     private var eventSubscriptions: [P2PML.Cancellable] = []
-    private var playerItemObserver: Any?
+    private var playerItemObserver: NSKeyValueObservation?
+    private var audioSelectionGroup: AVMediaSelectionGroup?
     private var shouldAutoPlay = true
 
     func initializePlayer(manifestUrl: String, customEngineUrl: String?) {
@@ -18,7 +19,6 @@ class PlayerViewModel: ObservableObject {
 
         P2PMediaLoader.companion.enableLogging()
 
-        // Exact config mapping from Android
         let coreConfig = """
                          {
                              "highDemandTimeWindow": 20,
@@ -73,19 +73,14 @@ class PlayerViewModel: ObservableObject {
 
         let playerItem = AVPlayerItem(url: urlObj)
         let newPlayer = AVPlayer(playerItem: playerItem)
-        newPlayer.automaticallyWaitsToMinimizeStalling = true // iOS Default LoadControl
+        newPlayer.automaticallyWaitsToMinimizeStalling = true
         self.player = newPlayer
 
-        // Monitor buffering state
         playerItemObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
                 if item.status == .readyToPlay {
                     self?.uiState.isVideoReady = true
-                    // Mock tracks to match Android UI (AVPlayer handles this natively)
-                    self?.uiState.availableTracks = AvailableTracks(
-                        videoTracks: [MediaTrack(label: "Auto", isSelected: true, isAuto: true)],
-                        audioTracks: [MediaTrack(label: "Default", isSelected: true, isAuto: true)]
-                    )
+                    self?.populateAvailableTracks(for: item)
                 } else if item.status == .failed {
                     self?.uiState.fatalError = "Video unavailable: \(item.error?.localizedDescription ?? "Unknown error")"
                 }
@@ -93,6 +88,77 @@ class PlayerViewModel: ObservableObject {
         }
 
         if shouldAutoPlay { newPlayer.play() }
+    }
+
+    private func populateAvailableTracks(for playerItem: AVPlayerItem) {
+        Task {
+            let asset = playerItem.asset
+            let currentBitrate = playerItem.preferredPeakBitRate
+
+            var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0)]
+
+            if let urlAsset = asset as? AVURLAsset {
+                let variants = (try? await urlAsset.load(.variants)) ?? urlAsset.variants
+                var seenHeights = Set<Int>()
+                let sorted = variants
+                    .filter { $0.videoAttributes != nil }
+                    .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
+
+                for variant in sorted {
+                    guard let videoAttrs = variant.videoAttributes,
+                          let peakBitRate = variant.peakBitRate,
+                          peakBitRate > 0 else { continue }
+                    let height = Int(videoAttrs.presentationSize.height)
+                    guard height > 0, seenHeights.insert(height).inserted else { continue }
+
+                    let bitrateKbps = Int(peakBitRate / 1000)
+                    let label = "\(height)p • \(bitrateKbps) kbps"
+                    let isSelected = currentBitrate > 0 && currentBitrate == peakBitRate
+                    videoTracks.append(MediaTrack(
+                        label: label,
+                        isSelected: isSelected,
+                        isAuto: false,
+                        bitrate: peakBitRate
+                    ))
+                }
+            }
+
+            var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true)]
+            if let audioGroup = try? await asset.loadMediaSelectionGroup(for: .audible) {
+                self.audioSelectionGroup = audioGroup
+                let selectedOption = playerItem.currentMediaSelection.selectedMediaOption(in: audioGroup)
+                let options = audioGroup.options.map { option in
+                    MediaTrack(
+                        label: option.displayName,
+                        isSelected: option == selectedOption,
+                        isAuto: false
+                    )
+                }
+                if !options.isEmpty {
+                    audioTracks = options
+                }
+            }
+
+            uiState.availableTracks = AvailableTracks(
+                videoTracks: videoTracks,
+                audioTracks: audioTracks
+            )
+        }
+    }
+
+    func changeTrack(_ track: MediaTrack) {
+        guard let playerItem = player?.currentItem else { return }
+
+        if track.isAuto {
+            playerItem.preferredPeakBitRate = 0
+        } else if track.bitrate > 0 {
+            playerItem.preferredPeakBitRate = track.bitrate
+        } else if let audioGroup = audioSelectionGroup,
+                  let option = audioGroup.options.first(where: { $0.displayName == track.label }) {
+            playerItem.select(option, in: audioGroup)
+        }
+
+        populateAvailableTracks(for: playerItem)
     }
 
     private func setupP2PEvents(_ loader: P2PMediaLoader) {
@@ -118,23 +184,28 @@ class PlayerViewModel: ObservableObject {
 
     func onMessageConsumed() { uiState.userMessage = nil }
 
-    func changeTrack(_ track: MediaTrack) {
-        // AVPlayer handles HLS variants automatically.
-        // Deep integration via AVAssetReader is needed to override this manually in iOS.
-    }
-
     func play() {
         shouldAutoPlay = true
         player?.play()
+        applyP2PEnabled(true)
     }
 
     func pause() {
         shouldAutoPlay = false
         player?.pause()
+        applyP2PEnabled(false)
+    }
+
+    private func applyP2PEnabled(_ enabled: Bool) {
+        guard let loader = p2pLoader else { return }
+        let config = "{ \"isP2PDisabled\": \(!enabled) }"
+        loader.applyDynamicConfig(dynamicCoreConfig: config)
     }
 
     func releaseResources() {
         player?.pause()
+        playerItemObserver?.invalidate()
+        playerItemObserver = nil
         player = nil
         eventSubscriptions.forEach { $0.cancel() }
         eventSubscriptions.removeAll()
