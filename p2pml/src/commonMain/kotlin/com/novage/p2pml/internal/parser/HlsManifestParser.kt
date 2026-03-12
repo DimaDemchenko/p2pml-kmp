@@ -18,10 +18,14 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 private const val MAIN_STREAM = "main"
 private const val SECONDARY_STREAM = "secondary"
 private const val MICROSECONDS_IN_SECOND = 1_000_000.0
+private val LIVE_VARIANT_TTL = 60.seconds
 
 internal class HlsManifestParser(
     private val playbackProvider: PlaybackProvider,
@@ -35,36 +39,34 @@ internal class HlsManifestParser(
     private val streams = mutableMapOf<String, Stream>()
     private val streamSegments = mutableMapOf<String, MutableMap<Long, Segment>>()
     private val updateStreamParams = mutableMapOf<String, UpdateStreamParams>()
-    private val currentVideoSegmentRuntimeIds = mutableSetOf<String>()
-    private val currentAudioSegmentRuntimeIds = mutableSetOf<String>()
+
+    private val currentSegmentRuntimeIds = mutableMapOf<String, MutableSet<String>>()
+    private val variantLastUpdated = mutableMapOf<String, TimeMark>()
 
     suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String = mutex.withLock {
         logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
         parseHlsManifest(manifestUrl, originalManifest)
     }
 
-    private fun addCurrentSegmentRuntimeId(streamType: String, runtimeId: String) {
-        when (streamType) {
-            MAIN_STREAM -> currentVideoSegmentRuntimeIds.add(runtimeId)
-            SECONDARY_STREAM -> currentAudioSegmentRuntimeIds.add(runtimeId)
+    private fun addCurrentSegmentRuntimeId(manifestUrl: String, runtimeId: String, isLive: Boolean) {
+        currentSegmentRuntimeIds.getOrPut(manifestUrl) { mutableSetOf() }.add(runtimeId)
+
+        if (isLive) {
+            variantLastUpdated[manifestUrl] = TimeSource.Monotonic.markNow()
         }
     }
 
-    private fun clearCurrentSegmentRuntimeIds(streamType: String) {
-        when (streamType) {
-            MAIN_STREAM -> currentVideoSegmentRuntimeIds.clear()
-            SECONDARY_STREAM -> currentAudioSegmentRuntimeIds.clear()
-        }
+    private fun clearCurrentSegmentRuntimeIds(manifestUrl: String) {
+        currentSegmentRuntimeIds[manifestUrl]?.clear()
     }
 
-    private fun clearCurrentSegmentRuntimeIds() {
-        currentVideoSegmentRuntimeIds.clear()
-        currentAudioSegmentRuntimeIds.clear()
+    private fun clearAllCurrentSegmentRuntimeIds() {
+        currentSegmentRuntimeIds.clear()
+        variantLastUpdated.clear()
     }
 
     suspend fun isCurrentSegment(segmentUrl: String): Boolean = mutex.withLock {
-        currentVideoSegmentRuntimeIds.contains(segmentUrl) ||
-            currentAudioSegmentRuntimeIds.contains(segmentUrl)
+        currentSegmentRuntimeIds.values.any { it.contains(segmentUrl) }
     }
 
     suspend fun isManifestTracked(manifestUrl: String): Boolean = mutex.withLock {
@@ -148,11 +150,12 @@ internal class HlsManifestParser(
         val newMediaSequence = mediaPlaylist.mediaSequence
         val updatedManifestBuilder = StringBuilder(originalManifest)
 
-        val segmentsToRemove = removeObsoleteSegments(manifestUrl, newMediaSequence)
+        val segmentsToRemove = removeObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
         val segmentsToAdd = mutableListOf<Segment>()
 
         val initialStartTime = getInitialStartTime(isStreamLive, mediaPlaylist)
-        clearCurrentSegmentRuntimeIds(mediaType)
+
+        clearCurrentSegmentRuntimeIds(manifestUrl)
 
         var searchOffset = 0
         var lastProcessedInitSegment: InitializationSegment? = null
@@ -168,7 +171,7 @@ internal class HlsManifestParser(
                 lastProcessedInitSegment = initSeg
             }
 
-            addCurrentSegmentRuntimeId(mediaType, segment.runtimeUrl)
+            addCurrentSegmentRuntimeId(manifestUrl, segment.runtimeUrl, isStreamLive)
 
             val encodedSegmentUrl = segment.byteRange?.let {
                 encodeUrlToBase64("${segment.absoluteUrl}|${it.start}-${it.end}")
@@ -184,7 +187,7 @@ internal class HlsManifestParser(
         updateStreamData(manifestUrl, segmentsToAdd, segmentsToRemove, isStreamLive)
 
         if (!streams.containsKey(manifestUrl)) {
-            streams[manifestUrl] = Stream(runtimeId = manifestUrl, type = MAIN_STREAM, index = 0)
+            streams[manifestUrl] = Stream(runtimeId = manifestUrl, type = mediaType, index = streams.values.count { it.type == mediaType })
         }
 
         logger.d { "Segments updated. Added: ${segmentsToAdd.size}, Removed: ${segmentsToRemove.size}" }
@@ -270,13 +273,37 @@ internal class HlsManifestParser(
         return foundIndex + newUrl.length
     }
 
-    private fun removeObsoleteSegments(variantUrl: String, removeUntilId: Long): List<String> {
-        val segmentsMap = streamSegments[variantUrl] ?: return emptyList()
-        val obsoleteSegments = segmentsMap.filterKeys { it < removeUntilId }
+    private fun removeObsoleteSegments(
+        variantUrl: String,
+        removeUntilId: Long,
+        isLive: Boolean
+    ): List<String> {
+        val obsoleteSegmentIds = mutableListOf<String>()
 
-        obsoleteSegments.forEach { (id, _) -> segmentsMap.remove(id) }
+        val segmentsMap = streamSegments[variantUrl]
+        if (segmentsMap != null) {
+            val obsoleteSegments = segmentsMap.filterKeys { it < removeUntilId }
+            obsoleteSegments.forEach { (id, _) -> segmentsMap.remove(id) }
+            obsoleteSegmentIds.addAll(obsoleteSegments.values.map { it.runtimeId })
+        }
 
-        return obsoleteSegments.values.map { it.runtimeId }
+        if (isLive) {
+            val staleManifests = variantLastUpdated.filterValues {
+                it.elapsedNow() > LIVE_VARIANT_TTL
+            }.keys.toSet()
+
+            staleManifests.forEach { staleUrl ->
+                if (staleUrl != variantUrl) {
+                    logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
+
+                    currentSegmentRuntimeIds.remove(staleUrl)
+                    variantLastUpdated.remove(staleUrl)
+                    streamSegments.remove(staleUrl)
+                }
+            }
+        }
+
+        return obsoleteSegmentIds
     }
 
     private suspend fun getInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
@@ -308,6 +335,6 @@ internal class HlsManifestParser(
         streams.clear()
         streamSegments.clear()
         updateStreamParams.clear()
-        clearCurrentSegmentRuntimeIds()
+        clearAllCurrentSegmentRuntimeIds()
     }
 }
