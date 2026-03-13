@@ -2,7 +2,7 @@ package com.novage.p2pml.internal.server.routes
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.parser.HlsManifestParser
-import com.novage.p2pml.internal.parser.encoding.decodeBase64Url
+import com.novage.p2pml.internal.parser.encoding.decodeFromUrlSafeBase64
 import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
 import com.novage.p2pml.internal.server.exceptions.SegmentProcessingException
 import com.novage.p2pml.internal.server.exceptions.SegmentReplacedException
@@ -50,7 +50,7 @@ private fun Route.segmentDownloadRoute(
             return@get
         }
 
-        val segmentUrl = decodeBase64Url(encodedSegmentUrl)
+        val segmentUrl = decodeFromUrlSafeBase64(encodedSegmentUrl)
         val byteRange = call.request.headers[HttpHeaders.Range]
 
         logger.d { "Player requested segment: $segmentUrl (Range: $byteRange)" }

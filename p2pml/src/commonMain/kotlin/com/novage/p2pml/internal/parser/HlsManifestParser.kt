@@ -3,7 +3,7 @@ package com.novage.p2pml.internal.parser
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaylistSnapshot
 import com.novage.p2pml.api.models.Segment
-import com.novage.p2pml.internal.parser.encoding.encodeUrlToBase64
+import com.novage.p2pml.internal.parser.encoding.encodeToUrlSafeBase64
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsPlaylistParser
@@ -164,7 +164,7 @@ internal class HlsManifestParser(
         mediaPlaylist.hlsSegments.forEach { segment ->
             if (segment.initializationSegment != null && segment.initializationSegment !== lastProcessedInitSegment) {
                 val initSeg = segment.initializationSegment
-                val encodedInitUrl = encodeUrlToBase64(initSeg.absoluteUrl)
+                val encodedInitUrl = encodeToUrlSafeBase64(initSeg.absoluteUrl)
                 val newInitUrl = urlFactory.buildSegmentUrl(encodedInitUrl)
 
                 searchOffset = replaceUrlInManifest(updatedManifestBuilder, initSeg.url, newInitUrl, searchOffset)
@@ -174,8 +174,8 @@ internal class HlsManifestParser(
             addCurrentSegmentRuntimeId(manifestUrl, segment.runtimeUrl, isStreamLive)
 
             val encodedSegmentUrl = segment.byteRange?.let {
-                encodeUrlToBase64("${segment.absoluteUrl}|${it.start}-${it.end}")
-            } ?: encodeUrlToBase64(segment.absoluteUrl)
+                encodeToUrlSafeBase64("${segment.absoluteUrl}|${it.start}-${it.end}")
+            } ?: encodeToUrlSafeBase64(segment.absoluteUrl)
 
             val newSegmentUrl = urlFactory.buildSegmentUrl(encodedSegmentUrl)
             searchOffset = replaceUrlInManifest(updatedManifestBuilder, segment.url, newSegmentUrl, searchOffset)

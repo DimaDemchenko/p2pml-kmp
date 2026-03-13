@@ -1,11 +1,14 @@
 package com.novage.p2pml.internal.parser.encoding
 
-import io.ktor.http.decodeURLQueryComponent
-import io.ktor.http.encodeURLParameter
-import io.ktor.util.decodeBase64String
-import io.ktor.util.encodeBase64
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
-internal fun encodeUrlToBase64(url: String): String = url.encodeBase64().encodeURLParameter()
+@OptIn(ExperimentalEncodingApi::class)
+internal fun encodeToUrlSafeBase64(value: String): String {
+    return Base64.UrlSafe.encode(value.encodeToByteArray())
+}
 
-internal fun decodeBase64Url(encodedString: String): String =
-    encodedString.decodeBase64String().decodeURLQueryComponent()
+@OptIn(ExperimentalEncodingApi::class)
+internal fun decodeFromUrlSafeBase64(urlSafeBase64: String): String {
+    return Base64.UrlSafe.decode(urlSafeBase64).decodeToString()
+}
