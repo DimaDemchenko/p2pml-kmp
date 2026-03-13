@@ -61,14 +61,23 @@ internal class AndroidWebViewEventDispatcher(
                 }
 
                 "onSegmentLoaded" -> emitEvent(CoreEventMap.OnSegmentLoaded, payloadStr)
+
                 "onSegmentStart" -> emitEvent(CoreEventMap.OnSegmentStart, payloadStr)
+
                 "onSegmentError" -> emitEvent(CoreEventMap.OnSegmentError, payloadStr)
+
                 "onSegmentAbort" -> emitEvent(CoreEventMap.OnSegmentAbort, payloadStr)
+
                 "onPeerConnect" -> emitEvent(CoreEventMap.OnPeerConnect, payloadStr)
+
                 "onPeerClose" -> emitEvent(CoreEventMap.OnPeerClose, payloadStr)
+
                 "onPeerError" -> emitEvent(CoreEventMap.OnPeerError, payloadStr)
+
                 "onTrackerError" -> emitEvent(CoreEventMap.OnTrackerError, payloadStr)
+
                 "onTrackerWarning" -> emitEvent(CoreEventMap.OnTrackerWarning, payloadStr)
+
                 else -> logger.w { "Unknown message type received from WebView: $type" }
             }
         } catch (e: JSONException) {
