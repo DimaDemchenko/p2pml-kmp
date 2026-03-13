@@ -1,4 +1,3 @@
-import com.android.build.api.dsl.androidLibrary
 import java.util.Base64
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -72,7 +71,7 @@ val generateAssetsTask =
     }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.novage.p2pml"
         compileSdk =
             libs.versions.android.compile.sdk
@@ -83,12 +82,8 @@ kotlin {
                 .get()
                 .toInt()
 
-        compilations.configureEach {
-            compileTaskProvider.configure {
-                compilerOptions {
-                    jvmTarget.set(JvmTarget.JVM_11)
-                }
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
         }
     }
 

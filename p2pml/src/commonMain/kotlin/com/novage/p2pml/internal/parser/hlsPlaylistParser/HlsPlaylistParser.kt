@@ -69,6 +69,7 @@ internal class HlsPlaylistParser {
                 when {
                     trimmed.startsWith(TAG_STREAM_INF) ->
                         return parseMultivariantPlaylist(LineIterator(extraLines, reader), playlistUri)
+
                     isMediaPlaylistTag(trimmed) ->
                         return parseMediaPlaylist(LineIterator(extraLines, reader), playlistUri)
                 }
@@ -113,13 +114,17 @@ internal class HlsPlaylistParser {
     private fun processMediaTag(line: String, state: SegmentState, vars: Map<String, String>, baseUri: String) {
         when {
             line.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
+
             line.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
+
             line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
+
             line.startsWith(TAG_BYTERANGE) -> {
                 val range = parseByteRange(line, vars)
                 state.length = range.first
                 range.second?.let { state.offset = it }
             }
+
             line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
         }
     }
@@ -157,7 +162,9 @@ internal class HlsPlaylistParser {
                 line.startsWith(TAG_DEFINE) -> {
                     vars[parseStringAttr(line, REGEX_NAME, vars)] = parseStringAttr(line, REGEX_VALUE, vars)
                 }
+
                 line.startsWith(TAG_MEDIA) -> mediaTags.add(line)
+
                 line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> {
                     variants.add(parseVariant(line, iterator, baseUri, vars))
                 }

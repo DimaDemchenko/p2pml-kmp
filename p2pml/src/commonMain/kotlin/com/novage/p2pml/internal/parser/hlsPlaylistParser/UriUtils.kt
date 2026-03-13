@@ -22,21 +22,26 @@ internal fun resolve(baseUri: String?, referenceUri: String?): String {
             val sb = StringBuilder(reference)
             removeDotSegments(sb, refIndices[PATH], refIndices[QUERY])
         }
+
         refIndices[FRAGMENT] == 0 -> {
             StringBuilder().append(base, 0, baseIndices[FRAGMENT]).append(reference).toString()
         }
+
         refIndices[QUERY] == 0 -> {
             StringBuilder().append(base, 0, baseIndices[QUERY]).append(reference).toString()
         }
+
         refIndices[PATH] != 0 -> {
             val baseLimit = baseIndices[SCHEME_COLON] + 1
             val sb = StringBuilder().append(base, 0, baseLimit).append(reference)
             removeDotSegments(sb, baseLimit + refIndices[PATH], baseLimit + refIndices[QUERY])
         }
+
         reference.getOrNull(refIndices[PATH]) == '/' -> {
             val sb = StringBuilder().append(base, 0, baseIndices[PATH]).append(reference)
             removeDotSegments(sb, baseIndices[PATH], baseIndices[PATH] + refIndices[QUERY])
         }
+
         else -> resolveRelativePath(base, reference, baseIndices, refIndices)
     }
 }
@@ -69,7 +74,9 @@ internal fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): Stri
     while (i <= lim) {
         val nextSegmentStart = when {
             i == lim -> i
+
             sb[i] == '/' -> i + 1
+
             else -> {
                 i++
                 continue
