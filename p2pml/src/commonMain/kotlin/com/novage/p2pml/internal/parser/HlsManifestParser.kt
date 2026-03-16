@@ -162,7 +162,7 @@ internal class HlsManifestParser(
         mediaPlaylist.hlsSegments.forEach { segment ->
             if (segment.encryptionKey != null && segment.encryptionKey !== lastProcessedKey) {
                 val key = segment.encryptionKey
-                searchOffset = replaceUrlInManifest(
+                replaceUrlInManifest(
                     builder,
                     key.original,
                     key.absolute,
@@ -176,7 +176,7 @@ internal class HlsManifestParser(
                 val encodedInitUrl = encodeToUrlSafeBase64(initSeg.url.absolute)
                 val newInitUrl = urlFactory.buildSegmentUrl(encodedInitUrl)
 
-                searchOffset = replaceUrlInManifest(
+                replaceUrlInManifest(
                     builder,
                     initSeg.url.original,
                     newInitUrl,
