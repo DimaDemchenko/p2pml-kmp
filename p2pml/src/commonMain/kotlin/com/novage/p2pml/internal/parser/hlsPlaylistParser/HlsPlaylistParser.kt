@@ -238,8 +238,14 @@ internal class HlsPlaylistParser {
 
     private fun parseVariant(line: String, iterator: LineIterator, base: String, vars: Map<String, String>): Variant {
         val isIFrame = line.startsWith(TAG_I_FRAME_STREAM_INF)
-        val uriInManifest =
-            if (isIFrame) parseStringAttr(line, REGEX_URI, vars) else replaceVariableReferences(iterator.next(), vars)
+        val uriInManifest = if (isIFrame) {
+            parseStringAttr(line, REGEX_URI, vars)
+        } else {
+            check(iterator.hasNext()) {
+                "Unexpected end of multivariant playlist: missing URI line after $TAG_STREAM_INF"
+            }
+            replaceVariableReferences(iterator.next(), vars)
+        }
         return Variant(
             url = ParsedUrl(uriInManifest, resolveAbsoluteUrl(base, uriInManifest)),
             videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars),
