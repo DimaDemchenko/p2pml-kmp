@@ -128,6 +128,12 @@ internal class HlsManifestParser(
         }
     }
 
+    private fun replaceLowLatencyUrls(mediaPlaylist: HlsMediaPlaylist, builder: StringBuilder) {
+        mediaPlaylist.parts.forEach { replaceUrlInManifest(builder, it.original, it.absolute) }
+        mediaPlaylist.preloadHints.forEach { replaceUrlInManifest(builder, it.original, it.absolute) }
+        mediaPlaylist.renditionReports.forEach { replaceUrlInManifest(builder, it.original, it.absolute) }
+    }
+
     private suspend fun parseMediaPlaylist(
         manifestUrl: String,
         mediaPlaylist: HlsMediaPlaylist,
@@ -145,9 +151,7 @@ internal class HlsManifestParser(
 
         clearCurrentSegmentRuntimeIds(manifestUrl)
 
-        mediaPlaylist.parts.forEach { replaceUrlInManifest(builder, it.original, it.absolute) }
-        mediaPlaylist.preloadHints.forEach { replaceUrlInManifest(builder, it.original, it.absolute) }
-        mediaPlaylist.renditionReports.forEach { replaceUrlInManifest(builder, it.original, it.absolute) }
+        replaceLowLatencyUrls(mediaPlaylist, builder)
 
         var searchOffset = 0
         var lastProcessedInitSegment: InitializationSegment? = null
