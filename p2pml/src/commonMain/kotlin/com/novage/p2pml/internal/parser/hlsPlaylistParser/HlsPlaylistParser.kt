@@ -26,6 +26,10 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_KEY
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA_DURATION
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA_SEQUENCE
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PART
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PRELOAD_HINT
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_RENDITION_REPORT
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_SESSION_KEY
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_STREAM_INF
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_TARGET_DURATION
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_AUDIO
@@ -34,7 +38,6 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_SUBT
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_VIDEO
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.math.roundToLong
-import kotlin.text.iterator
 
 private const val UTF8_BOM_BYTE_1 = 0xEF
 private const val UTF8_BOM_BYTE_2 = 0xBB
@@ -49,7 +52,8 @@ internal class HlsPlaylistParser {
         var durationUs: Long = 0L,
         var offset: Long = 0L,
         var length: Long = -1L,
-        var initSegment: InitializationSegment? = null
+        var initSegment: InitializationSegment? = null,
+        var encryptionKey: ParsedUrl? = null
     )
 
     fun parse(playlistUri: String, playlistData: String): HlsPlaylist {
@@ -92,6 +96,9 @@ internal class HlsPlaylistParser {
     private fun parseMediaPlaylist(iterator: LineIterator, playlistUri: String): HlsPlaylist {
         val state = SegmentState()
         val segments = mutableListOf<HlsSegment>()
+        val parts = mutableListOf<ParsedUrl>()
+        val preloadHints = mutableListOf<ParsedUrl>()
+        val renditionReports = mutableListOf<ParsedUrl>()
         val vars = mutableMapOf<String, String>()
 
         while (iterator.hasNext()) {
@@ -99,7 +106,7 @@ internal class HlsPlaylistParser {
             if (line.isEmpty()) continue
 
             if (line.startsWith("#")) {
-                processMediaTag(line, state, vars, playlistUri)
+                processMediaTag(line, state, vars, playlistUri, parts, preloadHints, renditionReports)
             } else {
                 segments.add(createSegment(line, playlistUri, vars, state))
                 if (state.length != -1L) state.offset += state.length
@@ -108,24 +115,55 @@ internal class HlsPlaylistParser {
             }
         }
 
-        return HlsMediaPlaylist(playlistUri, state.mediaSequence, state.hasEndTag, segments)
+        return HlsMediaPlaylist(
+            playlistUri,
+            state.mediaSequence,
+            state.hasEndTag,
+            segments,
+            parts,
+            preloadHints,
+            renditionReports
+        )
     }
 
-    private fun processMediaTag(line: String, state: SegmentState, vars: Map<String, String>, baseUri: String) {
+    private fun processMediaTag(
+        line: String, state: SegmentState, vars: Map<String, String>, baseUri: String,
+        parts: MutableList<ParsedUrl>, preloadHints: MutableList<ParsedUrl>, renditionReports: MutableList<ParsedUrl>
+    ) {
         when {
             line.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
-
             line.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
-
             line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
-
+            line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
             line.startsWith(TAG_BYTERANGE) -> {
                 val range = parseByteRange(line, vars)
                 state.length = range.first
                 range.second?.let { state.offset = it }
             }
 
-            line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
+            line.startsWith(TAG_KEY) -> {
+                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
+                    state.encryptionKey = ParsedUrl(it, resolveAbsoluteUrl(baseUri, it))
+                }
+            }
+
+            line.startsWith(TAG_PART) -> {
+                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
+                    parts.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
+                }
+            }
+
+            line.startsWith(TAG_PRELOAD_HINT) -> {
+                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
+                    preloadHints.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
+                }
+            }
+
+            line.startsWith(TAG_RENDITION_REPORT) -> {
+                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
+                    renditionReports.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
+                }
+            }
         }
     }
 
@@ -137,7 +175,7 @@ internal class HlsPlaylistParser {
 
     private fun parseInitSegment(line: String, baseUri: String, vars: Map<String, String>): InitializationSegment {
         val uri = parseStringAttr(line, REGEX_URI, vars)
-        return InitializationSegment(url = uri, absoluteUrl = resolve(baseUri, uri))
+        return InitializationSegment(ParsedUrl(uri, resolveAbsoluteUrl(baseUri, uri)))
     }
 
     private fun createSegment(
@@ -147,58 +185,54 @@ internal class HlsPlaylistParser {
         state: SegmentState
     ): HlsSegment {
         val uri = replaceVariableReferences(line, vars)
-        val absUri = if (isAbsolute(uri)) uri else resolve(baseUri, uri)
-        return HlsSegment(uri, absUri, state.offset, state.length, state.durationUs, state.initSegment)
+        return HlsSegment(
+            url = ParsedUrl(uri, resolveAbsoluteUrl(baseUri, uri)),
+            byteRangeOffset = state.offset,
+            byteRangeLength = state.length,
+            durationUs = state.durationUs,
+            initializationSegment = state.initSegment,
+            encryptionKey = state.encryptionKey
+        )
     }
 
     private fun parseMultivariantPlaylist(iterator: LineIterator, baseUri: String): HlsPlaylist {
         val vars = mutableMapOf<String, String>()
         val variants = mutableListOf<Variant>()
         val mediaTags = mutableListOf<String>()
+        val sessionKeys = mutableListOf<ParsedUrl>()
 
         while (iterator.hasNext()) {
             val line = iterator.next()
             when {
-                line.startsWith(TAG_DEFINE) -> {
-                    vars[parseStringAttr(line, REGEX_NAME, vars)] = parseStringAttr(line, REGEX_VALUE, vars)
-                }
-
+                line.startsWith(TAG_DEFINE) -> vars[parseStringAttr(line, REGEX_NAME, vars)] = parseStringAttr(line, REGEX_VALUE, vars)
                 line.startsWith(TAG_MEDIA) -> mediaTags.add(line)
-
-                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> {
-                    variants.add(parseVariant(line, iterator, baseUri, vars))
+                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> variants.add(parseVariant(line, iterator, baseUri, vars))
+                line.startsWith(TAG_SESSION_KEY) -> {
+                    parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
+                        sessionKeys.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
+                    }
                 }
             }
         }
 
         val renditions = mediaTags.map { parseRendition(it, baseUri, vars) }
-
         return HlsMultivariantPlaylist(
-            baseUri = baseUri,
-            variants = variants,
+            baseUri = baseUri, variants = variants,
             videos = renditions.filter { it.type == TYPE_VIDEO }.map { it.rendition },
             audios = renditions.filter { it.type == TYPE_AUDIO }.map { it.rendition },
             subtitles = renditions.filter { it.type == TYPE_SUBTITLES }.map { it.rendition },
-            closedCaptions = renditions.filter { it.type == TYPE_CLOSED_CAPTIONS }.map { it.rendition }
+            closedCaptions = renditions.filter { it.type == TYPE_CLOSED_CAPTIONS }.map { it.rendition },
+            sessionKeyUrls = sessionKeys
         )
     }
 
     private fun parseVariant(line: String, iterator: LineIterator, base: String, vars: Map<String, String>): Variant {
         val isIFrame = line.startsWith(TAG_I_FRAME_STREAM_INF)
-        val uriInManifest = if (isIFrame) {
-            parseStringAttr(line, REGEX_URI, vars)
-        } else {
-            if (!iterator.hasNext()) throw NoSuchElementException("Unexpected end of variant")
-            replaceVariableReferences(iterator.next(), vars)
-        }
-
+        val uriInManifest = if (isIFrame) parseStringAttr(line, REGEX_URI, vars) else replaceVariableReferences(iterator.next(), vars)
         return Variant(
-            url = resolve(base, uriInManifest),
-            urlInManifest = uriInManifest,
-            videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars),
-            audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, vars),
-            subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, vars),
-            captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars),
+            url = ParsedUrl(uriInManifest, resolveAbsoluteUrl(base, uriInManifest)),
+            videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars), audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, vars),
+            subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, vars), captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars),
             isIFrame = isIFrame
         )
     }
@@ -208,13 +242,8 @@ internal class HlsPlaylistParser {
     private fun parseRendition(line: String, base: String, vars: Map<String, String>): TypedRendition {
         val type = parseStringAttr(line, REGEX_TYPE, vars)
         val uri = parseOptionalStringAttr(line, REGEX_URI, vars)
-        val rendition = Rendition(
-            url = uri?.let { resolve(base, it) },
-            urlInManifest = uri,
-            groupId = parseStringAttr(line, REGEX_GROUP_ID, vars),
-            name = parseStringAttr(line, REGEX_NAME, vars)
-        )
-        return TypedRendition(type, rendition)
+        val parsedUrl = uri?.let { ParsedUrl(it, resolveAbsoluteUrl(base, it)) }
+        return TypedRendition(type, Rendition(url = parsedUrl, groupId = parseStringAttr(line, REGEX_GROUP_ID, vars), name = parseStringAttr(line, REGEX_NAME, vars)))
     }
 
     private fun parseTimeSecondsToUs(line: String, regex: Regex): Long {

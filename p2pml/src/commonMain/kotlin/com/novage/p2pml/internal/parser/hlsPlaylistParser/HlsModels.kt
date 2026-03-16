@@ -6,25 +6,30 @@ import kotlinx.serialization.Serializable
 
 internal abstract class HlsPlaylist(val baseUri: String)
 
+internal data class ParsedUrl(val original: String, val absolute: String)
+
 internal class HlsMultivariantPlaylist(
     baseUri: String,
     val variants: List<Variant>,
     val videos: List<Rendition>,
     val audios: List<Rendition>,
     val subtitles: List<Rendition>,
-    val closedCaptions: List<Rendition>
+    val closedCaptions: List<Rendition>,
+    val sessionKeyUrls: List<ParsedUrl>
 ) : HlsPlaylist(baseUri)
 
 internal class HlsMediaPlaylist(
     baseUri: String,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
-    val hlsSegments: List<HlsSegment>
+    val hlsSegments: List<HlsSegment>,
+    val parts: List<ParsedUrl>,
+    val preloadHints: List<ParsedUrl>,
+    val renditionReports: List<ParsedUrl>
 ) : HlsPlaylist(baseUri)
 
 internal data class Variant(
-    val url: String,
-    val urlInManifest: String,
+    val url: ParsedUrl,
     val videoGroupId: String? = null,
     val audioGroupId: String? = null,
     val subtitleGroupId: String? = null,
@@ -32,32 +37,22 @@ internal data class Variant(
     val isIFrame: Boolean = false
 )
 
-internal data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)
+internal data class Rendition(val url: ParsedUrl?, val groupId: String, val name: String)
 
-internal data class InitializationSegment(val url: String, val absoluteUrl: String)
+internal data class InitializationSegment(val url: ParsedUrl)
 
 internal data class HlsSegment(
-    val url: String,
-    val absoluteUrl: String,
+    val url: ParsedUrl,
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
-    val initializationSegment: InitializationSegment?
+    val initializationSegment: InitializationSegment?,
+    val encryptionKey: ParsedUrl?
 ) {
     val byteRange: ByteRange?
-        get() =
-            if (byteRangeLength != -1L) {
-                ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1)
-            } else {
-                null
-            }
+        get() = if (byteRangeLength != -1L) ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1) else null
 
-    val runtimeUrl =
-        if (byteRange != null) {
-            "$absoluteUrl|${byteRange!!.start}-${byteRange!!.end}"
-        } else {
-            absoluteUrl
-        }
+    val runtimeUrl = if (byteRange != null) "${url.absolute}|${byteRange!!.start}-${byteRange!!.end}" else url.absolute
 }
 
 @Serializable
@@ -68,4 +63,5 @@ internal data class UpdateStreamParams(
     val isLive: Boolean
 )
 
-@Serializable internal data class Stream(val runtimeId: String, val type: String, val index: Int)
+@Serializable
+internal data class Stream(val runtimeId: String, val type: String, val index: Int)
