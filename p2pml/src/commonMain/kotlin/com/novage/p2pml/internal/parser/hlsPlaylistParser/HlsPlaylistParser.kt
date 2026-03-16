@@ -127,14 +127,23 @@ internal class HlsPlaylistParser {
     }
 
     private fun processMediaTag(
-        line: String, state: SegmentState, vars: Map<String, String>, baseUri: String,
-        parts: MutableList<ParsedUrl>, preloadHints: MutableList<ParsedUrl>, renditionReports: MutableList<ParsedUrl>
+        line: String,
+        state: SegmentState,
+        vars: Map<String, String>,
+        baseUri: String,
+        parts: MutableList<ParsedUrl>,
+        preloadHints: MutableList<ParsedUrl>,
+        renditionReports: MutableList<ParsedUrl>
     ) {
         when {
             line.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
+
             line.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
+
             line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
+
             line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
+
             line.startsWith(TAG_BYTERANGE) -> {
                 val range = parseByteRange(line, vars)
                 state.length = range.first
@@ -204,9 +213,20 @@ internal class HlsPlaylistParser {
         while (iterator.hasNext()) {
             val line = iterator.next()
             when {
-                line.startsWith(TAG_DEFINE) -> vars[parseStringAttr(line, REGEX_NAME, vars)] = parseStringAttr(line, REGEX_VALUE, vars)
+                line.startsWith(TAG_DEFINE) -> vars[parseStringAttr(line, REGEX_NAME, vars)] =
+                    parseStringAttr(line, REGEX_VALUE, vars)
+
                 line.startsWith(TAG_MEDIA) -> mediaTags.add(line)
-                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> variants.add(parseVariant(line, iterator, baseUri, vars))
+
+                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> variants.add(
+                    parseVariant(
+                        line,
+                        iterator,
+                        baseUri,
+                        vars
+                    )
+                )
+
                 line.startsWith(TAG_SESSION_KEY) -> {
                     parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
                         sessionKeys.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
@@ -228,11 +248,14 @@ internal class HlsPlaylistParser {
 
     private fun parseVariant(line: String, iterator: LineIterator, base: String, vars: Map<String, String>): Variant {
         val isIFrame = line.startsWith(TAG_I_FRAME_STREAM_INF)
-        val uriInManifest = if (isIFrame) parseStringAttr(line, REGEX_URI, vars) else replaceVariableReferences(iterator.next(), vars)
+        val uriInManifest =
+            if (isIFrame) parseStringAttr(line, REGEX_URI, vars) else replaceVariableReferences(iterator.next(), vars)
         return Variant(
             url = ParsedUrl(uriInManifest, resolveAbsoluteUrl(base, uriInManifest)),
-            videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars), audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, vars),
-            subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, vars), captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars),
+            videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars),
+            audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, vars),
+            subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, vars),
+            captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars),
             isIFrame = isIFrame
         )
     }
@@ -243,7 +266,14 @@ internal class HlsPlaylistParser {
         val type = parseStringAttr(line, REGEX_TYPE, vars)
         val uri = parseOptionalStringAttr(line, REGEX_URI, vars)
         val parsedUrl = uri?.let { ParsedUrl(it, resolveAbsoluteUrl(base, it)) }
-        return TypedRendition(type, Rendition(url = parsedUrl, groupId = parseStringAttr(line, REGEX_GROUP_ID, vars), name = parseStringAttr(line, REGEX_NAME, vars)))
+        return TypedRendition(
+            type,
+            Rendition(
+                url = parsedUrl,
+                groupId = parseStringAttr(line, REGEX_GROUP_ID, vars),
+                name = parseStringAttr(line, REGEX_NAME, vars)
+            )
+        )
     }
 
     private fun parseTimeSecondsToUs(line: String, regex: Regex): Long {
