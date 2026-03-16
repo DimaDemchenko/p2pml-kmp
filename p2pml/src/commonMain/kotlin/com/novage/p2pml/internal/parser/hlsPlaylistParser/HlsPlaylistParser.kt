@@ -143,7 +143,7 @@ internal class HlsPlaylistParser {
             line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
             line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
             line.startsWith(TAG_BYTERANGE) -> applyByteRange(line, vars, state)
-            line.startsWith(TAG_KEY) -> parseUrlAttribute(line, vars, baseUri)?.let { state.encryptionKey = it }
+            line.startsWith(TAG_KEY) -> state.encryptionKey = parseUrlAttribute(line, vars, baseUri)
             line.startsWith(TAG_PART) -> parseUrlAttribute(line, vars, baseUri)?.let { llState.parts.add(it) }
             line.startsWith(TAG_PRELOAD_HINT) -> parseUrlAttribute(line, vars, baseUri)?.let {
                 llState.preloadHints.add(it)
