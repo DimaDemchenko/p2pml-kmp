@@ -4,29 +4,31 @@ import com.novage.p2pml.api.models.ByteRange
 import com.novage.p2pml.api.models.Segment
 import kotlinx.serialization.Serializable
 
-internal abstract class HlsPlaylist(val baseUri: String)
+internal sealed interface HlsPlaylist {
+    val baseUri: String
+}
 
 internal data class ParsedUrl(val original: String, val absolute: String)
 
-internal class HlsMultivariantPlaylist(
-    baseUri: String,
+internal data class HlsMultivariantPlaylist(
+    override val baseUri: String,
     val variants: List<Variant>,
     val videos: List<Rendition>,
     val audios: List<Rendition>,
     val subtitles: List<Rendition>,
     val closedCaptions: List<Rendition>,
     val sessionKeyUrls: List<ParsedUrl>
-) : HlsPlaylist(baseUri)
+) : HlsPlaylist
 
-internal class HlsMediaPlaylist(
-    baseUri: String,
+internal data class HlsMediaPlaylist(
+    override val baseUri: String,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
     val hlsSegments: List<HlsSegment>,
     val parts: List<ParsedUrl>,
     val preloadHints: List<ParsedUrl>,
     val renditionReports: List<ParsedUrl>
-) : HlsPlaylist(baseUri)
+) : HlsPlaylist
 
 internal data class Variant(
     val url: ParsedUrl,

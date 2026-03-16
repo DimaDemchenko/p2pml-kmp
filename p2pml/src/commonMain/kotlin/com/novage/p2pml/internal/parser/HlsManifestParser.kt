@@ -15,12 +15,12 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.http.encodeURLParameter
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeMark
-import kotlin.time.TimeSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 private const val MAIN_STREAM = "main"
 private const val SECONDARY_STREAM = "secondary"
@@ -83,11 +83,6 @@ internal class HlsManifestParser(
             is HlsMultivariantPlaylist -> {
                 logger.d { "Type: Multivariant (Master) Playlist" }
                 parseMultivariantPlaylist(manifestUrl, hlsPlaylist, manifest)
-            }
-
-            else -> {
-                logger.e { "Unsupported playlist type found for: $manifestUrl" }
-                error("Unsupported playlist type")
             }
         }
 
