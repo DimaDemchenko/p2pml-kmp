@@ -9,6 +9,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylis
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsPlaylistParser
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsSegment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.InitializationSegment
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.ParsedUrl
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Rendition
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
@@ -155,16 +156,19 @@ internal class HlsManifestParser(
 
         var searchOffset = 0
         var lastProcessedInitSegment: InitializationSegment? = null
+        var lastProcessedKey: ParsedUrl? = null
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
 
         mediaPlaylist.hlsSegments.forEach { segment ->
-            segment.encryptionKey?.let { key ->
+            if (segment.encryptionKey != null && segment.encryptionKey !== lastProcessedKey) {
+                val key = segment.encryptionKey
                 searchOffset = replaceUrlInManifest(
                     builder,
                     key.original,
                     key.absolute,
                     searchOffset
                 )
+                lastProcessedKey = key
             }
 
             if (segment.initializationSegment != null && segment.initializationSegment !== lastProcessedInitSegment) {
