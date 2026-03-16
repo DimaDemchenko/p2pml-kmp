@@ -93,12 +93,16 @@ internal class HlsPlaylistParser {
         trimmed == TAG_DISCONTINUITY_SEQUENCE ||
         trimmed == TAG_ENDLIST
 
+    private class LowLatencyState(
+        val parts: MutableList<ParsedUrl> = mutableListOf(),
+        val preloadHints: MutableList<ParsedUrl> = mutableListOf(),
+        val renditionReports: MutableList<ParsedUrl> = mutableListOf()
+    )
+
     private fun parseMediaPlaylist(iterator: LineIterator, playlistUri: String): HlsPlaylist {
         val state = SegmentState()
+        val llState = LowLatencyState()
         val segments = mutableListOf<HlsSegment>()
-        val parts = mutableListOf<ParsedUrl>()
-        val preloadHints = mutableListOf<ParsedUrl>()
-        val renditionReports = mutableListOf<ParsedUrl>()
         val vars = mutableMapOf<String, String>()
 
         while (iterator.hasNext()) {
@@ -106,7 +110,7 @@ internal class HlsPlaylistParser {
             if (line.isEmpty()) continue
 
             if (line.startsWith("#")) {
-                processMediaTag(line, state, vars, playlistUri, parts, preloadHints, renditionReports)
+                processMediaTag(line, state, vars, playlistUri, llState)
             } else {
                 segments.add(createSegment(line, playlistUri, vars, state))
                 if (state.length != -1L) state.offset += state.length
@@ -120,9 +124,9 @@ internal class HlsPlaylistParser {
             state.mediaSequence,
             state.hasEndTag,
             segments,
-            parts,
-            preloadHints,
-            renditionReports
+            llState.parts,
+            llState.preloadHints,
+            llState.renditionReports
         )
     }
 
@@ -131,48 +135,34 @@ internal class HlsPlaylistParser {
         state: SegmentState,
         vars: Map<String, String>,
         baseUri: String,
-        parts: MutableList<ParsedUrl>,
-        preloadHints: MutableList<ParsedUrl>,
-        renditionReports: MutableList<ParsedUrl>
+        llState: LowLatencyState
     ) {
         when {
             line.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
-
             line.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
-
             line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
-
             line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
-
-            line.startsWith(TAG_BYTERANGE) -> {
-                val range = parseByteRange(line, vars)
-                state.length = range.first
-                range.second?.let { state.offset = it }
+            line.startsWith(TAG_BYTERANGE) -> applyByteRange(line, vars, state)
+            line.startsWith(TAG_KEY) -> parseUrlAttribute(line, vars, baseUri)?.let { state.encryptionKey = it }
+            line.startsWith(TAG_PART) -> parseUrlAttribute(line, vars, baseUri)?.let { llState.parts.add(it) }
+            line.startsWith(TAG_PRELOAD_HINT) -> parseUrlAttribute(line, vars, baseUri)?.let {
+                llState.preloadHints.add(it)
             }
-
-            line.startsWith(TAG_KEY) -> {
-                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
-                    state.encryptionKey = ParsedUrl(it, resolveAbsoluteUrl(baseUri, it))
-                }
+            line.startsWith(TAG_RENDITION_REPORT) -> parseUrlAttribute(line, vars, baseUri)?.let {
+                llState.renditionReports.add(it)
             }
+        }
+    }
 
-            line.startsWith(TAG_PART) -> {
-                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
-                    parts.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
-                }
-            }
+    private fun applyByteRange(line: String, vars: Map<String, String>, state: SegmentState) {
+        val range = parseByteRange(line, vars)
+        state.length = range.first
+        range.second?.let { state.offset = it }
+    }
 
-            line.startsWith(TAG_PRELOAD_HINT) -> {
-                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
-                    preloadHints.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
-                }
-            }
-
-            line.startsWith(TAG_RENDITION_REPORT) -> {
-                parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
-                    renditionReports.add(ParsedUrl(it, resolveAbsoluteUrl(baseUri, it)))
-                }
-            }
+    private fun parseUrlAttribute(line: String, vars: Map<String, String>, baseUri: String): ParsedUrl? {
+        return parseOptionalStringAttr(line, REGEX_URI, vars)?.let {
+            ParsedUrl(it, resolveAbsoluteUrl(baseUri, it))
         }
     }
 
