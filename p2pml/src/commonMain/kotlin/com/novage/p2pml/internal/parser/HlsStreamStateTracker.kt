@@ -49,6 +49,7 @@ internal class HlsStreamStateTracker(
         updateStreamParams.clear()
         currentSegmentRuntimeIds.clear()
         variantLastUpdated.clear()
+        currentMasterManifestUrl = null
     }
 
     fun postProcessMultivariantPlaylist(manifestUrl: String, hlsPlaylist: HlsMultivariantPlaylist) {

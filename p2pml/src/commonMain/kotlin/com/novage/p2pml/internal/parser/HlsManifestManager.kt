@@ -14,7 +14,7 @@ internal class HlsManifestManager(
     playbackProvider: PlaybackProvider,
     private val urlFactory: LocalUrlFactory
 ) {
-    private val logger = CoreLogger("HlsManifestParser")
+    private val logger = CoreLogger("HlsManifestManager")
     private val parser = HlsPlaylistParser()
     private val tracker = HlsStreamStateTracker(playbackProvider)
     private val mutex = Mutex()
