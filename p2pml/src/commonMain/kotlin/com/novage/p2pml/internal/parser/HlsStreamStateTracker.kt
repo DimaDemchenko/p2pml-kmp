@@ -151,8 +151,6 @@ internal class HlsStreamStateTracker(
                     if (entry.key < removeUntilId) {
                         obsoleteSegmentIds.add(entry.value.runtimeId)
                         iterator.remove()
-                    } else {
-                        break
                     }
                 }
             }
