@@ -24,8 +24,10 @@ import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 
@@ -180,7 +182,13 @@ abstract class P2PMediaLoaderCore(
         engineManager?.destroy()
         engineManager = null
 
-        runBlocking { playbackProvider?.resetData() }
+        val currentProvider = playbackProvider
+        playbackProvider = null
+
+        CoroutineScope(Dispatchers.Main).launch {
+            currentProvider?.resetData()
+        }
+
         playbackProvider = null
 
         urlFactory.setPort(-1)

@@ -55,15 +55,16 @@ internal class ServerModule(
 
         logger.d { "Starting local P2P Server..." }
 
+        server = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
+            if (enableCors) configureCORS()
+            configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
+        }
+
         serverScope.launch {
             try {
-                val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
-                    if (enableCors) configureCORS()
-                    configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
-                }.start(wait = false)
-                server = serverInstance
+                server?.start(wait = false)
 
-                val assignedPort = serverInstance.engine.resolvedConnectors().firstOrNull()?.port
+                val assignedPort = server?.engine?.resolvedConnectors()?.firstOrNull()?.port
                     ?: error("Server started but failed to retrieve assigned port")
 
                 logger.i { "Server successfully bound to port: $assignedPort" }

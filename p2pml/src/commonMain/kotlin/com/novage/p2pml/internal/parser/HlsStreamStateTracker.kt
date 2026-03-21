@@ -83,13 +83,22 @@ internal class HlsStreamStateTracker(
 
         val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist)
 
-        currentSegmentRuntimeIds[manifestUrl]?.clear()
+        val runtimeIdsSet = currentSegmentRuntimeIds.getOrPut(manifestUrl) { 
+            HashSet(mediaPlaylist.hlsSegments.size) 
+        }
+        runtimeIdsSet.clear()
+
+        if (isStreamLive) {
+            variantLastUpdated[manifestUrl] = TimeSource.Monotonic.markNow()
+        }
 
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
 
+        val segmentsMap = streamSegments.getOrPut(manifestUrl) { mutableMapOf() }
+
         mediaPlaylist.hlsSegments.forEach { segment ->
-            trackLiveSegment(manifestUrl, segment.runtimeUrl, isStreamLive)
-            val newSegment = createAndStoreSegment(manifestUrl, segmentIndex++, initialStartTime, segment)
+            runtimeIdsSet.add(segment.runtimeUrl)
+            val newSegment = createAndStoreSegment(segmentsMap, segmentIndex++, initialStartTime, segment)
             newSegment?.let { segmentsToAdd.add(it) }
         }
 
@@ -105,20 +114,13 @@ internal class HlsStreamStateTracker(
         logger.d { "Segments updated. Added: ${segmentsToAdd.size}, Removed: ${segmentsToRemove.size}" }
     }
 
-    private fun trackLiveSegment(manifestUrl: String, runtimeId: String, isLive: Boolean) {
-        currentSegmentRuntimeIds.getOrPut(manifestUrl) { mutableSetOf() }.add(runtimeId)
-        if (isLive) {
-            variantLastUpdated[manifestUrl] = TimeSource.Monotonic.markNow()
-        }
-    }
 
     private fun createAndStoreSegment(
-        variantUrl: String,
+        segmentsMap: MutableMap<Long, Segment>,
         segmentId: Long,
         initialStartTime: Double,
         hlsSegment: HlsSegment
     ): Segment? {
-        val segmentsMap = streamSegments.getOrPut(variantUrl) { mutableMapOf() }
         if (segmentsMap.contains(segmentId)) return null
 
         val startTime = segmentsMap[segmentId - 1]?.endTime ?: initialStartTime
@@ -141,13 +143,17 @@ internal class HlsStreamStateTracker(
     ): List<String> {
         val obsoleteSegmentIds = mutableListOf<String>()
 
-        streamSegments[variantUrl]?.let { segmentsMap ->
-            val iterator = segmentsMap.iterator()
-            while (iterator.hasNext()) {
-                val entry = iterator.next()
-                if (entry.key < removeUntilId) {
-                    obsoleteSegmentIds.add(entry.value.runtimeId)
-                    iterator.remove()
+        if (removeUntilId > 0) {
+            streamSegments[variantUrl]?.let { segmentsMap ->
+                val iterator = segmentsMap.iterator()
+                while (iterator.hasNext()) {
+                    val entry = iterator.next()
+                    if (entry.key < removeUntilId) {
+                        obsoleteSegmentIds.add(entry.value.runtimeId)
+                        iterator.remove()
+                    } else {
+                        break
+                    }
                 }
             }
         }
