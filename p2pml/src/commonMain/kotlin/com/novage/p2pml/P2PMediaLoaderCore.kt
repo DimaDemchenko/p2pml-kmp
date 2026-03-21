@@ -180,7 +180,10 @@ abstract class P2PMediaLoaderCore(
         engineManager?.destroy()
         engineManager = null
 
-        runBlocking { playbackProvider?.resetData() }
+        runBlocking {
+            playbackProvider?.resetData()
+        }
+
         playbackProvider = null
 
         urlFactory.setPort(-1)
