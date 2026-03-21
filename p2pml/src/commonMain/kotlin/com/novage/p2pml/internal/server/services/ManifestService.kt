@@ -1,14 +1,14 @@
 package com.novage.p2pml.internal.server.services
 
 import com.novage.p2pml.internal.engine.P2PEngine
-import com.novage.p2pml.internal.parser.HlsManifestParser
+import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
 
 internal class ManifestService(
-    private val parser: HlsManifestParser,
+    private val parser: HlsManifestManager,
     private val engineManager: P2PEngine,
     private val onManifestChanged: suspend () -> Unit
 ) {

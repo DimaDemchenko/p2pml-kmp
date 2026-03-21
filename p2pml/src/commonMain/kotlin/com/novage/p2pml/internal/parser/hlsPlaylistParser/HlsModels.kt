@@ -67,3 +67,18 @@ internal data class UpdateStreamParams(
 
 @Serializable
 internal data class Stream(val runtimeId: String, val type: String, val index: Int)
+
+internal interface HlsUrlRewriter {
+    fun rewriteVariantUrl(url: ParsedUrl, isIFrame: Boolean): String
+    fun rewriteRenditionUrl(url: ParsedUrl, type: String): String
+    fun rewriteSessionKeyUrl(url: ParsedUrl): String
+    fun rewriteSegmentUrl(url: ParsedUrl, byteRange: ByteRange?): String
+    fun rewriteInitSegmentUrl(url: ParsedUrl): String
+    fun rewriteKeyUrl(url: ParsedUrl): String
+    fun rewriteLowLatencyUrl(url: ParsedUrl): String
+}
+
+internal data class ParsedPlaylistResult(
+    val playlist: HlsPlaylist,
+    val rewrittenManifest: String
+)

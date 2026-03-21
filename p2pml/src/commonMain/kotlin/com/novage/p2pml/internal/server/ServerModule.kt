@@ -4,7 +4,7 @@ import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.http.createHttpClient
-import com.novage.p2pml.internal.parser.HlsManifestParser
+import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.server.plugins.configureCORS
 import com.novage.p2pml.internal.server.routes.configureRoutes
@@ -36,11 +36,11 @@ internal class ServerModule(
     private val logger = CoreLogger("ServerModule")
 
     private val client = createHttpClient()
-    private val hlsManifestParser = HlsManifestParser(playbackProvider, urlFactory)
-    private val manifestService = ManifestService(hlsManifestParser, engineManager) {
+    private val hlsManifestManager = HlsManifestManager(playbackProvider, urlFactory)
+    private val manifestService = ManifestService(hlsManifestManager, engineManager) {
         logger.d { "Resetting playback and parser state" }
         playbackProvider.resetData()
-        hlsManifestParser.reset()
+        hlsManifestManager.reset()
     }
     private val segmentService = SegmentService(engineManager)
 
@@ -59,7 +59,7 @@ internal class ServerModule(
             try {
                 val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
                     if (enableCors) configureCORS()
-                    configureRoutes(client, manifestService, hlsManifestParser, segmentService, onError)
+                    configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
                 }.start(wait = false)
                 server = serverInstance
 

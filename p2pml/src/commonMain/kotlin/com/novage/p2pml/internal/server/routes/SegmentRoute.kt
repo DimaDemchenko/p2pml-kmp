@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.server.routes
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.internal.parser.HlsManifestParser
+import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.parser.encoding.decodeFromUrlSafeBase64
 import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
 import com.novage.p2pml.internal.server.exceptions.SegmentProcessingException
@@ -29,7 +29,7 @@ private val logger = CoreLogger("SegmentRoute")
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestParser,
+    parser: HlsManifestManager,
     onError: (P2PMediaLoaderErrorType, String) -> Unit
 ) {
     segmentDownloadRoute(httpClient, segmentService, parser, onError)
@@ -39,7 +39,7 @@ internal fun Route.registerSegmentRoutes(
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestParser,
+    parser: HlsManifestManager,
     onError: (P2PMediaLoaderErrorType, String) -> Unit
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
