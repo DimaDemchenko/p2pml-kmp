@@ -12,26 +12,28 @@ import kotlinx.serialization.json.Json
 
 internal class HlsManifestManager(
     playbackProvider: PlaybackProvider,
-    private val urlFactory: LocalUrlFactory
+    urlFactory: LocalUrlFactory
 ) {
     private val logger = CoreLogger("HlsManifestManager")
     private val parser = HlsPlaylistParser()
     private val tracker = HlsStreamStateTracker(playbackProvider)
+    private val rewriter = LocalHlsUrlRewriter(urlFactory)
     private val mutex = Mutex()
 
-    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String = mutex.withLock {
+    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String {
         logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
-        val rewriter = LocalHlsUrlRewriter(urlFactory)
         val result = parser.parse(manifestUrl, originalManifest, rewriter)
 
-        when (val hlsPlaylist = result.playlist) {
-            is HlsMediaPlaylist -> {
-                logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
-                tracker.postProcessMediaPlaylist(manifestUrl, hlsPlaylist)
-            }
-            is HlsMultivariantPlaylist -> {
-                logger.d { "Type: Multivariant (Master) Playlist" }
-                tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
+        mutex.withLock {
+            when (val hlsPlaylist = result.playlist) {
+                is HlsMediaPlaylist -> {
+                    logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
+                    tracker.postProcessMediaPlaylist(manifestUrl, hlsPlaylist)
+                }
+                is HlsMultivariantPlaylist -> {
+                    logger.d { "Type: Multivariant (Master) Playlist" }
+                    tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
+                }
             }
         }
         return result.rewrittenManifest

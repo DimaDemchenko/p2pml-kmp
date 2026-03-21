@@ -134,23 +134,36 @@ internal class HlsStreamStateTracker(
         ).also { segmentsMap[segmentId] = it }
     }
 
-    private fun enforceLiveTtlAndGetObsoleteSegments(variantUrl: String, removeUntilId: Long, isLive: Boolean): List<String> {
+    private fun enforceLiveTtlAndGetObsoleteSegments(
+        variantUrl: String,
+        removeUntilId: Long,
+        isLive: Boolean
+    ): List<String> {
         val obsoleteSegmentIds = mutableListOf<String>()
 
         streamSegments[variantUrl]?.let { segmentsMap ->
-            val obsoleteSegments = segmentsMap.filterKeys { it < removeUntilId }
-            obsoleteSegments.keys.forEach { segmentsMap.remove(it) }
-            obsoleteSegmentIds.addAll(obsoleteSegments.values.map { it.runtimeId })
+            val iterator = segmentsMap.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (entry.key < removeUntilId) {
+                    obsoleteSegmentIds.add(entry.value.runtimeId)
+                    iterator.remove()
+                }
+            }
         }
 
         if (isLive) {
-            val staleManifests = variantLastUpdated.filterValues { it.elapsedNow() > LIVE_VARIANT_TTL }.keys.toSet()
-            staleManifests.forEach { staleUrl ->
-                if (staleUrl != variantUrl) {
+            val variantIterator = variantLastUpdated.iterator()
+            while (variantIterator.hasNext()) {
+                val entry = variantIterator.next()
+                val staleUrl = entry.key
+                if (staleUrl != variantUrl && entry.value.elapsedNow() > LIVE_VARIANT_TTL) {
                     logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
                     currentSegmentRuntimeIds.remove(staleUrl)
-                    variantLastUpdated.remove(staleUrl)
                     streamSegments.remove(staleUrl)
+                    updateStreamParams.remove(staleUrl)
+                    streams.remove(staleUrl)
+                    variantIterator.remove()
                 }
             }
         }

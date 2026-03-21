@@ -51,10 +51,9 @@ internal data class HlsSegment(
     val initializationSegment: InitializationSegment?,
     val encryptionKey: ParsedUrl?
 ) {
-    val byteRange: ByteRange?
-        get() = if (byteRangeLength != -1L) ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1) else null
+    val byteRange: ByteRange? = if (byteRangeLength != -1L) ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1) else null
 
-    val runtimeUrl = if (byteRange != null) "${url.absolute}|${byteRange!!.start}-${byteRange!!.end}" else url.absolute
+    val runtimeUrl = byteRange?.let { "${url.absolute}|${it.start}-${it.end}" } ?: url.absolute
 }
 
 @Serializable
@@ -78,7 +77,7 @@ internal interface HlsUrlRewriter {
     fun rewriteLowLatencyUrl(url: ParsedUrl): String
 }
 
-internal data class ParsedPlaylistResult(
+internal data class ParsedPlaylist(
     val playlist: HlsPlaylist,
     val rewrittenManifest: String
 )
