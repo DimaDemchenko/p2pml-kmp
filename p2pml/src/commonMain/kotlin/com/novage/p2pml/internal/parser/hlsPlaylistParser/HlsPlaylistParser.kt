@@ -123,17 +123,21 @@ internal class HlsPlaylistParser {
         val builder = StringBuilder("$PLAYLIST_HEADER\n")
 
         while (iterator.hasNext()) {
-            val line = iterator.next().trim()
-            if (line.isEmpty()) continue
+            val originalLine = iterator.next()
+            val trimmed = originalLine.trim()
+            if (trimmed.isEmpty()) {
+                builder.append(originalLine).append("\n")
+                continue
+            }
 
-            var rewrittenLine = line
-            if (line.startsWith("#")) {
-                rewrittenLine = processMediaTag(line, state, llState, context)
+            var rewrittenLine = originalLine
+            if (trimmed.startsWith("#")) {
+                rewrittenLine = processMediaTag(originalLine, trimmed, state, llState, context)
             } else {
-                val seg = createSegment(line, context.baseUri, context.vars, state)
+                val seg = createSegment(trimmed, context.baseUri, context.vars, state)
                 segments.add(seg)
                 context.urlRewriter?.rewriteSegmentUrl(seg.url, seg.byteRange)?.let { newUrl ->
-                    rewrittenLine = newUrl
+                    rewrittenLine = originalLine.replaceFirst(trimmed, newUrl)
                 }
                 if (state.length != -1L) state.offset += state.length
                 state.durationUs = 0L
@@ -155,49 +159,50 @@ internal class HlsPlaylistParser {
     }
 
     private fun processMediaTag(
-        line: String,
+        originalLine: String,
+        trimmedLine: String,
         state: SegmentState,
         llState: LowLatencyState,
         context: ParserContext
     ): String {
-        var rewrittenLine = line
+        var rewrittenLine = originalLine
 
         when {
-            line.startsWith(TAG_DEFINE) -> {
-                context.vars[parseStringAttr(line, REGEX_NAME, context.vars)] = 
-                    parseStringAttr(line, REGEX_VALUE, context.vars)
+            trimmedLine.startsWith(TAG_DEFINE) -> {
+                context.vars[parseStringAttr(trimmedLine, REGEX_NAME, context.vars)] = 
+                    parseStringAttr(trimmedLine, REGEX_VALUE, context.vars)
             }
-            line.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
-            line.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
-            line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
-            line.startsWith(TAG_BYTERANGE) -> applyByteRange(line, context.vars, state)
-            line.startsWith(TAG_INIT_SEGMENT) -> rewrittenLine = processUrlTag(
-                line = line,
-                urlExtractor = { parseUrlAttribute(line, context.vars, context.baseUri) ?: throw NoSuchElementException("Missing URI") },
+            trimmedLine.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(trimmedLine, REGEX_MEDIA_SEQUENCE)
+            trimmedLine.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
+            trimmedLine.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(trimmedLine, REGEX_MEDIA_DURATION)
+            trimmedLine.startsWith(TAG_BYTERANGE) -> applyByteRange(trimmedLine, context.vars, state)
+            trimmedLine.startsWith(TAG_INIT_SEGMENT) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) ?: throw NoSuchElementException("Missing URI") },
                 stateUpdater = { state.initSegment = it?.let { InitializationSegment(it) } },
                 rewriter = { context.urlRewriter?.rewriteInitSegmentUrl(it) }
             )
-            line.startsWith(TAG_KEY) -> rewrittenLine = processUrlTag(
-                line = line,
-                urlExtractor = { parseUrlAttribute(line, context.vars, context.baseUri) },
+            trimmedLine.startsWith(TAG_KEY) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
                 stateUpdater = { state.encryptionKey = it },
                 rewriter = { context.urlRewriter?.rewriteKeyUrl(it) }
             )
-            line.startsWith(TAG_PART) -> rewrittenLine = processUrlTag(
-                line = line,
-                urlExtractor = { parseUrlAttribute(line, context.vars, context.baseUri) },
+            trimmedLine.startsWith(TAG_PART) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
                 stateUpdater = { it?.let { llState.parts.add(it) } },
                 rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
             )
-            line.startsWith(TAG_PRELOAD_HINT) -> rewrittenLine = processUrlTag(
-                line = line,
-                urlExtractor = { parseUrlAttribute(line, context.vars, context.baseUri) },
+            trimmedLine.startsWith(TAG_PRELOAD_HINT) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
                 stateUpdater = { it?.let { llState.preloadHints.add(it) } },
                 rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
             )
-            line.startsWith(TAG_RENDITION_REPORT) -> rewrittenLine = processUrlTag(
-                line = line,
-                urlExtractor = { parseUrlAttribute(line, context.vars, context.baseUri) },
+            trimmedLine.startsWith(TAG_RENDITION_REPORT) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
                 stateUpdater = { it?.let { llState.renditionReports.add(it) } },
                 rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
             )
@@ -276,33 +281,39 @@ internal class HlsPlaylistParser {
         val builder = StringBuilder("$PLAYLIST_HEADER\n")
 
         while (iterator.hasNext()) {
-            val line = iterator.next()
-            var rewrittenLine = line
+            val originalLine = iterator.next()
+            val trimmedLine = originalLine.trim()
+            if (trimmedLine.isEmpty()) {
+                builder.append(originalLine).append("\n")
+                continue
+            }
+            
+            var rewrittenLine = originalLine
             when {
-                line.startsWith(TAG_DEFINE) -> {
-                    context.vars[parseStringAttr(line, REGEX_NAME, context.vars)] = 
-                        parseStringAttr(line, REGEX_VALUE, context.vars)
+                trimmedLine.startsWith(TAG_DEFINE) -> {
+                    context.vars[parseStringAttr(trimmedLine, REGEX_NAME, context.vars)] = 
+                        parseStringAttr(trimmedLine, REGEX_VALUE, context.vars)
                 }
 
-                line.startsWith(TAG_MEDIA) -> {
-                    val typedRend = parseRendition(line, context.baseUri, context.vars)
+                trimmedLine.startsWith(TAG_MEDIA) -> {
+                    val typedRend = parseRendition(trimmedLine, context.baseUri, context.vars)
                     renditions.add(typedRend)
                     typedRend.rendition.url?.let { url ->
                         context.urlRewriter?.rewriteRenditionUrl(url, typedRend.type)?.let { newUrl ->
-                            rewrittenLine = rewriteUriAttribute(line, url.original, newUrl)
+                            rewrittenLine = rewriteUriAttribute(originalLine, url.original, newUrl)
                         }
                     }
                 }
 
-                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> {
-                    rewrittenLine = parseAndRewriteVariant(line, iterator, context, variants)
+                trimmedLine.startsWith(TAG_STREAM_INF) || trimmedLine.startsWith(TAG_I_FRAME_STREAM_INF) -> {
+                    rewrittenLine = parseAndRewriteVariant(originalLine, trimmedLine, iterator, context, variants)
                 }
 
-                line.startsWith(TAG_SESSION_KEY) -> {
-                    parseUrlAttribute(line, context.vars, context.baseUri)?.let { parsedUrl ->
+                trimmedLine.startsWith(TAG_SESSION_KEY) -> {
+                    parseUrlAttribute(trimmedLine, context.vars, context.baseUri)?.let { parsedUrl ->
                         sessionKeys.add(parsedUrl)
                         context.urlRewriter?.rewriteSessionKeyUrl(parsedUrl)?.let { newUrl ->
-                            rewrittenLine = rewriteUriAttribute(line, parsedUrl.original, newUrl)
+                            rewrittenLine = rewriteUriAttribute(originalLine, parsedUrl.original, newUrl)
                         }
                     }
                 }
@@ -323,35 +334,43 @@ internal class HlsPlaylistParser {
     }
 
     private fun parseAndRewriteVariant(
-        line: String,
+        originalLine: String,
+        trimmedLine: String,
         iterator: LineIterator,
         context: ParserContext,
         variants: MutableList<Variant>
     ): String {
-        val isIFrame = line.startsWith(TAG_I_FRAME_STREAM_INF)
+        val isIFrame = trimmedLine.startsWith(TAG_I_FRAME_STREAM_INF)
         if (isIFrame) {
-            val variant = parseVariant(line, context, null, true)
+            val variant = parseVariant(trimmedLine, context, null, true)
             variants.add(variant)
             return context.urlRewriter?.rewriteVariantUrl(variant.url, true)?.let { newUrl ->
-                rewriteUriAttribute(line, variant.url.original, newUrl)
-            } ?: line
+                rewriteUriAttribute(originalLine, variant.url.original, newUrl)
+            } ?: originalLine
         }
 
         check(iterator.hasNext()) { "Missing URI line after $TAG_STREAM_INF" }
-        val nextLine = iterator.next()
-        val variant = parseVariant(line, context, nextLine, false)
+        val nextOriginalLine = iterator.next()
+        val nextTrimmedLine = nextOriginalLine.trim()
+        val variant = parseVariant(trimmedLine, context, nextTrimmedLine, false)
         variants.add(variant)
 
         val rewrittenNextLine = context.urlRewriter?.rewriteVariantUrl(variant.url, false)?.let { newUrl ->
-            nextLine.replaceFirst(variant.url.original, newUrl)
-        } ?: nextLine
+            nextOriginalLine.replaceFirst(variant.url.original, newUrl)
+        } ?: nextOriginalLine
 
-        return "$line\n$rewrittenNextLine"
+        return "$originalLine\n$rewrittenNextLine"
     }
 
     private fun parseVariant(line: String, context: ParserContext, nextLine: String? = null, isIFrame: Boolean): Variant {
-        val originalUri = if (isIFrame) REGEX_URI.find(line)?.groups?.get(1)?.value ?: "" else nextLine!!.trim()
-        val parsedUrl = originalUri.toParsedUrl(context.baseUri, context.vars)
+        val parsedUrl = if (isIFrame) {
+            parseUrlAttribute(line, context.vars, context.baseUri) 
+                ?: throw NoSuchElementException("Missing URI for I-FRAME variant")
+        } else {
+            requireNotNull(nextLine) { "Missing URI line for variant" }
+                .trim()
+                .toParsedUrl(context.baseUri, context.vars)
+        }
 
         return Variant(
             url = parsedUrl,
