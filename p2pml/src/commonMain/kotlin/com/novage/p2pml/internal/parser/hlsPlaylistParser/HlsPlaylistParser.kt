@@ -26,6 +26,10 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_KEY
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA_DURATION
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA_SEQUENCE
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PART
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PRELOAD_HINT
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_RENDITION_REPORT
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_SESSION_KEY
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_STREAM_INF
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_TARGET_DURATION
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_AUDIO
@@ -34,14 +38,22 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_SUBT
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_VIDEO
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.math.roundToLong
-import kotlin.text.iterator
 
 private const val UTF8_BOM_BYTE_1 = 0xEF
 private const val UTF8_BOM_BYTE_2 = 0xBB
 private const val UTF8_BOM_BYTE_3 = 0xBF
 
+private const val VARIABLE_REFERENCE_MARKER = "{\$"
+private const val BYTERANGE_SEPARATOR = '@'
+
 internal class HlsPlaylistParser {
     private val logger = CoreLogger("HlsPlaylistParser")
+
+    internal data class ParserContext(
+        val baseUri: String,
+        val vars: MutableMap<String, String> = mutableMapOf(),
+        val urlRewriter: HlsUrlRewriter? = null
+    )
 
     private data class SegmentState(
         var mediaSequence: Long = 0L,
@@ -49,12 +61,18 @@ internal class HlsPlaylistParser {
         var durationUs: Long = 0L,
         var offset: Long = 0L,
         var length: Long = -1L,
-        var initSegment: InitializationSegment? = null
+        var initSegment: InitializationSegment? = null,
+        var encryptionKey: ParsedUrl? = null
     )
 
-    fun parse(playlistUri: String, playlistData: String): HlsPlaylist {
+    fun parse(
+        playlistUri: String,
+        playlistData: String,
+        urlRewriter: HlsUrlRewriter? = null
+    ): ParsedPlaylist {
         val reader = Reader(playlistData)
         val extraLines = ArrayDeque<String>()
+        val context = ParserContext(baseUri = playlistUri, urlRewriter = urlRewriter)
 
         require(checkPlaylistHeader(reader)) {
             logger.e { "Playlist missing #EXTM3U header: $playlistUri" }
@@ -68,10 +86,10 @@ internal class HlsPlaylistParser {
                 extraLines.add(line)
                 when {
                     trimmed.startsWith(TAG_STREAM_INF) ->
-                        return parseMultivariantPlaylist(LineIterator(extraLines, reader), playlistUri)
+                        return parseMultivariantPlaylist(LineIterator(extraLines, reader), context)
 
                     isMediaPlaylistTag(trimmed) ->
-                        return parseMediaPlaylist(LineIterator(extraLines, reader), playlistUri)
+                        return parseMediaPlaylist(LineIterator(extraLines, reader), context)
                 }
             }
             line = reader.readLine()
@@ -89,55 +107,152 @@ internal class HlsPlaylistParser {
         trimmed == TAG_DISCONTINUITY_SEQUENCE ||
         trimmed == TAG_ENDLIST
 
-    private fun parseMediaPlaylist(iterator: LineIterator, playlistUri: String): HlsPlaylist {
+    private class LowLatencyState(
+        val parts: MutableList<ParsedUrl> = mutableListOf(),
+        val preloadHints: MutableList<ParsedUrl> = mutableListOf(),
+        val renditionReports: MutableList<ParsedUrl> = mutableListOf()
+    )
+
+    private fun parseMediaPlaylist(
+        iterator: LineIterator,
+        context: ParserContext
+    ): ParsedPlaylist {
         val state = SegmentState()
+        val llState = LowLatencyState()
         val segments = mutableListOf<HlsSegment>()
-        val vars = mutableMapOf<String, String>()
+        val builder = StringBuilder("$PLAYLIST_HEADER\n")
 
         while (iterator.hasNext()) {
-            val line = iterator.next().trim()
-            if (line.isEmpty()) continue
+            val originalLine = iterator.next()
+            val trimmed = originalLine.trim()
+            if (trimmed.isEmpty()) {
+                builder.append(originalLine).append("\n")
+                continue
+            }
 
-            if (line.startsWith("#")) {
-                processMediaTag(line, state, vars, playlistUri)
+            var rewrittenLine = originalLine
+            if (trimmed.startsWith("#")) {
+                rewrittenLine = processMediaTag(originalLine, trimmed, state, llState, context)
             } else {
-                segments.add(createSegment(line, playlistUri, vars, state))
+                val seg = createSegment(trimmed, context.baseUri, context.vars, state)
+                segments.add(seg)
+                context.urlRewriter?.rewriteSegmentUrl(seg.url, seg.byteRange)?.let { newUrl ->
+                    rewrittenLine = originalLine.replaceFirst(trimmed, newUrl)
+                }
                 if (state.length != -1L) state.offset += state.length
                 state.durationUs = 0L
                 state.length = -1L
             }
+            builder.append(rewrittenLine).append("\n")
         }
 
-        return HlsMediaPlaylist(playlistUri, state.mediaSequence, state.hasEndTag, segments)
+        val playlist = HlsMediaPlaylist(
+            context.baseUri,
+            state.mediaSequence,
+            state.hasEndTag,
+            segments,
+            llState.parts,
+            llState.preloadHints,
+            llState.renditionReports
+        )
+        return ParsedPlaylist(playlist, builder.toString())
     }
 
-    private fun processMediaTag(line: String, state: SegmentState, vars: Map<String, String>, baseUri: String) {
+    private fun processMediaTag(
+        originalLine: String,
+        trimmedLine: String,
+        state: SegmentState,
+        llState: LowLatencyState,
+        context: ParserContext
+    ): String {
+        var rewrittenLine = originalLine
+
         when {
-            line.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
-
-            line.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
-
-            line.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(line, REGEX_MEDIA_DURATION)
-
-            line.startsWith(TAG_BYTERANGE) -> {
-                val range = parseByteRange(line, vars)
-                state.length = range.first
-                range.second?.let { state.offset = it }
+            trimmedLine.startsWith(TAG_DEFINE) -> {
+                context.vars[parseStringAttr(trimmedLine, REGEX_NAME, context.vars)] = 
+                    parseStringAttr(trimmedLine, REGEX_VALUE, context.vars)
             }
-
-            line.startsWith(TAG_INIT_SEGMENT) -> state.initSegment = parseInitSegment(line, baseUri, vars)
+            trimmedLine.startsWith(TAG_MEDIA_SEQUENCE) -> state.mediaSequence = parseLongAttr(trimmedLine, REGEX_MEDIA_SEQUENCE)
+            trimmedLine.startsWith(TAG_ENDLIST) -> state.hasEndTag = true
+            trimmedLine.startsWith(TAG_MEDIA_DURATION) -> state.durationUs = parseTimeSecondsToUs(trimmedLine, REGEX_MEDIA_DURATION)
+            trimmedLine.startsWith(TAG_BYTERANGE) -> applyByteRange(trimmedLine, context.vars, state)
+            trimmedLine.startsWith(TAG_INIT_SEGMENT) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) ?: throw NoSuchElementException("Missing URI") },
+                stateUpdater = { state.initSegment = it?.let { InitializationSegment(it) } },
+                rewriter = { context.urlRewriter?.rewriteInitSegmentUrl(it) }
+            )
+            trimmedLine.startsWith(TAG_KEY) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+                stateUpdater = { state.encryptionKey = it },
+                rewriter = { context.urlRewriter?.rewriteKeyUrl(it) }
+            )
+            trimmedLine.startsWith(TAG_PART) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+                stateUpdater = { it?.let { llState.parts.add(it) } },
+                rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
+            )
+            trimmedLine.startsWith(TAG_PRELOAD_HINT) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+                stateUpdater = { it?.let { llState.preloadHints.add(it) } },
+                rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
+            )
+            trimmedLine.startsWith(TAG_RENDITION_REPORT) -> rewrittenLine = processUrlTag(
+                line = originalLine,
+                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+                stateUpdater = { it?.let { llState.renditionReports.add(it) } },
+                rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
+            )
         }
+        return rewrittenLine
     }
 
-    private fun parseByteRange(line: String, vars: Map<String, String>): Pair<Long, Long?> {
+    private inline fun processUrlTag(
+        line: String,
+        urlExtractor: () -> ParsedUrl?,
+        stateUpdater: (ParsedUrl?) -> Unit,
+        rewriter: (ParsedUrl) -> String?
+    ): String {
+        val parsedUrl = urlExtractor()
+        stateUpdater(parsedUrl)
+        return parsedUrl?.let { url ->
+            rewriter(url)?.let { newUrl ->
+                rewriteUriAttribute(line, url.original, newUrl)
+            }
+        } ?: line
+    }
+
+    private fun rewriteUriAttribute(line: String, originalUrl: String, newUrl: String): String {
+        val uriWithQuotes = "URI=\"$originalUrl\""
+        if (line.contains(uriWithQuotes)) {
+            return line.replaceFirst(uriWithQuotes, "URI=\"$newUrl\"")
+        }
+        
+        val uriWithoutQuotes = "URI=$originalUrl"
+        if (line.contains(uriWithoutQuotes)) {
+            return line.replaceFirst(uriWithoutQuotes, "URI=$newUrl")
+        }
+        
+        return line.replaceFirst(originalUrl, newUrl)
+    }
+
+    private fun applyByteRange(line: String, vars: Map<String, String>, state: SegmentState) {
         val byteRange = parseStringAttr(line, REGEX_BYTERANGE, vars)
-        val split = splitString(byteRange, "@")
-        return split[0].toLong() to split.getOrNull(1)?.toLong()
+        val split = byteRange.split(BYTERANGE_SEPARATOR)
+        state.length = split[0].toLong()
+        split.getOrNull(1)?.toLong()?.let { state.offset = it }
     }
 
-    private fun parseInitSegment(line: String, baseUri: String, vars: Map<String, String>): InitializationSegment {
-        val uri = parseStringAttr(line, REGEX_URI, vars)
-        return InitializationSegment(url = uri, absoluteUrl = resolve(baseUri, uri))
+    private fun String.toParsedUrl(baseUri: String, vars: Map<String, String>): ParsedUrl {
+        val expanded = replaceVariableReferences(this, vars)
+        return ParsedUrl(this, resolveAbsoluteUrl(baseUri, expanded))
+    }
+
+    private fun parseUrlAttribute(line: String, vars: Map<String, String>, baseUri: String): ParsedUrl? {
+        return REGEX_URI.find(line)?.groups?.get(1)?.value?.toParsedUrl(baseUri, vars)
     }
 
     private fun createSegment(
@@ -146,59 +261,123 @@ internal class HlsPlaylistParser {
         vars: Map<String, String>,
         state: SegmentState
     ): HlsSegment {
-        val uri = replaceVariableReferences(line, vars)
-        val absUri = if (isAbsolute(uri)) uri else resolve(baseUri, uri)
-        return HlsSegment(uri, absUri, state.offset, state.length, state.durationUs, state.initSegment)
+        return HlsSegment(
+            url = line.toParsedUrl(baseUri, vars),
+            byteRangeOffset = state.offset,
+            byteRangeLength = state.length,
+            durationUs = state.durationUs,
+            initializationSegment = state.initSegment,
+            encryptionKey = state.encryptionKey
+        )
     }
 
-    private fun parseMultivariantPlaylist(iterator: LineIterator, baseUri: String): HlsPlaylist {
-        val vars = mutableMapOf<String, String>()
+    private fun parseMultivariantPlaylist(
+        iterator: LineIterator,
+        context: ParserContext
+    ): ParsedPlaylist {
         val variants = mutableListOf<Variant>()
-        val mediaTags = mutableListOf<String>()
+        val renditions = mutableListOf<TypedRendition>()
+        val sessionKeys = mutableListOf<ParsedUrl>()
+        val builder = StringBuilder("$PLAYLIST_HEADER\n")
 
         while (iterator.hasNext()) {
-            val line = iterator.next()
+            val originalLine = iterator.next()
+            val trimmedLine = originalLine.trim()
+            if (trimmedLine.isEmpty()) {
+                builder.append(originalLine).append("\n")
+                continue
+            }
+            
+            var rewrittenLine = originalLine
             when {
-                line.startsWith(TAG_DEFINE) -> {
-                    vars[parseStringAttr(line, REGEX_NAME, vars)] = parseStringAttr(line, REGEX_VALUE, vars)
+                trimmedLine.startsWith(TAG_DEFINE) -> {
+                    context.vars[parseStringAttr(trimmedLine, REGEX_NAME, context.vars)] = 
+                        parseStringAttr(trimmedLine, REGEX_VALUE, context.vars)
                 }
 
-                line.startsWith(TAG_MEDIA) -> mediaTags.add(line)
+                trimmedLine.startsWith(TAG_MEDIA) -> {
+                    val typedRend = parseRendition(trimmedLine, context.baseUri, context.vars)
+                    renditions.add(typedRend)
+                    typedRend.rendition.url?.let { url ->
+                        context.urlRewriter?.rewriteRenditionUrl(url, typedRend.type)?.let { newUrl ->
+                            rewrittenLine = rewriteUriAttribute(originalLine, url.original, newUrl)
+                        }
+                    }
+                }
 
-                line.startsWith(TAG_STREAM_INF) || line.startsWith(TAG_I_FRAME_STREAM_INF) -> {
-                    variants.add(parseVariant(line, iterator, baseUri, vars))
+                trimmedLine.startsWith(TAG_STREAM_INF) || trimmedLine.startsWith(TAG_I_FRAME_STREAM_INF) -> {
+                    rewrittenLine = parseAndRewriteVariant(originalLine, trimmedLine, iterator, context, variants)
+                }
+
+                trimmedLine.startsWith(TAG_SESSION_KEY) -> {
+                    parseUrlAttribute(trimmedLine, context.vars, context.baseUri)?.let { parsedUrl ->
+                        sessionKeys.add(parsedUrl)
+                        context.urlRewriter?.rewriteSessionKeyUrl(parsedUrl)?.let { newUrl ->
+                            rewrittenLine = rewriteUriAttribute(originalLine, parsedUrl.original, newUrl)
+                        }
+                    }
                 }
             }
+            builder.append(rewrittenLine).append("\n")
         }
 
-        val renditions = mediaTags.map { parseRendition(it, baseUri, vars) }
-
-        return HlsMultivariantPlaylist(
-            baseUri = baseUri,
+        val playlist = HlsMultivariantPlaylist(
+            baseUri = context.baseUri,
             variants = variants,
             videos = renditions.filter { it.type == TYPE_VIDEO }.map { it.rendition },
             audios = renditions.filter { it.type == TYPE_AUDIO }.map { it.rendition },
             subtitles = renditions.filter { it.type == TYPE_SUBTITLES }.map { it.rendition },
-            closedCaptions = renditions.filter { it.type == TYPE_CLOSED_CAPTIONS }.map { it.rendition }
+            closedCaptions = renditions.filter { it.type == TYPE_CLOSED_CAPTIONS }.map { it.rendition },
+            sessionKeyUrls = sessionKeys
         )
+        return ParsedPlaylist(playlist, builder.toString())
     }
 
-    private fun parseVariant(line: String, iterator: LineIterator, base: String, vars: Map<String, String>): Variant {
-        val isIFrame = line.startsWith(TAG_I_FRAME_STREAM_INF)
-        val uriInManifest = if (isIFrame) {
-            parseStringAttr(line, REGEX_URI, vars)
+    private fun parseAndRewriteVariant(
+        originalLine: String,
+        trimmedLine: String,
+        iterator: LineIterator,
+        context: ParserContext,
+        variants: MutableList<Variant>
+    ): String {
+        val isIFrame = trimmedLine.startsWith(TAG_I_FRAME_STREAM_INF)
+        if (isIFrame) {
+            val variant = parseVariant(trimmedLine, context, null, true)
+            variants.add(variant)
+            return context.urlRewriter?.rewriteVariantUrl(variant.url, true)?.let { newUrl ->
+                rewriteUriAttribute(originalLine, variant.url.original, newUrl)
+            } ?: originalLine
+        }
+
+        check(iterator.hasNext()) { "Missing URI line after $TAG_STREAM_INF" }
+        val nextOriginalLine = iterator.next()
+        val nextTrimmedLine = nextOriginalLine.trim()
+        val variant = parseVariant(trimmedLine, context, nextTrimmedLine, false)
+        variants.add(variant)
+
+        val rewrittenNextLine = context.urlRewriter?.rewriteVariantUrl(variant.url, false)?.let { newUrl ->
+            nextOriginalLine.replaceFirst(variant.url.original, newUrl)
+        } ?: nextOriginalLine
+
+        return "$originalLine\n$rewrittenNextLine"
+    }
+
+    private fun parseVariant(line: String, context: ParserContext, nextLine: String? = null, isIFrame: Boolean): Variant {
+        val parsedUrl = if (isIFrame) {
+            parseUrlAttribute(line, context.vars, context.baseUri) 
+                ?: throw NoSuchElementException("Missing URI for I-FRAME variant")
         } else {
-            if (!iterator.hasNext()) throw NoSuchElementException("Unexpected end of variant")
-            replaceVariableReferences(iterator.next(), vars)
+            requireNotNull(nextLine) { "Missing URI line for variant" }
+                .trim()
+                .toParsedUrl(context.baseUri, context.vars)
         }
 
         return Variant(
-            url = resolve(base, uriInManifest),
-            urlInManifest = uriInManifest,
-            videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, vars),
-            audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, vars),
-            subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, vars),
-            captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, vars),
+            url = parsedUrl,
+            videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, context.vars),
+            audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, context.vars),
+            subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, context.vars),
+            captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, context.vars),
             isIFrame = isIFrame
         )
     }
@@ -207,14 +386,15 @@ internal class HlsPlaylistParser {
 
     private fun parseRendition(line: String, base: String, vars: Map<String, String>): TypedRendition {
         val type = parseStringAttr(line, REGEX_TYPE, vars)
-        val uri = parseOptionalStringAttr(line, REGEX_URI, vars)
-        val rendition = Rendition(
-            url = uri?.let { resolve(base, it) },
-            urlInManifest = uri,
-            groupId = parseStringAttr(line, REGEX_GROUP_ID, vars),
-            name = parseStringAttr(line, REGEX_NAME, vars)
+        val parsedUrl = parseUrlAttribute(line, vars, base)
+        return TypedRendition(
+            type,
+            Rendition(
+                url = parsedUrl,
+                groupId = parseStringAttr(line, REGEX_GROUP_ID, vars),
+                name = parseStringAttr(line, REGEX_NAME, vars)
+            )
         )
-        return TypedRendition(type, rendition)
     }
 
     private fun parseTimeSecondsToUs(line: String, regex: Regex): Long {
@@ -228,11 +408,7 @@ internal class HlsPlaylistParser {
 
         if (char == UTF8_BOM_BYTE_1) {
             val isBom = reader.read() == UTF8_BOM_BYTE_2 && reader.read() == UTF8_BOM_BYTE_3
-            if (isBom) {
-                char = reader.read()
-            } else {
-                isValid = false
-            }
+            if (isBom) char = reader.read() else isValid = false
         }
 
         if (isValid) {
@@ -246,34 +422,30 @@ internal class HlsPlaylistParser {
             }
         }
 
-        return if (isValid) {
-            val nextChar = skipIgnorableWhitespace(reader, skipLinebreak = false, char)
-            isLinebreak(nextChar)
+        return isValid && isLinebreak(skipIgnorableWhitespace(reader, skipLinebreak = false, char))
+    }
+
+    private fun replaceVariableReferences(string: String, vars: Map<String, String>): String {
+        val containsNoVariables = vars.isEmpty() || string.isEmpty() || !string.contains(VARIABLE_REFERENCE_MARKER)
+        
+        return if (containsNoVariables) {
+            string
         } else {
-            false
+            REGEX_VARIABLE_REFERENCE.replace(string) { match ->
+                vars[match.groupValues[1]]?.let { Regex.escapeReplacement(it) } ?: ""
+            }
         }
     }
 
-    private fun replaceVariableReferences(string: String, vars: Map<String, String>): String =
-        REGEX_VARIABLE_REFERENCE.replace(string) { match ->
-            vars[match.groupValues[1]]?.let { Regex.escapeReplacement(it) } ?: ""
-        }
-
     private fun parseStringAttr(line: String, regex: Regex, vars: Map<String, String>): String =
-        parseOptionalStringAttr(line, regex, null, vars) ?: throw NoSuchElementException("Missing required attribute")
-
-    private fun parseOptionalStringAttr(line: String, regex: Regex, vars: Map<String, String>): String? =
-        parseOptionalStringAttr(line, regex, null, vars)
+        parseOptionalStringAttr(line, regex, vars) ?: throw NoSuchElementException("Missing required attribute")
 
     private fun parseOptionalStringAttr(
         line: String,
         regex: Regex,
-        default: String?,
-        vars: Map<String, String>
-    ): String? {
-        val value = regex.find(line)?.groups?.get(1)?.value ?: default
-        return if (vars.isEmpty() || value == null) value else replaceVariableReferences(value, vars)
-    }
+        vars: Map<String, String>,
+        default: String? = null
+    ): String? = (regex.find(line)?.groups?.get(1)?.value ?: default)?.let { replaceVariableReferences(it, vars) }
 
     private fun parseLongAttr(line: String, regex: Regex): Long = parseStringAttr(line, regex, emptyMap()).toLong()
 }

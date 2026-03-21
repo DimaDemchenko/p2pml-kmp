@@ -10,7 +10,7 @@ private const val FRAGMENT = 3
 private const val SCHEME_SLASH_OFFSET = 2
 private const val AUTHORITY_OFFSET = 3
 
-internal fun resolve(baseUri: String?, referenceUri: String?): String {
+internal fun resolveAbsoluteUrl(baseUri: String?, referenceUri: String?): String {
     val base = baseUri ?: ""
     val reference = referenceUri ?: ""
 

@@ -4,27 +4,34 @@ import com.novage.p2pml.api.models.ByteRange
 import com.novage.p2pml.api.models.Segment
 import kotlinx.serialization.Serializable
 
-internal abstract class HlsPlaylist(val baseUri: String)
+internal sealed interface HlsPlaylist {
+    val baseUri: String
+}
 
-internal class HlsMultivariantPlaylist(
-    baseUri: String,
+internal data class ParsedUrl(val original: String, val absolute: String)
+
+internal data class HlsMultivariantPlaylist(
+    override val baseUri: String,
     val variants: List<Variant>,
     val videos: List<Rendition>,
     val audios: List<Rendition>,
     val subtitles: List<Rendition>,
-    val closedCaptions: List<Rendition>
-) : HlsPlaylist(baseUri)
+    val closedCaptions: List<Rendition>,
+    val sessionKeyUrls: List<ParsedUrl>
+) : HlsPlaylist
 
-internal class HlsMediaPlaylist(
-    baseUri: String,
+internal data class HlsMediaPlaylist(
+    override val baseUri: String,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
-    val hlsSegments: List<HlsSegment>
-) : HlsPlaylist(baseUri)
+    val hlsSegments: List<HlsSegment>,
+    val parts: List<ParsedUrl>,
+    val preloadHints: List<ParsedUrl>,
+    val renditionReports: List<ParsedUrl>
+) : HlsPlaylist
 
 internal data class Variant(
-    val url: String,
-    val urlInManifest: String,
+    val url: ParsedUrl,
     val videoGroupId: String? = null,
     val audioGroupId: String? = null,
     val subtitleGroupId: String? = null,
@@ -32,32 +39,21 @@ internal data class Variant(
     val isIFrame: Boolean = false
 )
 
-internal data class Rendition(val url: String?, val urlInManifest: String?, val groupId: String, val name: String)
+internal data class Rendition(val url: ParsedUrl?, val groupId: String, val name: String)
 
-internal data class InitializationSegment(val url: String, val absoluteUrl: String)
+internal data class InitializationSegment(val url: ParsedUrl)
 
 internal data class HlsSegment(
-    val url: String,
-    val absoluteUrl: String,
+    val url: ParsedUrl,
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
-    val initializationSegment: InitializationSegment?
+    val initializationSegment: InitializationSegment?,
+    val encryptionKey: ParsedUrl?
 ) {
-    val byteRange: ByteRange?
-        get() =
-            if (byteRangeLength != -1L) {
-                ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1)
-            } else {
-                null
-            }
+    val byteRange: ByteRange? = if (byteRangeLength != -1L) ByteRange(byteRangeOffset, byteRangeOffset + byteRangeLength - 1) else null
 
-    val runtimeUrl =
-        if (byteRange != null) {
-            "$absoluteUrl|${byteRange!!.start}-${byteRange!!.end}"
-        } else {
-            absoluteUrl
-        }
+    val runtimeUrl = byteRange?.let { "${url.absolute}|${it.start}-${it.end}" } ?: url.absolute
 }
 
 @Serializable
@@ -68,4 +64,20 @@ internal data class UpdateStreamParams(
     val isLive: Boolean
 )
 
-@Serializable internal data class Stream(val runtimeId: String, val type: String, val index: Int)
+@Serializable
+internal data class Stream(val runtimeId: String, val type: String, val index: Int)
+
+internal interface HlsUrlRewriter {
+    fun rewriteVariantUrl(url: ParsedUrl, isIFrame: Boolean): String
+    fun rewriteRenditionUrl(url: ParsedUrl, type: String): String
+    fun rewriteSessionKeyUrl(url: ParsedUrl): String
+    fun rewriteSegmentUrl(url: ParsedUrl, byteRange: ByteRange?): String
+    fun rewriteInitSegmentUrl(url: ParsedUrl): String
+    fun rewriteKeyUrl(url: ParsedUrl): String
+    fun rewriteLowLatencyUrl(url: ParsedUrl): String
+}
+
+internal data class ParsedPlaylist(
+    val playlist: HlsPlaylist,
+    val rewrittenManifest: String
+)
