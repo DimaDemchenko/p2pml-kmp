@@ -19,12 +19,20 @@ internal class HlsManifestManager(
     private val tracker = HlsStreamStateTracker(playbackProvider)
     private val rewriter = LocalHlsUrlRewriter(urlFactory)
     private val mutex = Mutex()
+    private var parseSessionGeneration = 0
 
     suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String {
+        val startGeneration = mutex.withLock { parseSessionGeneration }
+        
         logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
         val result = parser.parse(manifestUrl, originalManifest, rewriter)
 
         mutex.withLock {
+            if (parseSessionGeneration != startGeneration) {
+                logger.d { "Discarding tracking updates from stale parsed session due to reset: $manifestUrl" }
+                return result.rewrittenManifest
+            }
+            
             when (val hlsPlaylist = result.playlist) {
                 is HlsMediaPlaylist -> {
                     logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
@@ -56,6 +64,7 @@ internal class HlsManifestManager(
     }
 
     suspend fun reset() = mutex.withLock {
+        parseSessionGeneration++
         tracker.reset()
     }
 }
