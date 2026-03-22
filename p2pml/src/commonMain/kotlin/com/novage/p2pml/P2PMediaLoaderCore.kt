@@ -5,6 +5,7 @@ import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.api.models.PeerDetails
 import com.novage.p2pml.api.models.PeerErrorDetails
 import com.novage.p2pml.api.models.SegmentAbortDetails
@@ -56,7 +57,7 @@ abstract class P2PMediaLoaderCore(
     private var playbackProvider: PlaybackProvider? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
-    private var pendingDynamicConfig: String? = null
+    private var pendingDynamicConfig: DynamicCoreConfig? = null
 
     internal fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
         if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
@@ -111,16 +112,16 @@ abstract class P2PMediaLoaderCore(
         return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
 
-    fun applyDynamicConfig(dynamicCoreConfig: String) {
+    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
         if (status.value != LoaderStatus.ACTIVE) {
-            logger.d { "Core not ready (Current: ${status.value}). Caching dynamic config for later application." }
+            logger.d { "Core not ready. Caching dynamic config for later application." }
             pendingDynamicConfig = dynamicCoreConfig
             return
         }
         val engine = engineManager ?: return
 
-        logger.d { "Applying dynamic config: $dynamicCoreConfig" }
-        engine.applyDynamicConfig(dynamicCoreConfig)
+        logger.d { "Applying dynamic config..." }
+        engine.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
     }
 
     private fun onServerReady() {
@@ -156,7 +157,7 @@ abstract class P2PMediaLoaderCore(
 
         pendingDynamicConfig?.let {
             logger.i { "Applying cached pending dynamic config..." }
-            engine.applyDynamicConfig(it)
+            engine.applyDynamicConfig(it.toJsExpression())
             pendingDynamicConfig = null
         }
 

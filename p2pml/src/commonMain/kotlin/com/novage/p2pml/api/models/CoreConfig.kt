@@ -135,3 +135,103 @@ internal fun CoreConfig.toJsExpression(): String {
         append("})()")
     }
 }
+
+@Serializable
+data class DynamicStreamConfig(
+    val highDemandTimeWindow: Int? = null,
+    val httpDownloadTimeWindow: Int? = null,
+    val p2pDownloadTimeWindow: Int? = null,
+    val simultaneousHttpDownloads: Int? = null,
+    val simultaneousP2PDownloads: Int? = null,
+    val webRtcMaxMessageSize: Int? = null,
+    val p2pNotReceivingBytesTimeoutMs: Int? = null,
+    val p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
+    val httpNotReceivingBytesTimeoutMs: Int? = null,
+    val httpErrorRetries: Int? = null,
+    val p2pErrorRetries: Int? = null,
+    val isP2PDisabled: Boolean? = null,
+    val isP2PUploadDisabled: Boolean? = null,
+
+    @Transient val validateP2PSegmentJs: String? = null,
+    @Transient val httpRequestSetupJs: String? = null
+)
+
+@Serializable
+data class DynamicCoreConfig(
+    val segmentMemoryStorageLimit: Int? = null,
+    @Transient val customSegmentStorageFactoryJs: String? = null,
+
+    val highDemandTimeWindow: Int? = null,
+    val httpDownloadTimeWindow: Int? = null,
+    val p2pDownloadTimeWindow: Int? = null,
+    val simultaneousHttpDownloads: Int? = null,
+    val simultaneousP2PDownloads: Int? = null,
+    val webRtcMaxMessageSize: Int? = null,
+    val p2pNotReceivingBytesTimeoutMs: Int? = null,
+    val p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
+    val httpNotReceivingBytesTimeoutMs: Int? = null,
+    val httpErrorRetries: Int? = null,
+    val p2pErrorRetries: Int? = null,
+    val isP2PDisabled: Boolean? = null,
+    val isP2PUploadDisabled: Boolean? = null,
+
+    @Transient val validateP2PSegmentJs: String? = null,
+    @Transient val httpRequestSetupJs: String? = null,
+
+    val mainStream: DynamicStreamConfig? = null,
+    val secondaryStream: DynamicStreamConfig? = null
+)
+
+
+internal fun DynamicCoreConfig.toJsExpression(): String {
+    val configJson = p2pConfigJson.encodeToString(this)
+
+    return buildString {
+        appendLine("(function() {")
+        appendLine("  var config = $configJson;")
+
+        customSegmentStorageFactoryJs?.let {
+            appendLine("  config.customSegmentStorageFactory = $it;")
+        }
+
+        fun appendDynamicStreamFunctions(
+            path: String,
+            validateP2P: String?,
+            setupHTTP: String?
+        ) {
+            if (validateP2P == null && setupHTTP == null) return
+
+            if (path != "config") {
+                appendLine("  $path = $path || {};")
+            }
+
+            validateP2P?.let { appendLine("  $path.validateP2PSegment = $it;") }
+            setupHTTP?.let { appendLine("  $path.httpRequestSetup = $it;") }
+        }
+
+        appendDynamicStreamFunctions(
+            path = "config",
+            validateP2P = validateP2PSegmentJs,
+            setupHTTP = httpRequestSetupJs
+        )
+
+        mainStream?.let { stream ->
+            appendDynamicStreamFunctions(
+                path = "config.mainStream",
+                validateP2P = stream.validateP2PSegmentJs,
+                setupHTTP = stream.httpRequestSetupJs
+            )
+        }
+
+        secondaryStream?.let { stream ->
+            appendDynamicStreamFunctions(
+                path = "config.secondaryStream",
+                validateP2P = stream.validateP2PSegmentJs,
+                setupHTTP = stream.httpRequestSetupJs
+            )
+        }
+
+        appendLine("  return config;")
+        append("})()")
+    }
+}

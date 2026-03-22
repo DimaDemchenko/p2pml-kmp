@@ -196,7 +196,11 @@ class PlayerViewModel: ObservableObject {
 
     private func applyP2PEnabled(_ enabled: Bool) {
         guard let loader = p2pLoader else { return }
-        let config = "{ \"isP2PDisabled\": \(!enabled) }"
+
+        let config = DynamicCoreConfig(
+            isP2PDisabled: !enabled
+        )
+
         loader.applyDynamicConfig(dynamicCoreConfig: config)
     }
 

@@ -67,7 +67,7 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
 
     override fun applyDynamicConfig(dynamicCoreConfig: String) {
         logger.i { "Applying dynamic config: $dynamicCoreConfig" }
-        evaluate("window.p2p.applyDynamicP2PCoreConfig('$dynamicCoreConfig');")
+        evaluate("window.p2p.applyDynamicP2PCoreConfig($dynamicCoreConfig);")
     }
 
     override fun subscribeToP2PEvent(eventName: String) {

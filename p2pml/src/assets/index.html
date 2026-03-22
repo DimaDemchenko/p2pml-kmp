@@ -104,10 +104,8 @@
 
                 applyDynamicP2PCoreConfig(dynamicCoreConfigJsObject) {
                     if (!this.core || !dynamicCoreConfigJsObject) return;
-                    const dynamicConfig = this.hydrateConfig(
-                        dynamicCoreConfigJsObject,
-                    );
-                    this.core.applyDynamicConfig(dynamicConfig);
+
+                    this.core.applyDynamicConfig(dynamicCoreConfigJsObject);
                 }
 
                 subscribeToEvent(eventName) {

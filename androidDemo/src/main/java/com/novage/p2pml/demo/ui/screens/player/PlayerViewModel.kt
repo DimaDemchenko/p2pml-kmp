@@ -20,6 +20,7 @@ import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
 import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableTracks
@@ -271,7 +272,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private fun setP2PEnabled(isEnabled: Boolean) {
         val loader = p2pLoader ?: return
 
-        val config = "{ isP2PDisabled: ${!isEnabled} }"
+        val config = DynamicCoreConfig(
+            isP2PDisabled = !isEnabled
+        )
 
         loader.applyDynamicConfig(config)
     }
