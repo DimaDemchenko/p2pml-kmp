@@ -4,6 +4,7 @@ import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
+import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.PeerDetails
 import com.novage.p2pml.api.models.PeerErrorDetails
 import com.novage.p2pml.api.models.SegmentAbortDetails
@@ -12,6 +13,7 @@ import com.novage.p2pml.api.models.SegmentLoadDetails
 import com.novage.p2pml.api.models.SegmentStartDetails
 import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
+import com.novage.p2pml.api.models.toJsExpression
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
 import com.novage.p2pml.internal.events.CoreEventEmitter
@@ -32,7 +34,7 @@ private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
     private val onError: (P2PMediaLoaderErrorType, String) -> Unit,
-    private val coreConfig: String = "{}",
+    private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
 ) {
     companion object {
@@ -138,7 +140,7 @@ abstract class P2PMediaLoaderCore(
         logger.i { "WebView loaded. Initializing Core JS Engine." }
 
         engine.initCoreEngine(
-            coreConfig = coreConfig,
+            coreConfig = coreConfig.toJsExpression(),
             uploadUrl = urlFactory.buildUploadUrl()
         )
 

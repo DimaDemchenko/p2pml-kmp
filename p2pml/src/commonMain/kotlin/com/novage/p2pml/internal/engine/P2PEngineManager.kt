@@ -38,7 +38,7 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
 
     override fun initCoreEngine(coreConfig: String, uploadUrl: String) {
         logger.i { "Initializing JS Core Engine" }
-        evaluate("window.p2p.initP2P('$coreConfig', '$uploadUrl');")
+        evaluate("window.p2p.initP2P($coreConfig, '$uploadUrl');")
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {

@@ -1,5 +1,6 @@
 package com.novage.p2pml
 
+import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
@@ -7,7 +8,7 @@ import com.novage.p2pml.internal.webview.IosWebViewFactory
 class P2PMediaLoader(
     onReady: () -> Unit,
     onError: (P2PMediaLoaderErrorType, String) -> Unit,
-    coreConfig: String = "{}",
+    coreConfig: CoreConfig = CoreConfig(),
     customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
     onReady = onReady,
@@ -15,10 +16,6 @@ class P2PMediaLoader(
     coreConfig,
     customEngineUrl
 ) {
-    constructor(
-        onReady: () -> Unit,
-        onError: (P2PMediaLoaderErrorType, String) -> Unit
-    ) : this(onReady, onError, "{}", null)
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
