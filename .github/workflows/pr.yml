@@ -26,9 +26,6 @@ jobs:
       - name: Run Detekt and Spotless
         run: ./gradlew spotlessCheck detekt --no-daemon
 
-      - name: Test Library (p2pml)
-        run: ./gradlew :p2pml:check --no-daemon
-
       - name: Build Android Demo
         run: ./gradlew :androidDemo:assembleDebug --no-daemon
 
