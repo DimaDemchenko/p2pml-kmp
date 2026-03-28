@@ -85,23 +85,8 @@
 
                 initP2P(coreConfigJsObject, uploadBaseUrl) {
                     this.uploadUrl = uploadBaseUrl;
-                    this.coreConfig = this.hydrateConfig(coreConfigJsObject);
+                    this.coreConfig = coreConfigJsObject || {};
                     this.createP2PEngine();
-                }
-
-                hydrateConfig(configString) {
-                    if (!configString) return {};
-
-                    try {
-                        return new Function("return " + configString)();
-                    } catch (e) {
-                        console.error(
-                            "P2PML: Failed to hydrate config string:",
-                            e,
-                        );
-                        console.error("String was:", configString);
-                        return {};
-                    }
                 }
 
                 createP2PEngine() {
@@ -119,10 +104,8 @@
 
                 applyDynamicP2PCoreConfig(dynamicCoreConfigJsObject) {
                     if (!this.core || !dynamicCoreConfigJsObject) return;
-                    const dynamicConfig = this.hydrateConfig(
-                        dynamicCoreConfigJsObject,
-                    );
-                    this.core.applyDynamicConfig(dynamicConfig);
+
+                    this.core.applyDynamicConfig(dynamicCoreConfigJsObject);
                 }
 
                 subscribeToEvent(eventName) {

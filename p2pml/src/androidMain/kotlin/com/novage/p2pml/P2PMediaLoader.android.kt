@@ -5,6 +5,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.interop.OnError
 import com.novage.p2pml.api.interop.OnReady
+import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
@@ -14,7 +15,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,
     onReady: OnReady,
     onError: OnError,
-    coreConfig: String = "{}",
+    coreConfig: CoreConfig = CoreConfig(),
     customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
     onReady = { onReady.onReady() },

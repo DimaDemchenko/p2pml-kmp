@@ -19,7 +19,10 @@ import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.Cancellable
-import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
+import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.models.CoreConfigBuilder
+import com.novage.p2pml.api.models.DynamicCoreConfig
+import com.novage.p2pml.api.models.DynamicCoreConfigBuilder
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
 import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableTracks
@@ -32,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 
 private const val HIGH_DEMAND_WINDOW_SEC = 20
 private const val PLAYER_MAX_BUFFER_MS = HIGH_DEMAND_WINDOW_SEC * 1000
@@ -107,20 +111,21 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     ) {
         P2PMediaLoader.enableLogging()
 
-        val coreConfig = """
-            {
-                highDemandTimeWindow: $HIGH_DEMAND_WINDOW_SEC,
-                isP2PDisabled: ${!shouldAutoPlay},
-                simultaneousP2PDownloads: 3,
-                webRtcMaxMessageSize: 65535,
-                p2pNotReceivingBytesTimeoutMs: 1000,
-                
-                validateP2PSegment: (url, byteRange, data) => {
-                    console.log(`Validating segment: ${'$'}{url} Range: ${'$'}{byteRange}`);
+        val coreConfig = CoreConfigBuilder()
+            .highDemandTimeWindow(HIGH_DEMAND_WINDOW_SEC)
+            .isP2PDisabled(!shouldAutoPlay)
+            .simultaneousP2PDownloads(3)
+            .webRtcMaxMessageSize(65535)
+            .p2pNotReceivingBytesTimeoutMs(1000)
+            .validateHTTPSegmentJs(
+                $$"""
+                (url, byteRange, data) => {
+                    console.log(`Validating segment: ${url} Range: ${byteRange}`);
                     return data.byteLength > 0;
                 }
-            }
-        """.trimIndent().replace("\n", " ")
+                """.trimIndent()
+            )
+            .build()
 
         val loader = P2PMediaLoader(
             context = context,
@@ -270,7 +275,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private fun setP2PEnabled(isEnabled: Boolean) {
         val loader = p2pLoader ?: return
 
-        val config = "{ isP2PDisabled: ${!isEnabled} }"
+        val config = DynamicCoreConfigBuilder()
+            .isP2PDisabled(!isEnabled)
+            .build()
 
         loader.applyDynamicConfig(config)
     }
