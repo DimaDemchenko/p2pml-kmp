@@ -1,261 +1,237 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>P2P Media Loader KMP</title>
-        <script type="importmap">
-            {
-                "imports": {
-                    "p2p-media-loader-core": "./p2p-media-loader-core.es.min.js"
-                }
-            }
-        </script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>P2P Media Loader KMP</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "p2p-media-loader-core": "./p2p-media-loader-core.es.min.js"
+        }
+      }
+    </script>
 
-        <script type="module">
-            import { Core } from "p2p-media-loader-core";
+    <script type="module">
+      import { Core } from "p2p-media-loader-core";
 
-            class NativeBridge {
-                constructor() {
-                    this.platform = this.detectPlatform();
-                }
+      class NativeBridge {
+        constructor() {
+          this.platform = this.detectPlatform();
+        }
 
-                detectPlatform() {
-                    if (window.P2PMLAndroid) return "android";
-                    if (window.webkit?.messageHandlers?.p2pml) return "ios";
-                    return "unknown";
-                }
+        detectPlatform() {
+          if (window.P2PMLAndroid) return "android";
+          if (window.webkit?.messageHandlers?.p2pml) return "ios";
+          return "unknown";
+        }
 
-                sendChunkDownloaded(bytesLength, downloadSource, peerId) {
-                    if (this.platform === "android") {
-                        window.P2PMLAndroid.onChunkDownloaded(
-                            bytesLength,
-                            downloadSource,
-                            peerId,
-                        );
-                    } else if (this.platform === "ios") {
-                        this.postToIos("onChunkDownloaded", {
-                            bytesLength,
-                            downloadSource,
-                            peerId,
-                        });
-                    }
-                }
-
-                sendChunkUploaded(bytesLength, peerId) {
-                    if (this.platform === "android") {
-                        window.P2PMLAndroid.onChunkUploaded(
-                            bytesLength,
-                            peerId,
-                        );
-                    } else if (this.platform === "ios") {
-                        this.postToIos("onChunkUploaded", {
-                            bytesLength,
-                            peerId,
-                        });
-                    }
-                }
-
-                postToIos(type, payload) {
-                    window.webkit.messageHandlers.p2pml.postMessage({
-                        type,
-                        payload,
-                    });
-                }
-
-                sendMessage(type, payload = {}) {
-                    if (this.platform === "android") {
-                        const message = JSON.stringify({ type, payload });
-                        window.P2PMLAndroid.postMessage(message);
-                    } else if (this.platform === "ios") {
-                        this.postToIos(type, payload);
-                    } else {
-                        console.warn(
-                            `[Bridge] Platform unknown. Message lost: ${type}`,
-                        );
-                    }
-                }
-            }
-
-            class P2P {
-                constructor(bridge) {
-                    this.bridge = bridge;
-                    this.eventHandlers = new Map();
-                }
-
-                initP2P(coreConfigJsObject, uploadBaseUrl) {
-                    this.uploadUrl = uploadBaseUrl;
-                    this.coreConfig = coreConfigJsObject || {};
-                    this.createP2PEngine();
-                }
-
-                createP2PEngine() {
-                    if (this.core) this.destroyP2PEngine();
-
-                    this.core = new Core(this.coreConfig);
-                }
-
-                destroyP2PEngine() {
-                    if (!this.core) return;
-
-                    this.core.destroy();
-                    this.core = null;
-                }
-
-                applyDynamicP2PCoreConfig(dynamicCoreConfigJsObject) {
-                    if (!this.core || !dynamicCoreConfigJsObject) return;
-
-                    this.core.applyDynamicConfig(dynamicCoreConfigJsObject);
-                }
-
-                subscribeToEvent(eventName) {
-                    if (this.eventHandlers.has(eventName)) return;
-
-                    const handler = (...args) => {
-                        if (eventName === "onChunkDownloaded") {
-                            this.bridge.sendChunkDownloaded(
-                                args[0],
-                                args[1],
-                                args[2],
-                            );
-                            return;
-                        }
-
-                        if (eventName === "onChunkUploaded") {
-                            this.bridge.sendChunkUploaded(args[0], args[1]);
-                            return;
-                        }
-
-                        const payload = this.formatEventPayload(
-                            eventName,
-                            args,
-                        );
-                        this.bridge.sendMessage(eventName, payload);
-                    };
-
-                    this.eventHandlers.set(eventName, handler);
-                    this.core.addEventListener(eventName, handler);
-                }
-
-                unsubscribeFromEvent(eventName) {
-                    const handler = this.eventHandlers.get(eventName);
-                    if (!handler || !this.core) return;
-
-                    this.core.removeEventListener(eventName, handler);
-                    this.eventHandlers.delete(eventName);
-                }
-
-                formatEventPayload(eventName, args) {
-                    switch (eventName) {
-                        case "onTrackerError":
-                        case "onTrackerWarning":
-                            return {
-                                streamType: args[0].streamType,
-                                error: {
-                                    message: args[0].error?.message,
-                                    stack: args[0].error?.stack,
-                                },
-                            };
-                        default:
-                            return args[0];
-                    }
-                }
-
-                parseAllStreams(jsonData) {
-                    if (!this.core) return;
-
-                    const streams = JSON.parse(jsonData);
-                    for (const stream of streams) {
-                        this.core.addStreamIfNoneExists(stream);
-                    }
-                }
-
-                parseStream(jsonData) {
-                    if (!this.core) return;
-
-                    const playlist = JSON.parse(jsonData);
-                    const {
-                        streamRuntimeId,
-                        addSegments,
-                        removeSegmentsIds,
-                        isLive,
-                    } = playlist;
-
-                    this.core.updateStream(
-                        streamRuntimeId,
-                        addSegments,
-                        removeSegmentsIds,
-                    );
-                    this.core.setIsLive(isLive);
-                }
-
-                setManifestUrl(manifestUrl) {
-                    if (!this.core) return;
-                    this.core.setManifestResponseUrl(manifestUrl);
-                }
-
-                updatePlaybackInfo(playbackInfoJson) {
-                    if (!this.core) return;
-
-                    const { currentPlayPosition, currentPlaybackSpeed } =
-                        JSON.parse(playbackInfoJson);
-                    this.core.updatePlayback(
-                        currentPlayPosition,
-                        currentPlaybackSpeed,
-                    );
-                }
-
-                async processSegmentRequest(segmentUrl) {
-                    const uploadToKtor = (
-                        status,
-                        body = null,
-                        errorType = null,
-                    ) => {
-                        let url = `${this.uploadUrl}?segmentId=${encodeURIComponent(
-                            segmentUrl,
-                        )}`;
-                        if (errorType) url += `&error=${errorType}`;
-
-                        const options = { method: "POST" };
-                        if (body) {
-                            options.headers = {
-                                "Content-Type": "application/octet-stream",
-                            };
-                            options.body = body;
-                        }
-
-                        fetch(url, options).catch((e) =>
-                            console.error("Ktor Upload Failed", e),
-                        );
-                    };
-
-                    try {
-                        await this.core.loadSegment(segmentUrl, {
-                            onSuccess: (response) =>
-                                uploadToKtor("success", response.data),
-                            onError: (error) => {
-                                console.error(
-                                    `Segment with URL ${segmentUrl} failed to load`,
-                                    error,
-                                );
-                                uploadToKtor("error", null, error.type);
-                            },
-                        });
-                    } catch (e) {
-                        uploadToKtor("error", null, "not_found");
-                    }
-                }
-            }
-
-            document.addEventListener("DOMContentLoaded", () => {
-                const bridge = new NativeBridge();
-                const p2p = new P2P(bridge);
-
-                window.p2p = p2p;
-                console.log("document loaded");
-                bridge.sendMessage("onWebViewLoaded");
+        sendChunkDownloaded(bytesLength, downloadSource, peerId) {
+          if (this.platform === "android") {
+            window.P2PMLAndroid.onChunkDownloaded(
+              bytesLength,
+              downloadSource,
+              peerId,
+            );
+          } else if (this.platform === "ios") {
+            this.postToIos("onChunkDownloaded", {
+              bytesLength,
+              downloadSource,
+              peerId,
             });
-        </script>
-    </head>
-    <body></body>
+          }
+        }
+
+        sendChunkUploaded(bytesLength, peerId) {
+          if (this.platform === "android") {
+            window.P2PMLAndroid.onChunkUploaded(bytesLength, peerId);
+          } else if (this.platform === "ios") {
+            this.postToIos("onChunkUploaded", {
+              bytesLength,
+              peerId,
+            });
+          }
+        }
+
+        postToIos(type, payload) {
+          window.webkit.messageHandlers.p2pml.postMessage({
+            type,
+            payload,
+          });
+        }
+
+        sendMessage(type, payload = {}) {
+          if (this.platform === "android") {
+            const message = JSON.stringify({ type, payload });
+            window.P2PMLAndroid.postMessage(message);
+          } else if (this.platform === "ios") {
+            this.postToIos(type, payload);
+          } else {
+            console.warn(`[Bridge] Platform unknown. Message lost: ${type}`);
+          }
+        }
+      }
+
+      class P2P {
+        constructor(bridge) {
+          this.bridge = bridge;
+          this.eventHandlers = new Map();
+        }
+
+        initP2P(coreConfigJsObject, uploadBaseUrl) {
+          this.uploadUrl = uploadBaseUrl;
+          this.coreConfig = coreConfigJsObject || {};
+          this.createP2PEngine();
+        }
+
+        createP2PEngine() {
+          if (this.core) this.destroyP2PEngine();
+
+          this.core = new Core(this.coreConfig);
+        }
+
+        destroyP2PEngine() {
+          if (!this.core) return;
+
+          this.core.destroy();
+          this.core = null;
+        }
+
+        applyDynamicP2PCoreConfig(dynamicCoreConfigJsObject) {
+          if (!this.core || !dynamicCoreConfigJsObject) return;
+
+          this.core.applyDynamicConfig(dynamicCoreConfigJsObject);
+        }
+
+        subscribeToEvent(eventName) {
+          if (this.eventHandlers.has(eventName)) return;
+
+          const handler = (...args) => {
+            if (eventName === "onChunkDownloaded") {
+              this.bridge.sendChunkDownloaded(args[0], args[1], args[2]);
+              return;
+            }
+
+            if (eventName === "onChunkUploaded") {
+              this.bridge.sendChunkUploaded(args[0], args[1]);
+              return;
+            }
+
+            const payload = this.formatEventPayload(eventName, args);
+            this.bridge.sendMessage(eventName, payload);
+          };
+
+          this.eventHandlers.set(eventName, handler);
+          this.core.addEventListener(eventName, handler);
+        }
+
+        unsubscribeFromEvent(eventName) {
+          const handler = this.eventHandlers.get(eventName);
+          if (!handler || !this.core) return;
+
+          this.core.removeEventListener(eventName, handler);
+          this.eventHandlers.delete(eventName);
+        }
+
+        formatEventPayload(eventName, args) {
+          switch (eventName) {
+            case "onTrackerError":
+            case "onTrackerWarning":
+              return {
+                streamType: args[0].streamType,
+                error: {
+                  message: args[0].error?.message,
+                  stack: args[0].error?.stack,
+                },
+              };
+            default:
+              return args[0];
+          }
+        }
+
+        parseAllStreams(jsonData) {
+          if (!this.core) return;
+
+          const streams = JSON.parse(jsonData);
+          for (const stream of streams) {
+            this.core.addStreamIfNoneExists(stream);
+          }
+        }
+
+        parseStream(jsonData) {
+          if (!this.core) return;
+
+          const playlist = JSON.parse(jsonData);
+          const { streamRuntimeId, addSegments, removeSegmentsIds, isLive } =
+            playlist;
+
+          this.core.updateStream(
+            streamRuntimeId,
+            addSegments,
+            removeSegmentsIds,
+          );
+          this.core.setIsLive(isLive);
+        }
+
+        setManifestUrl(manifestUrl) {
+          if (!this.core) return;
+          this.core.setManifestResponseUrl(manifestUrl);
+        }
+
+        updatePlaybackInfo(playbackInfoJson) {
+          if (!this.core) return;
+
+          const { currentPlayPosition, currentPlaybackSpeed } =
+            JSON.parse(playbackInfoJson);
+          this.core.updatePlayback(currentPlayPosition, currentPlaybackSpeed);
+        }
+
+        async processSegmentRequest(segmentUrl) {
+          const uploadToKtor = (status, body = null, errorType = null) => {
+            let url = `${this.uploadUrl}?segmentId=${encodeURIComponent(
+              segmentUrl,
+            )}`;
+            if (errorType) url += `&error=${errorType}`;
+
+            const options = { method: "POST" };
+            if (body) {
+              options.headers = {
+                "Content-Type": "application/octet-stream",
+              };
+              options.body = body;
+            }
+
+            fetch(url, options).catch((e) =>
+              console.error("Ktor Upload Failed", e),
+            );
+          };
+
+          try {
+            await this.core.loadSegment(segmentUrl, {
+              onSuccess: (response) => uploadToKtor("success", response.data),
+              onError: (error) => {
+                console.error(
+                  `Segment with URL ${segmentUrl} failed to load`,
+                  error,
+                );
+                uploadToKtor("error", null, error.type);
+              },
+            });
+          } catch (e) {
+            uploadToKtor("error", null, "not_found");
+          }
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const bridge = new NativeBridge();
+        const p2p = new P2P(bridge);
+
+        window.p2p = p2p;
+        console.log("document loaded");
+        bridge.sendMessage("onWebViewLoaded");
+      });
+    </script>
+  </head>
+  <body></body>
 </html>
