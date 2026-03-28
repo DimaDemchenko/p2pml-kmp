@@ -10,33 +10,29 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
-internal class HlsManifestManager(
-    playbackProvider: PlaybackProvider,
-    urlFactory: LocalUrlFactory
-) {
+internal class HlsManifestManager(playbackProvider: PlaybackProvider, urlFactory: LocalUrlFactory) {
     private val logger = CoreLogger("HlsManifestManager")
     private val parser = HlsPlaylistParser()
     private val tracker = HlsStreamStateTracker(playbackProvider)
     private val rewriter = LocalHlsUrlRewriter(urlFactory)
     private val mutex = Mutex()
 
-    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String {
-        return mutex.withLock {
-            logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
-            val result = parser.parse(manifestUrl, originalManifest, rewriter)
-    
-            when (val hlsPlaylist = result.playlist) {
-                is HlsMediaPlaylist -> {
-                    logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
-                    tracker.postProcessMediaPlaylist(manifestUrl, hlsPlaylist)
-                }
-                is HlsMultivariantPlaylist -> {
-                    logger.d { "Type: Multivariant (Master) Playlist" }
-                    tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
-                }
+    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String = mutex.withLock {
+        logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
+        val result = parser.parse(manifestUrl, originalManifest, rewriter)
+
+        when (val hlsPlaylist = result.playlist) {
+            is HlsMediaPlaylist -> {
+                logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
+                tracker.postProcessMediaPlaylist(manifestUrl, hlsPlaylist)
             }
-            result.rewrittenManifest
+
+            is HlsMultivariantPlaylist -> {
+                logger.d { "Type: Multivariant (Master) Playlist" }
+                tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
+            }
         }
+        result.rewrittenManifest
     }
 
     suspend fun isCurrentSegment(segmentUrl: String): Boolean = mutex.withLock {

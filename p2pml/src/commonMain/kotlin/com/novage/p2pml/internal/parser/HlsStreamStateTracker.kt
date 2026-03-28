@@ -18,9 +18,7 @@ private const val SECONDARY_STREAM = "secondary"
 private const val MICROSECONDS_IN_SECOND = 1_000_000.0
 private val LIVE_VARIANT_TTL = 60.seconds
 
-internal class HlsStreamStateTracker(
-    private val playbackProvider: PlaybackProvider
-) {
+internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvider) {
     private val logger = CoreLogger("HlsStreamStateTracker")
 
     private var currentMasterManifestUrl: String? = null
@@ -31,14 +29,12 @@ internal class HlsStreamStateTracker(
     private val currentSegmentRuntimeIds = mutableMapOf<String, MutableSet<String>>()
     private val variantLastUpdated = mutableMapOf<String, TimeMark>()
 
-    fun isCurrentSegment(segmentUrl: String): Boolean = 
-        currentSegmentRuntimeIds.values.any { it.contains(segmentUrl) }
+    fun isCurrentSegment(segmentUrl: String): Boolean = currentSegmentRuntimeIds.values.any { it.contains(segmentUrl) }
 
-    fun isManifestTracked(manifestUrl: String): Boolean = 
+    fun isManifestTracked(manifestUrl: String): Boolean =
         currentMasterManifestUrl == manifestUrl || streams.containsKey(manifestUrl)
 
-    fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = 
-        updateStreamParams[variantUrl]
+    fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = updateStreamParams[variantUrl]
 
     fun getStreams(): List<Stream> = streams.values.toList()
 
@@ -83,8 +79,8 @@ internal class HlsStreamStateTracker(
 
         val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist)
 
-        val runtimeIdsSet = currentSegmentRuntimeIds.getOrPut(manifestUrl) { 
-            HashSet(mediaPlaylist.hlsSegments.size) 
+        val runtimeIdsSet = currentSegmentRuntimeIds.getOrPut(manifestUrl) {
+            HashSet(mediaPlaylist.hlsSegments.size)
         }
         runtimeIdsSet.clear()
 
@@ -114,7 +110,6 @@ internal class HlsStreamStateTracker(
         logger.d { "Segments updated. Added: ${segmentsToAdd.size}, Removed: ${segmentsToRemove.size}" }
     }
 
-
     private fun createAndStoreSegment(
         segmentsMap: MutableMap<Long, Segment>,
         segmentId: Long,
@@ -136,6 +131,7 @@ internal class HlsStreamStateTracker(
         ).also { segmentsMap[segmentId] = it }
     }
 
+    @Suppress("NestedBlockDepth")
     private fun enforceLiveTtlAndGetObsoleteSegments(
         variantUrl: String,
         removeUntilId: Long,

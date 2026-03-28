@@ -9,20 +9,16 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.ParsedUrl
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
 
-internal class LocalHlsUrlRewriter(
-    private val urlFactory: LocalUrlFactory
-) : HlsUrlRewriter {
-    override fun rewriteVariantUrl(url: ParsedUrl, isIFrame: Boolean): String {
-        return if (isIFrame) url.absolute else urlFactory.buildManifestUrl(url.absolute.encodeURLParameter())
-    }
+internal class LocalHlsUrlRewriter(private val urlFactory: LocalUrlFactory) : HlsUrlRewriter {
+    override fun rewriteVariantUrl(url: ParsedUrl, isIFrame: Boolean): String =
+        if (isIFrame) url.absolute else urlFactory.buildManifestUrl(url.absolute.encodeURLParameter())
 
-    override fun rewriteRenditionUrl(url: ParsedUrl, type: String): String {
-        return if (type == TYPE_SUBTITLES || type == TYPE_CLOSED_CAPTIONS) {
+    override fun rewriteRenditionUrl(url: ParsedUrl, type: String): String =
+        if (type == TYPE_SUBTITLES || type == TYPE_CLOSED_CAPTIONS) {
             url.absolute
         } else {
             urlFactory.buildManifestUrl(url.absolute.encodeURLParameter())
         }
-    }
 
     override fun rewriteSessionKeyUrl(url: ParsedUrl): String = url.absolute
     override fun rewriteKeyUrl(url: ParsedUrl): String = url.absolute
