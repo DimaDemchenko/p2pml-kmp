@@ -41,6 +41,7 @@ struct StatsSection: View {
     }
 
     private func formatBytes(_ bytes: Int64) -> String {
+        if bytes == 0 { return "0 MB" }
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useMB, .useGB]
         formatter.countStyle = .file
