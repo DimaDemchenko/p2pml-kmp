@@ -17,14 +17,20 @@ class PlayerViewModel: ObservableObject {
     func initializePlayer(manifestUrl: String, customEngineUrl: String?) {
         guard player == nil else { return }
 
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to set audio session category: \(error)")
+        }
+
         P2PMediaLoader.companion.enableLogging()
 
         let coreConfig = CoreConfigBuilder()
-            .highDemandTimeWindow(value: 20)
+            .highDemandTimeWindow(value: 45)
             .isP2PDisabled(value: !shouldAutoPlay)
             .simultaneousP2PDownloads(value: 3)
             .webRtcMaxMessageSize(value: 65535)
-            .p2pNotReceivingBytesTimeoutMs(value: 1000)
             .build()
 
         let loader = P2PMediaLoader(
@@ -70,6 +76,11 @@ class PlayerViewModel: ObservableObject {
         }
 
         let playerItem = AVPlayerItem(url: urlObj)
+        playerItem.preferredForwardBufferDuration = 45.0
+        
+        // Lock the maximum resolution to 1080p (FHD)
+        //playerItem.preferredMaximumResolution = CGSize(width: 1920, height: 1080)
+        
         let newPlayer = AVPlayer(playerItem: playerItem)
         newPlayer.automaticallyWaitsToMinimizeStalling = true
         self.player = newPlayer
@@ -93,35 +104,41 @@ class PlayerViewModel: ObservableObject {
             let asset = playerItem.asset
             let currentBitrate = playerItem.preferredPeakBitRate
 
-            var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0)]
+            var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0, isAudio: false)]
 
             if let urlAsset = asset as? AVURLAsset {
-                let variants = (try? await urlAsset.load(.variants)) ?? urlAsset.variants
+                let variants = try await urlAsset.load(.variants)
                 var seenHeights = Set<Int>()
                 let sorted = variants
-                    .filter { $0.videoAttributes != nil }
-                    .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
+                .filter { $0.videoAttributes != nil }
+                .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
 
                 for variant in sorted {
                     guard let videoAttrs = variant.videoAttributes,
                           let peakBitRate = variant.peakBitRate,
                           peakBitRate > 0 else { continue }
-                    let height = Int(videoAttrs.presentationSize.height)
+
+                    let size = videoAttrs.presentationSize
+                    let height = Int(size.height)
                     guard height > 0, seenHeights.insert(height).inserted else { continue }
 
                     let bitrateKbps = Int(peakBitRate / 1000)
                     let label = "\(height)p • \(bitrateKbps) kbps"
-                    let isSelected = currentBitrate > 0 && currentBitrate == peakBitRate
+
+                    let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
+
                     videoTracks.append(MediaTrack(
                         label: label,
                         isSelected: isSelected,
                         isAuto: false,
-                        bitrate: peakBitRate
+                        bitrate: peakBitRate,
+                        resolution: size,
+                        isAudio: false
                     ))
                 }
             }
 
-            var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true)]
+            var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true, isAudio: true)]
             if let audioGroup = try? await asset.loadMediaSelectionGroup(for: .audible) {
                 self.audioSelectionGroup = audioGroup
                 let selectedOption = playerItem.currentMediaSelection.selectedMediaOption(in: audioGroup)
@@ -129,7 +146,8 @@ class PlayerViewModel: ObservableObject {
                     MediaTrack(
                         label: option.displayName,
                         isSelected: option == selectedOption,
-                        isAuto: false
+                        isAuto: false,
+                        isAudio: true
                     )
                 }
                 if !options.isEmpty {
@@ -147,13 +165,24 @@ class PlayerViewModel: ObservableObject {
     func changeTrack(_ track: MediaTrack) {
         guard let playerItem = player?.currentItem else { return }
 
-        if track.isAuto {
-            playerItem.preferredPeakBitRate = 0
-        } else if track.bitrate > 0 {
-            playerItem.preferredPeakBitRate = track.bitrate
-        } else if let audioGroup = audioSelectionGroup,
-                  let option = audioGroup.options.first(where: { $0.displayName == track.label }) {
-            playerItem.select(option, in: audioGroup)
+        if track.isAudio {
+            if let audioGroup = audioSelectionGroup {
+                if track.isAuto {
+                    playerItem.select(nil, in: audioGroup)
+                } else if let option = audioGroup.options.first(where: { $0.displayName == track.label }) {
+                    playerItem.select(option, in: audioGroup)
+                }
+            }
+        } else {
+            if track.isAuto {
+                playerItem.preferredPeakBitRate = 0
+                playerItem.preferredMaximumResolution = .zero
+            } else if track.bitrate > 0 {
+                playerItem.preferredPeakBitRate = track.bitrate
+                if let exactResolution = track.resolution {
+                    playerItem.preferredMaximumResolution = exactResolution
+                }
+            }
         }
 
         populateAvailableTracks(for: playerItem)
