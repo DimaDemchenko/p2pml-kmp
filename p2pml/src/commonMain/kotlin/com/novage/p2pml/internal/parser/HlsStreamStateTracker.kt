@@ -130,7 +130,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
             endTime = endTime
         ).also { segmentsMap[segmentId] = it }
     }
-    
+
     private fun enforceLiveTtlAndGetObsoleteSegments(
         variantUrl: String,
         removeUntilId: Long,
