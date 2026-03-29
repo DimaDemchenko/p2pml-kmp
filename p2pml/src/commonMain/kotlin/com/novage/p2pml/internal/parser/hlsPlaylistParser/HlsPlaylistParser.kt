@@ -184,39 +184,50 @@ internal class HlsPlaylistParser {
                     parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
                         ?: throw NoSuchElementException("Missing URI")
                 },
-                stateUpdater = { state.initSegment = InitializationSegment(it) }, // Cleaned up!
+                stateUpdater = { state.initSegment = InitializationSegment(it) },
                 rewriter = { context.urlRewriter?.rewriteInitSegmentUrl(it) }
             )
 
-            trimmedLine.startsWith(TAG_KEY) -> rewrittenLine = processUrlTag(
-                line = originalLine,
-                urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-                stateUpdater = { state.encryptionKey = it }, // Cleaned up!
-                rewriter = { context.urlRewriter?.rewriteKeyUrl(it) }
-            )
+            trimmedLine.startsWith(TAG_KEY) ->
+                rewrittenLine = processKeyTag(originalLine, trimmedLine, state, context)
 
             trimmedLine.startsWith(TAG_PART) -> rewrittenLine = processUrlTag(
                 line = originalLine,
                 urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-                stateUpdater = { llState.parts.add(it) }, // Cleaned up!
+                stateUpdater = { llState.parts.add(it) },
                 rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
             )
 
             trimmedLine.startsWith(TAG_PRELOAD_HINT) -> rewrittenLine = processUrlTag(
                 line = originalLine,
                 urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-                stateUpdater = { llState.preloadHints.add(it) }, // Cleaned up!
+                stateUpdater = { llState.preloadHints.add(it) },
                 rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
             )
 
             trimmedLine.startsWith(TAG_RENDITION_REPORT) -> rewrittenLine = processUrlTag(
                 line = originalLine,
                 urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-                stateUpdater = { llState.renditionReports.add(it) }, // Cleaned up!
+                stateUpdater = { llState.renditionReports.add(it) },
                 rewriter = { context.urlRewriter?.rewriteLowLatencyUrl(it) }
             )
         }
         return rewrittenLine
+    }
+
+    private fun processKeyTag(
+        originalLine: String,
+        trimmedLine: String,
+        state: SegmentState,
+        context: ParserContext
+    ): String {
+        val parsedUrl = parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
+        state.encryptionKey = parsedUrl
+        return parsedUrl?.let { url ->
+            context.urlRewriter?.rewriteKeyUrl(url)?.let { newUrl ->
+                rewriteUriAttribute(originalLine, url.original, newUrl)
+            }
+        } ?: originalLine
     }
 
     private inline fun processUrlTag(
