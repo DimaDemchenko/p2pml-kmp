@@ -8,7 +8,7 @@ on:
 jobs:
   lint:
     name: Lint & Spotless
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -54,4 +54,4 @@ jobs:
       - name: Build iOS Demo
         run: |
           cd iosDemo
-          xcodebuild -project iosDemo.xcodeproj -scheme iosDemo -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build
+          xcodebuild -project iosDemo.xcodeproj -scheme iosDemo -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' ONLY_ACTIVE_ARCH=YES ARCHS=arm64 build
