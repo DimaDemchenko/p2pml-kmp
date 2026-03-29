@@ -278,7 +278,6 @@ internal class HlsPlaylistParser {
         encryptionKey = state.encryptionKey
     )
 
-    @Suppress("NestedBlockDepth")
     private fun parseMultivariantPlaylist(iterator: LineIterator, context: ParserContext): ParsedPlaylist {
         val variants = mutableListOf<Variant>()
         val renditions = mutableListOf<TypedRendition>()
@@ -301,13 +300,7 @@ internal class HlsPlaylistParser {
                 }
 
                 trimmedLine.startsWith(TAG_MEDIA) -> {
-                    val typedRend = parseRendition(trimmedLine, context.baseUri, context.vars)
-                    renditions.add(typedRend)
-                    typedRend.rendition.url?.let { url ->
-                        context.urlRewriter?.rewriteRenditionUrl(url, typedRend.type)?.let { newUrl ->
-                            rewrittenLine = rewriteUriAttribute(originalLine, url.original, newUrl)
-                        }
-                    }
+                    rewrittenLine = processMediaRendition(originalLine, trimmedLine, context, renditions)
                 }
 
                 trimmedLine.startsWith(TAG_STREAM_INF) || trimmedLine.startsWith(TAG_I_FRAME_STREAM_INF) -> {
@@ -315,12 +308,7 @@ internal class HlsPlaylistParser {
                 }
 
                 trimmedLine.startsWith(TAG_SESSION_KEY) -> {
-                    parseUrlAttribute(trimmedLine, context.vars, context.baseUri)?.let { parsedUrl ->
-                        sessionKeys.add(parsedUrl)
-                        context.urlRewriter?.rewriteSessionKeyUrl(parsedUrl)?.let { newUrl ->
-                            rewrittenLine = rewriteUriAttribute(originalLine, parsedUrl.original, newUrl)
-                        }
-                    }
+                    rewrittenLine = processSessionKeyLine(originalLine, trimmedLine, context, sessionKeys)
                 }
             }
             builder.append(rewrittenLine).append("\n")
@@ -458,4 +446,33 @@ internal class HlsPlaylistParser {
     ): String? = (regex.find(line)?.groups?.get(1)?.value ?: default)?.let { replaceVariableReferences(it, vars) }
 
     private fun parseLongAttr(line: String, regex: Regex): Long = parseStringAttr(line, regex, emptyMap()).toLong()
+
+    private fun processMediaRendition(
+        originalLine: String,
+        trimmedLine: String,
+        context: ParserContext,
+        renditions: MutableList<TypedRendition>
+    ): String {
+        val typedRend = parseRendition(trimmedLine, context.baseUri, context.vars)
+        renditions.add(typedRend)
+
+        val url = typedRend.rendition.url ?: return originalLine
+        val newUrl = context.urlRewriter?.rewriteRenditionUrl(url, typedRend.type) ?: return originalLine
+
+        return rewriteUriAttribute(originalLine, url.original, newUrl)
+    }
+
+    private fun processSessionKeyLine(
+        originalLine: String,
+        trimmedLine: String,
+        context: ParserContext,
+        sessionKeys: MutableList<ParsedUrl>
+    ): String {
+        val parsedUrl = parseUrlAttribute(trimmedLine, context.vars, context.baseUri) ?: return originalLine
+        sessionKeys.add(parsedUrl)
+
+        val newUrl = context.urlRewriter?.rewriteSessionKeyUrl(parsedUrl) ?: return originalLine
+
+        return rewriteUriAttribute(originalLine, parsedUrl.original, newUrl)
+    }
 }
