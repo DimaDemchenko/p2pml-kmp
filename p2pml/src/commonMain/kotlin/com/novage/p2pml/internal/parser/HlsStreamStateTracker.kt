@@ -130,8 +130,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
             endTime = endTime
         ).also { segmentsMap[segmentId] = it }
     }
-
-    @Suppress("NestedBlockDepth")
+    
     private fun enforceLiveTtlAndGetObsoleteSegments(
         variantUrl: String,
         removeUntilId: Long,
@@ -140,35 +139,47 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         val obsoleteSegmentIds = mutableListOf<String>()
 
         if (removeUntilId > 0) {
-            streamSegments[variantUrl]?.let { segmentsMap ->
-                val iterator = segmentsMap.iterator()
-                while (iterator.hasNext()) {
-                    val entry = iterator.next()
-                    if (entry.key < removeUntilId) {
-                        obsoleteSegmentIds.add(entry.value.runtimeId)
-                        iterator.remove()
-                    }
-                }
-            }
+            collectObsoleteSegments(variantUrl, removeUntilId, obsoleteSegmentIds)
         }
 
         if (isLive) {
-            val variantIterator = variantLastUpdated.iterator()
-            while (variantIterator.hasNext()) {
-                val entry = variantIterator.next()
-                val staleUrl = entry.key
-                if (staleUrl != variantUrl && entry.value.elapsedNow() > LIVE_VARIANT_TTL) {
-                    logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
-                    currentSegmentRuntimeIds.remove(staleUrl)
-                    streamSegments.remove(staleUrl)
-                    updateStreamParams.remove(staleUrl)
-                    streams.remove(staleUrl)
-                    variantIterator.remove()
-                }
-            }
+            evictAbandonedLiveVariants(variantUrl)
         }
 
         return obsoleteSegmentIds
+    }
+
+    private fun collectObsoleteSegments(
+        variantUrl: String,
+        removeUntilId: Long,
+        obsoleteSegmentIds: MutableList<String>
+    ) {
+        val segmentsMap = streamSegments[variantUrl] ?: return
+
+        val iterator = segmentsMap.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.key < removeUntilId) {
+                obsoleteSegmentIds.add(entry.value.runtimeId)
+                iterator.remove()
+            }
+        }
+    }
+
+    private fun evictAbandonedLiveVariants(variantUrl: String) {
+        val variantIterator = variantLastUpdated.iterator()
+        while (variantIterator.hasNext()) {
+            val entry = variantIterator.next()
+            val staleUrl = entry.key
+            if (staleUrl != variantUrl && entry.value.elapsedNow() > LIVE_VARIANT_TTL) {
+                logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
+                currentSegmentRuntimeIds.remove(staleUrl)
+                streamSegments.remove(staleUrl)
+                updateStreamParams.remove(staleUrl)
+                streams.remove(staleUrl)
+                variantIterator.remove()
+            }
+        }
     }
 
     private suspend fun calculateInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
