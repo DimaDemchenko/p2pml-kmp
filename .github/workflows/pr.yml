@@ -24,7 +24,7 @@ jobs:
 
   build-android:
     name: Build Android Demo
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
 
   build-ios:
     name: Build iOS Demo
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
