@@ -8,7 +8,7 @@ on:
 jobs:
   lint:
     name: Lint & Spotless
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
 
   build-android:
     name: Build Android Demo
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
