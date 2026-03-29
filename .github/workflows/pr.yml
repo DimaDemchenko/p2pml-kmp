@@ -20,7 +20,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Run Detekt and Spotless
-        run: ./gradlew spotlessCheck detekt --no-daemon
+        run: ./gradlew spotlessCheck detekt
 
   build-android:
     name: Build Android Demo
@@ -36,7 +36,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Build Android Demo
-        run: ./gradlew :androidDemo:assembleDebug --no-daemon
+        run: ./gradlew :androidDemo:assembleDebug
 
   build-ios:
     name: Build iOS Demo
