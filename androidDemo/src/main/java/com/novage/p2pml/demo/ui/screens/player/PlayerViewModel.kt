@@ -23,6 +23,7 @@ import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.CoreConfigBuilder
 import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfigBuilder
+import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
 import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableTracks
@@ -35,13 +36,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 
 private const val HIGH_DEMAND_WINDOW_SEC = 20
 private const val PLAYER_MAX_BUFFER_MS = HIGH_DEMAND_WINDOW_SEC * 1000
 private const val PLAYER_MIN_BUFFER_MS = 10_000
 private const val BUFFER_FOR_PLAYBACK_MS = 2_500
 private const val BUFFER_FOR_REBUFFER_MS = 5_000
+
+private const val P2P_SIMULTANEOUS_DOWNLOADS = 3
+private const val WEBRTC_MAX_MESSAGE_SIZE = 65535
+private const val P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS = 1000
 
 class PlayerViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
@@ -114,9 +118,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         val coreConfig = CoreConfigBuilder()
             .highDemandTimeWindow(HIGH_DEMAND_WINDOW_SEC)
             .isP2PDisabled(!shouldAutoPlay)
-            .simultaneousP2PDownloads(3)
-            .webRtcMaxMessageSize(65535)
-            .p2pNotReceivingBytesTimeoutMs(1000)
+            .simultaneousP2PDownloads(P2P_SIMULTANEOUS_DOWNLOADS)
+            .webRtcMaxMessageSize(WEBRTC_MAX_MESSAGE_SIZE)
+            .p2pNotReceivingBytesTimeoutMs(P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS)
             .validateHTTPSegmentJs(
                 $$"""
                 (url, byteRange, data) => {

@@ -5,16 +5,10 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 
 @Serializable
-data class IceServer(
-    val urls: List<String>,
-    val username: String? = null,
-    val credential: String? = null
-)
+data class IceServer(val urls: List<String>, val username: String? = null, val credential: String? = null)
 
 @Serializable
-data class RtcConfig(
-    val iceServers: List<IceServer>? = null
-)
+data class RtcConfig(val iceServers: List<IceServer>? = null)
 
 @Serializable
 data class StreamConfig(
@@ -171,6 +165,7 @@ class StreamConfigBuilder {
     )
 }
 
+@Suppress("TooManyFunctions")
 class CoreConfigBuilder {
     private var segmentMemoryStorageLimit: Int? = null
     private var customSegmentStorageFactoryJs: String? = null
@@ -346,10 +341,20 @@ internal fun CoreConfig.toJsExpression(): String {
 
         appendStreamFunctions("config", validateP2PSegmentJs, validateHTTPSegmentJs, httpRequestSetupJs)
         mainStream?.let {
-            appendStreamFunctions("config.mainStream", it.validateP2PSegmentJs, it.validateHTTPSegmentJs, it.httpRequestSetupJs)
+            appendStreamFunctions(
+                "config.mainStream",
+                it.validateP2PSegmentJs,
+                it.validateHTTPSegmentJs,
+                it.httpRequestSetupJs
+            )
         }
         secondaryStream?.let {
-            appendStreamFunctions("config.secondaryStream", it.validateP2PSegmentJs, it.validateHTTPSegmentJs, it.httpRequestSetupJs)
+            appendStreamFunctions(
+                "config.secondaryStream",
+                it.validateP2PSegmentJs,
+                it.validateHTTPSegmentJs,
+                it.httpRequestSetupJs
+            )
         }
 
         appendLine("  return config;")
