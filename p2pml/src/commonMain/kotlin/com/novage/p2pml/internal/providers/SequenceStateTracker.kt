@@ -66,7 +66,11 @@ internal class SequenceStateTracker(
 
             p2pEngine.updatePlaybackInfo(Json.encodeToString(effectiveInfo))
         } catch (e: SerializationException) {
-            logger.e { "Error polling playback info: ${e.message}" }
+            logger.e { "Serialization error polling playback info: ${e.message}" }
+        } catch (e: IllegalStateException) {
+            logger.e { "State error polling playback info: ${e.message}" }
+        } catch (e: NullPointerException) {
+            logger.e { "Reference error polling playback info: ${e.message}" }
         }
     }
 
@@ -115,7 +119,11 @@ internal class SequenceStateTracker(
             val info = playbackProvider.getPlaybackPositionAndSpeed()
             p2pEngine.updatePlaybackInfo(Json.encodeToString(info.copy(currentPlayPosition = position)))
         } catch (e: SerializationException) {
-            logger.e { "Failed to send forced position update: ${e.message}" }
+            logger.e { "Failed to send forced position update (Serialization): ${e.message}" }
+        } catch (e: IllegalStateException) {
+            logger.e { "Failed to send forced position update (Player State): ${e.message}" }
+        } catch (e: NullPointerException) {
+            logger.e { "Failed to send forced position update (Player Ref): ${e.message}" }
         }
     }
 
