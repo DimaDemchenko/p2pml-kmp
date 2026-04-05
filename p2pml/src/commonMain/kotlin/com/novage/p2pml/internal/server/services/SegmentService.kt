@@ -25,7 +25,7 @@ internal class SegmentService(
     }
 
     suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<ByteArray> {
-        mutex.withLock {
+        val (newDeferred, isNewRequest) = mutex.withLock {
             val previousState = requests[segmentUrl]
             val currentAttempts = previousState?.attemptCount ?: 0
 
@@ -47,16 +47,18 @@ internal class SegmentService(
                 logger.d { "Registered pending download for: $segmentUrl" }
             }
 
-            val newDeferred = CompletableDeferred<ByteArray>()
-            requests[segmentUrl] = RequestState(newDeferred, currentAttempts + 1)
-
-            if (previousState == null) {
-                sequenceStateTracker.onSegmentRequested(segmentUrl)
-                p2pEngine.requestSegmentBytes(segmentUrl)
-            }
-
-            return newDeferred
+            val deferred = CompletableDeferred<ByteArray>()
+            requests[segmentUrl] = RequestState(deferred, currentAttempts + 1)
+            
+            Pair(deferred, previousState == null)
         }
+
+        if (isNewRequest) {
+            sequenceStateTracker.onSegmentRequested(segmentUrl)
+            p2pEngine.requestSegmentBytes(segmentUrl)
+        }
+
+        return newDeferred
     }
 
     suspend fun completeRequest(segmentUrl: String, segmentData: ByteArray) {
