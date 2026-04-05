@@ -69,8 +69,8 @@ internal class SequenceStateTracker(
             logger.e { "Serialization error polling playback info: ${e.message}" }
         } catch (e: IllegalStateException) {
             logger.e { "State error polling playback info: ${e.message}" }
-        } catch (e: NullPointerException) {
-            logger.e { "Reference error polling playback info: ${e.message}" }
+        } catch (e: IllegalArgumentException) {
+            logger.e { "Argument error polling playback info: ${e.message}" }
         }
     }
 
@@ -122,8 +122,8 @@ internal class SequenceStateTracker(
             logger.e { "Failed to send forced position update (Serialization): ${e.message}" }
         } catch (e: IllegalStateException) {
             logger.e { "Failed to send forced position update (Player State): ${e.message}" }
-        } catch (e: NullPointerException) {
-            logger.e { "Failed to send forced position update (Player Ref): ${e.message}" }
+        } catch (e: IllegalArgumentException) {
+            logger.e { "Failed to send forced position update (Argument Error): ${e.message}" }
         }
     }
 

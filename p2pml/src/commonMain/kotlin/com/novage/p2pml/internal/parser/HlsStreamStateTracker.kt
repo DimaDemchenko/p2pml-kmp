@@ -39,9 +39,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
 
     fun getStreams(): List<Stream> = streams.values.toList()
 
-    fun getSegmentWithManifestByUrl(segmentUrl: String): Pair<String, Segment>? {
-        return urlToSegmentMap[segmentUrl]
-    }
+    fun getSegmentWithManifestByUrl(segmentUrl: String): Pair<String, Segment>? = urlToSegmentMap[segmentUrl]
 
     fun reset() {
         logger.i { "Resetting tracker state." }
@@ -135,8 +133,8 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
             byteRange = hlsSegment.byteRange,
             startTime = startTime,
             endTime = endTime
-        ).also { 
-            segmentsMap[segmentId] = it 
+        ).also {
+            segmentsMap[segmentId] = it
             urlToSegmentMap[it.runtimeId] = manifestUrl to it
         }
     }
@@ -185,7 +183,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
             val staleUrl = entry.key
             if (staleUrl != variantUrl && entry.value.elapsedNow() > LIVE_VARIANT_TTL) {
                 logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
-                
+
                 streamSegments[staleUrl]?.values?.forEach {
                     urlToSegmentMap.remove(it.runtimeId)
                 }

@@ -49,7 +49,7 @@ internal class SegmentService(
 
             val deferred = CompletableDeferred<ByteArray>()
             requests[segmentUrl] = RequestState(deferred, currentAttempts + 1)
-            
+
             Pair(deferred, previousState == null)
         }
 
