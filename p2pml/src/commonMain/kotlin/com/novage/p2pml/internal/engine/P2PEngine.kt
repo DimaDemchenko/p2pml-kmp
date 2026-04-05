@@ -13,4 +13,6 @@ internal interface P2PEngine {
 
     fun subscribeToP2PEvent(eventName: String)
     fun unsubscribeFromP2PEvent(eventName: String)
+
+    fun updatePlaybackInfo(json: String)
 }
