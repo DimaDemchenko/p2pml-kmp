@@ -63,8 +63,6 @@ internal class ServerModule(
         }
         server = serverInstance
 
-        sequenceStateTracker.start()
-
         serverScope.launch {
             try {
                 serverInstance.start(wait = false)
