@@ -38,12 +38,15 @@ internal class ServerModule(
 
     private val client = createHttpClient()
     private val hlsManifestManager = HlsManifestManager(playbackProvider, urlFactory)
+    private val sequenceStateTracker = SequenceStateTracker(playbackProvider, engineManager, hlsManifestManager)
+
     private val manifestService = ManifestService(hlsManifestManager, engineManager) {
         logger.d { "Resetting playback and parser state" }
         playbackProvider.resetData()
         hlsManifestManager.reset()
+        sequenceStateTracker.reset()
     }
-    private val sequenceStateTracker = SequenceStateTracker(playbackProvider, engineManager, hlsManifestManager)
+
     private val segmentService = SegmentService(engineManager, sequenceStateTracker)
 
     private val serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
