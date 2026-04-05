@@ -44,8 +44,8 @@ internal class HlsManifestManager(playbackProvider: PlaybackProvider, urlFactory
         tracker.isManifestTracked(manifestUrl)
     }
 
-    suspend fun getSegmentWithManifestByUrl(segmentUrl: String): Pair<String, Segment>? = mutex.withLock {
-        tracker.getSegmentWithManifestByUrl(segmentUrl)
+    suspend fun getSegmentWithManifestByUrl(runtimeId: String): Pair<String, Segment>? = mutex.withLock {
+        tracker.getSegmentWithManifestByUrl(runtimeId)
     }
 
     suspend fun getUpdateStreamParamsJson(variantUrl: String): String? = mutex.withLock {

@@ -74,12 +74,12 @@ internal class SequenceStateTracker(
         }
     }
 
-    suspend fun onSegmentRequested(segmentUrl: String) {
+    suspend fun onSegmentRequested(runtimeId: String) {
         start()
 
-        val segmentInfo = hlsManifestManager.getSegmentWithManifestByUrl(segmentUrl)
+        val segmentInfo = hlsManifestManager.getSegmentWithManifestByUrl(runtimeId)
         if (segmentInfo == null) {
-            logger.w { "Segment requested but not tracked in manifest: $segmentUrl" }
+            logger.w { "Segment requested but not tracked in manifest: $runtimeId" }
             return
         }
 
