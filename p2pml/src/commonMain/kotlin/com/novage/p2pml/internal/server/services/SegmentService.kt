@@ -24,39 +24,37 @@ internal class SegmentService(
         private const val MAX_RETRIES = 4
     }
 
-    suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<ByteArray> {
-        return mutex.withLock {
-            val previousState = requests[segmentUrl]
-            val currentAttempts = previousState?.attemptCount ?: 0
+    suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<ByteArray> = mutex.withLock {
+        val previousState = requests[segmentUrl]
+        val currentAttempts = previousState?.attemptCount ?: 0
 
-            if (currentAttempts >= MAX_RETRIES) {
-                logger.w { "Max retries ($MAX_RETRIES) exceeded for segment: $segmentUrl" }
-                requests.remove(segmentUrl)
-                previousState?.deferred?.completeExceptionally(
-                    TooManyRetriesException("Max retries exceeded for segment: $segmentUrl")
-                )
-                throw TooManyRetriesException("Max retries exceeded")
-            }
-
-            if (previousState != null) {
-                logger.d { "Re-queueing pending download (Attempt ${currentAttempts + 1}) for: $segmentUrl" }
-                previousState.deferred.completeExceptionally(
-                    SegmentReplacedException("Segment request replaced by newer one")
-                )
-            } else {
-                logger.d { "Registered pending download for: $segmentUrl" }
-            }
-
-            val deferred = CompletableDeferred<ByteArray>()
-            requests[segmentUrl] = RequestState(deferred, currentAttempts + 1)
-
-            if (previousState == null) {
-                sequenceStateTracker.onSegmentRequested(segmentUrl)
-                p2pEngine.requestSegmentBytes(segmentUrl)
-            }
-
-            deferred
+        if (currentAttempts >= MAX_RETRIES) {
+            logger.w { "Max retries ($MAX_RETRIES) exceeded for segment: $segmentUrl" }
+            requests.remove(segmentUrl)
+            previousState?.deferred?.completeExceptionally(
+                TooManyRetriesException("Max retries exceeded for segment: $segmentUrl")
+            )
+            throw TooManyRetriesException("Max retries exceeded")
         }
+
+        if (previousState != null) {
+            logger.d { "Re-queueing pending download (Attempt ${currentAttempts + 1}) for: $segmentUrl" }
+            previousState.deferred.completeExceptionally(
+                SegmentReplacedException("Segment request replaced by newer one")
+            )
+        } else {
+            logger.d { "Registered pending download for: $segmentUrl" }
+        }
+
+        val deferred = CompletableDeferred<ByteArray>()
+        requests[segmentUrl] = RequestState(deferred, currentAttempts + 1)
+
+        if (previousState == null) {
+            sequenceStateTracker.onSegmentRequested(segmentUrl)
+            p2pEngine.requestSegmentBytes(segmentUrl)
+        }
+
+        deferred
     }
 
     suspend fun completeRequest(segmentUrl: String, segmentData: ByteArray) {
