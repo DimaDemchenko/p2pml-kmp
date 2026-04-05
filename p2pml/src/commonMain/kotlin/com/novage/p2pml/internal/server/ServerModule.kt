@@ -5,6 +5,7 @@ import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestManager
+import com.novage.p2pml.internal.providers.SequenceStateTracker
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.server.plugins.configureCORS
 import com.novage.p2pml.internal.server.routes.configureRoutes
@@ -42,7 +43,8 @@ internal class ServerModule(
         playbackProvider.resetData()
         hlsManifestManager.reset()
     }
-    private val segmentService = SegmentService(engineManager)
+    private val sequenceStateTracker = SequenceStateTracker(playbackProvider, engineManager, hlsManifestManager)
+    private val segmentService = SegmentService(engineManager, sequenceStateTracker)
 
     private val serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
@@ -60,6 +62,8 @@ internal class ServerModule(
             configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
         }
         server = serverInstance
+
+        sequenceStateTracker.start()
 
         serverScope.launch {
             try {
@@ -98,9 +102,11 @@ internal class ServerModule(
 
         runBlocking {
             segmentService.reset()
+            sequenceStateTracker.reset()
             manifestService.resetState()
         }
 
+        sequenceStateTracker.destroy()
         server?.stop()
         server = null
 

@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.parser
 
 import com.novage.p2pml.api.interfaces.PlaybackProvider
+import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsPlaylistParser
@@ -41,6 +42,10 @@ internal class HlsManifestManager(playbackProvider: PlaybackProvider, urlFactory
 
     suspend fun isManifestTracked(manifestUrl: String): Boolean = mutex.withLock {
         tracker.isManifestTracked(manifestUrl)
+    }
+
+    suspend fun getSegmentWithManifestByUrl(segmentUrl: String): Pair<String, Segment>? = mutex.withLock {
+        tracker.getSegmentWithManifestByUrl(segmentUrl)
     }
 
     suspend fun getUpdateStreamParamsJson(variantUrl: String): String? = mutex.withLock {

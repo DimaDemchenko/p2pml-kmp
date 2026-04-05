@@ -38,6 +38,18 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
 
     fun getStreams(): List<Stream> = streams.values.toList()
 
+    fun getSegmentWithManifestByUrl(segmentUrl: String): Pair<String, Segment>? {
+        for ((manifestUrl, segments) in streamSegments) {
+            val segment = segments.values.find { it.runtimeId == segmentUrl }
+
+            if (segment != null) {
+                return manifestUrl to segment
+            }
+        }
+
+        return null
+    }
+
     fun reset() {
         logger.i { "Resetting tracker state." }
         streams.clear()

@@ -1,27 +1,10 @@
 package com.novage.p2pml.internal.engine
 
-import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.webview.HeadlessWebView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 
-private const val PLAYBACK_UPDATE_INTERVAL_MS = 1000L
-
-internal class P2PEngineManager(private val webView: HeadlessWebView, private val playbackProvider: PlaybackProvider) :
-    P2PEngine {
-
+internal class P2PEngineManager(private val webView: HeadlessWebView) : P2PEngine {
     private val logger = CoreLogger("P2PEngineManager")
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private var playbackInfoJob: Job? = null
 
     override fun loadUrl(url: String) {
         logger.d { "Loading Web Engine URL: $url" }
@@ -31,8 +14,6 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
     override fun destroy() {
         logger.d { "Destroying P2PEngineManager..." }
 
-        playbackInfoJob?.cancel()
-        scope.cancel()
         webView.destroy()
     }
 
@@ -44,7 +25,6 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
     override fun requestSegmentBytes(segmentUrl: String) {
         logger.d { "Requesting segment via P2P Engine: $segmentUrl" }
 
-        startPlaybackInfoUpdate()
         evaluate("window.p2p.processSegmentRequest('$segmentUrl');")
     }
 
@@ -78,24 +58,7 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
         webView.evaluateJavascript("javascript:$script", null)
     }
 
-    private fun startPlaybackInfoUpdate() {
-        if (playbackInfoJob?.isActive == true) return
-
-        logger.d { "Starting playback info update loop." }
-
-        playbackInfoJob = scope.launch {
-            while (isActive) {
-                try {
-                    val info = playbackProvider.getPlaybackPositionAndSpeed()
-                    val json = Json.encodeToString(info)
-
-                    evaluate("window.p2p.updatePlaybackInfo('$json');")
-
-                    delay(PLAYBACK_UPDATE_INTERVAL_MS)
-                } catch (e: SerializationException) {
-                    logger.e { "Failed to serialize playback info: ${e.message}" }
-                }
-            }
-        }
+    override fun updatePlaybackInfo(json: String) {
+        evaluate("window.p2p.updatePlaybackInfo('$json');")
     }
 }

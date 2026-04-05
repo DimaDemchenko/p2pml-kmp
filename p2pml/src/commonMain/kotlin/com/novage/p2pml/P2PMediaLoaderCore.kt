@@ -69,7 +69,7 @@ abstract class P2PMediaLoaderCore(
         this.playbackProvider = provider
 
         val webView = webViewFactory()
-        val engine = P2PEngineManager(webView, provider)
+        val engine = P2PEngineManager(webView)
         this.engineManager = engine
 
         startLocalServer(provider, engine)

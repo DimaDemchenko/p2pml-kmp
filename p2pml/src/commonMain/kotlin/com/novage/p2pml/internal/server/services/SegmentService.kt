@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.server.services
 
 import com.novage.p2pml.internal.engine.P2PEngine
+import com.novage.p2pml.internal.providers.SequenceStateTracker
 import com.novage.p2pml.internal.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.internal.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -8,7 +9,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal class SegmentService(private val p2pEngine: P2PEngine) {
+internal class SegmentService(
+    private val p2pEngine: P2PEngine,
+    private val sequenceStateTracker: SequenceStateTracker
+) {
     private val logger = CoreLogger("SegmentService")
 
     private val mutex = Mutex()
@@ -47,6 +51,7 @@ internal class SegmentService(private val p2pEngine: P2PEngine) {
             requests[segmentUrl] = RequestState(newDeferred, currentAttempts + 1)
 
             if (previousState == null) {
+                sequenceStateTracker.onSegmentRequested(segmentUrl)
                 p2pEngine.requestSegmentBytes(segmentUrl)
             }
 
