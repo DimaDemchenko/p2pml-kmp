@@ -16,10 +16,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
@@ -60,14 +57,15 @@ internal class ServerModule(
             val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
                 if (enableCors) configureCORS()
                 configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
-            }.start(wait = false)
+            }
+            server = serverInstance
+
+            serverInstance.start(wait = false)
 
             val assignedPort = serverInstance.engine.resolvedConnectors().firstOrNull()?.port
                 ?: error("Server started but failed to retrieve assigned port")
 
             logger.i { "Server successfully bound to port: $assignedPort" }
-
-            server = serverInstance
 
             withContext(Dispatchers.Main) {
                 onServerStarted(assignedPort)

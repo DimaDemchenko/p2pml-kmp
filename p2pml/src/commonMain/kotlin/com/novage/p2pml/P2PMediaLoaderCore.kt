@@ -29,11 +29,14 @@ import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
+private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
@@ -59,6 +62,8 @@ abstract class P2PMediaLoaderCore(
 
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
+
+    private var startJob: Job? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
     private var pendingDynamicConfig: DynamicCoreConfig? = null
@@ -100,7 +105,11 @@ abstract class P2PMediaLoaderCore(
         )
         this.serverModule = module
 
-        coreScope.launch {
+        startJob = coreScope.launch {
+            if (!isActive) {
+                logger.d { "Start job cancelled before execution. Aborting server start." }
+                return@launch
+            }
             module.start()
         }
     }
@@ -119,15 +128,19 @@ abstract class P2PMediaLoaderCore(
     }
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        if (status.value != LoaderStatus.ACTIVE) {
-            logger.d { "Core not ready. Caching dynamic config for later application." }
-            pendingDynamicConfig = dynamicCoreConfig
-            return
+        when (status.value) {
+            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> {
+                logger.d { "Core not ready. Caching dynamic config for later application." }
+                pendingDynamicConfig = dynamicCoreConfig
+            }
+            LoaderStatus.ACTIVE -> {
+                logger.d { "Applying dynamic config..." }
+                engineManager?.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
+            }
+            LoaderStatus.RELEASING -> {
+                logger.w { "Ignored dynamic config request. Core is currently releasing." }
+            }
         }
-        val engine = engineManager ?: return
-
-        logger.d { "Applying dynamic config..." }
-        engine.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
     }
 
     private fun onServerReady() {
@@ -177,9 +190,20 @@ abstract class P2PMediaLoaderCore(
     }
 
     open fun release() {
+        val isReleasingFromActive = status.compareAndSet(LoaderStatus.ACTIVE, LoaderStatus.RELEASING)
+        val isReleasingFromInit = status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.RELEASING)
+
+        if (!isReleasingFromActive && !isReleasingFromInit) {
+            logger.d { "Release ignored. Core is already ${status.value}." }
+            return
+        }
+
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
         eventEmitter.removeAllListeners()
+
+        val jobToCancel = startJob
+        startJob = null
 
         val serverToDestroy = serverModule
         serverModule = null
@@ -190,12 +214,22 @@ abstract class P2PMediaLoaderCore(
         val providerToReset = playbackProvider
         playbackProvider = null
 
+        pendingDynamicConfig = null
+
         urlFactory.setPort(-1)
 
         coreScope.launch {
-            serverToDestroy?.destroy()
-            engineToDestroy?.destroy()
-            providerToReset?.resetData()
+            jobToCancel?.cancelAndJoin()
+
+            runCatching { serverToDestroy?.destroy() }
+                .onFailure { logger.e { "Error destroying server module: ${it.message}" } }
+
+            runCatching { engineToDestroy?.destroy() }
+                .onFailure { logger.e { "Error destroying P2P engine: ${it.message}" } }
+
+            runCatching { providerToReset?.resetData() }
+                .onFailure { logger.e { "Error resetting playback provider: ${it.message}" } }
+
             status.value = LoaderStatus.IDLE
             logger.d { "Release complete." }
         }
