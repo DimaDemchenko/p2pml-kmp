@@ -138,10 +138,12 @@ abstract class P2PMediaLoaderCore(
                 logger.d { "Core not ready. Caching dynamic config for later application." }
                 pendingDynamicConfig = dynamicCoreConfig
             }
+
             LoaderStatus.ACTIVE -> {
                 logger.d { "Applying dynamic config..." }
                 engineManager?.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
             }
+
             LoaderStatus.RELEASING -> {
                 logger.w { "Ignored dynamic config request. Core is currently releasing." }
             }
