@@ -71,6 +71,8 @@ internal class ServerModule(
                 onServerStarted(assignedPort)
             }
         } catch (e: IOException) {
+            server?.stop()
+            server = null
             withContext(Dispatchers.Main) {
                 onError(
                     P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
@@ -78,6 +80,8 @@ internal class ServerModule(
                 )
             }
         } catch (e: IllegalStateException) {
+            server?.stop()
+            server = null
             withContext(Dispatchers.Main) {
                 onError(
                     P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,

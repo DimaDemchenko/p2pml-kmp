@@ -91,16 +91,21 @@ abstract class P2PMediaLoaderCore(
             urlFactory = urlFactory,
             enableCors = customEngineUrl != null,
             onError = { errorType, message ->
-                when (errorType) {
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
-                    else -> onError(errorType, message)
+                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                    when (errorType) {
+                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
+                        else -> onError(errorType, message)
+                    }
                 }
             },
             onServerStarted = { port ->
-                logger.i { "Local P2P Server started on port: $port" }
-                urlFactory.setPort(port)
-
-                onServerReady()
+                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                    logger.i { "Local P2P Server started on port: $port" }
+                    urlFactory.setPort(port)
+                    onServerReady()
+                } else {
+                    logger.w { "Server started on port $port but core is ${status.value}, ignoring port." }
+                }
             }
         )
         this.serverModule = module
@@ -204,6 +209,7 @@ abstract class P2PMediaLoaderCore(
 
         val jobToCancel = startJob
         startJob = null
+        jobToCancel?.cancel()
 
         val serverToDestroy = serverModule
         serverModule = null
@@ -219,16 +225,16 @@ abstract class P2PMediaLoaderCore(
         urlFactory.setPort(-1)
 
         coreScope.launch {
-            jobToCancel?.cancelAndJoin()
+            jobToCancel?.join()
 
             runCatching { serverToDestroy?.destroy() }
-                .onFailure { logger.e { "Error destroying server module: ${it.message}" } }
+                .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
 
             runCatching { engineToDestroy?.destroy() }
-                .onFailure { logger.e { "Error destroying P2P engine: ${it.message}" } }
+                .onFailure { logger.e(it) { "Error destroying P2P engine: ${it.message}" } }
 
             runCatching { providerToReset?.resetData() }
-                .onFailure { logger.e { "Error resetting playback provider: ${it.message}" } }
+                .onFailure { logger.e(it) { "Error resetting playback provider: ${it.message}" } }
 
             status.value = LoaderStatus.IDLE
             logger.d { "Release complete." }
