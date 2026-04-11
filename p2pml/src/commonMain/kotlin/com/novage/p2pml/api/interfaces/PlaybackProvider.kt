@@ -7,6 +7,4 @@ interface PlaybackProvider {
     suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double
 
     suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo
-
-    suspend fun resetData()
 }

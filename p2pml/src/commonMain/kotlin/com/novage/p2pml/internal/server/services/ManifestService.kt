@@ -62,7 +62,7 @@ internal class ManifestService(
         }
     }
 
-    suspend fun resetState() {
+    private suspend fun resetState() {
         mutex.withLock {
             logger.d { "Internal state reset." }
             isInitialManifestProcessed = false

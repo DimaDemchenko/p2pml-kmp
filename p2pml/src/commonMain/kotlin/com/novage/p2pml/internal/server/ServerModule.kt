@@ -42,7 +42,7 @@ internal class ServerModule(
 
     private val manifestService = ManifestService(hlsManifestManager, engineManager) {
         logger.d { "Resetting playback and parser state" }
-        playbackProvider.resetData()
+        segmentService.reset()
         hlsManifestManager.reset()
         sequenceStateTracker.reset()
     }
@@ -100,17 +100,15 @@ internal class ServerModule(
         logger.i { "Destroying P2P Server module..." }
 
         serverScope.cancel()
-
-        runBlocking {
-            segmentService.reset()
-            sequenceStateTracker.reset()
-            manifestService.resetState()
-        }
-
         sequenceStateTracker.destroy()
-        server?.stop()
+
+        val capturedServer = server
         server = null
 
-        client.close()
+        CoroutineScope(Dispatchers.IO).launch {
+            segmentService.reset()
+            capturedServer?.stop()
+            client.close()
+        }
     }
 }

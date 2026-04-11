@@ -15,8 +15,4 @@ internal class DefaultPlaybackProvider(private val getPlaybackInfo: () -> Playba
     override suspend fun getPlaybackPositionAndSpeed(): PlaybackInfo = withContext(Dispatchers.Main) {
         return@withContext getPlaybackInfo()
     }
-
-    override suspend fun resetData() {
-        // Intentionally empty for the default implementation
-    }
 }

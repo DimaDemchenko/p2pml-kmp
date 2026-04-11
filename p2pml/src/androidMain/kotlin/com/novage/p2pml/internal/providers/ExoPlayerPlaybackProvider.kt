@@ -107,9 +107,4 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
             PlaybackInfo(segmentAbsolutePlayTime, speed)
         }
     }
-
-    override suspend fun resetData() = mutex.withLock {
-        currentSegments.clear()
-        currentSnapshot = null
-    }
 }
