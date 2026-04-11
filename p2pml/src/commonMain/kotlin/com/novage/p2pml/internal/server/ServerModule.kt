@@ -18,16 +18,14 @@ import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 internal class ServerModule(
-    private val playbackProvider: PlaybackProvider,
+    playbackProvider: PlaybackProvider,
     engineManager: P2PEngine,
     urlFactory: LocalUrlFactory,
     private val enableCors: Boolean,
@@ -98,17 +96,24 @@ internal class ServerModule(
 
     fun destroy() {
         logger.i { "Destroying P2P Server module..." }
-
-        serverScope.cancel()
         sequenceStateTracker.destroy()
 
-        val capturedServer = server
-        server = null
+        serverScope.launch {
+            runCatching {
+                segmentService.reset()
+                server?.stop(gracePeriodMillis = 1000, timeoutMillis = 2000)
+            }.onFailure { e ->
+                logger.e(e) { "Error while stopping Ktor Server" }
+            }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            segmentService.reset()
-            capturedServer?.stop()
-            client.close()
+            runCatching {
+                client.close()
+            }.onFailure { e ->
+                logger.e(e) { "Error while closing HttpClient" }
+            }
+
+            server = null
+            this@ServerModule.serverScope.cancel()
         }
     }
 }

@@ -28,7 +28,6 @@ import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 
