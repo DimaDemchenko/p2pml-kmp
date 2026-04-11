@@ -27,8 +27,11 @@ import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
 
@@ -52,6 +55,7 @@ abstract class P2PMediaLoaderCore(
     private val urlFactory = LocalUrlFactory()
     internal val eventEmitter: CoreEventEmitter = EventEmitter()
     internal var engineManager: P2PEngine? = null
+    private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
@@ -96,7 +100,9 @@ abstract class P2PMediaLoaderCore(
         )
         this.serverModule = module
 
-        module.start()
+        coreScope.launch {
+            module.start()
+        }
     }
 
     fun getManifestUrl(manifestUrl: String): String {
@@ -171,27 +177,28 @@ abstract class P2PMediaLoaderCore(
     }
 
     open fun release() {
-        status.value = LoaderStatus.IDLE
-
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
         eventEmitter.removeAllListeners()
 
-        serverModule?.destroy()
+        val serverToDestroy = serverModule
         serverModule = null
 
-        engineManager?.destroy()
+        val engineToDestroy = engineManager
         engineManager = null
 
-        runBlocking {
-            playbackProvider?.resetData()
-        }
-
+        val providerToReset = playbackProvider
         playbackProvider = null
 
         urlFactory.setPort(-1)
 
-        logger.d { "Release complete." }
+        coreScope.launch {
+            serverToDestroy?.destroy()
+            engineToDestroy?.destroy()
+            providerToReset?.resetData()
+            status.value = LoaderStatus.IDLE
+            logger.d { "Release complete." }
+        }
     }
 
     private fun <T> registerListener(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
