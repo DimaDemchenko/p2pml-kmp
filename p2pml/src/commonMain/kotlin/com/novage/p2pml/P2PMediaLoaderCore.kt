@@ -31,8 +31,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -197,10 +197,18 @@ abstract class P2PMediaLoaderCore(
     }
 
     open fun release() {
-        val isReleasingFromActive = status.compareAndSet(LoaderStatus.ACTIVE, LoaderStatus.RELEASING)
-        val isReleasingFromInit = status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.RELEASING)
+        var shouldRelease = false
+        status.update { current ->
+            if (current == LoaderStatus.ACTIVE || current == LoaderStatus.INITIALIZING) {
+                shouldRelease = true
+                LoaderStatus.RELEASING
+            } else {
+                shouldRelease = false
+                current
+            }
+        }
 
-        if (!isReleasingFromActive && !isReleasingFromInit) {
+        if (!shouldRelease) {
             logger.d { "Release ignored. Core is already ${status.value}." }
             return
         }
