@@ -27,10 +27,16 @@ import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE }
+private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
@@ -52,9 +58,12 @@ abstract class P2PMediaLoaderCore(
     private val urlFactory = LocalUrlFactory()
     internal val eventEmitter: CoreEventEmitter = EventEmitter()
     internal var engineManager: P2PEngine? = null
+    private var coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
+
+    private var startJob: Job? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
     private var pendingDynamicConfig: DynamicCoreConfig? = null
@@ -82,21 +91,32 @@ abstract class P2PMediaLoaderCore(
             urlFactory = urlFactory,
             enableCors = customEngineUrl != null,
             onError = { errorType, message ->
-                when (errorType) {
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
-                    else -> onError(errorType, message)
+                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                    when (errorType) {
+                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
+                        else -> onError(errorType, message)
+                    }
                 }
             },
             onServerStarted = { port ->
-                logger.i { "Local P2P Server started on port: $port" }
-                urlFactory.setPort(port)
-
-                onServerReady()
+                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                    logger.i { "Local P2P Server started on port: $port" }
+                    urlFactory.setPort(port)
+                    onServerReady()
+                } else {
+                    logger.w { "Server started on port $port but core is ${status.value}, ignoring port." }
+                }
             }
         )
         this.serverModule = module
 
-        module.start()
+        startJob = coreScope.launch {
+            if (!isActive) {
+                logger.d { "Start job cancelled before execution. Aborting server start." }
+                return@launch
+            }
+            module.start()
+        }
     }
 
     fun getManifestUrl(manifestUrl: String): String {
@@ -113,15 +133,21 @@ abstract class P2PMediaLoaderCore(
     }
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        if (status.value != LoaderStatus.ACTIVE) {
-            logger.d { "Core not ready. Caching dynamic config for later application." }
-            pendingDynamicConfig = dynamicCoreConfig
-            return
-        }
-        val engine = engineManager ?: return
+        when (status.value) {
+            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> {
+                logger.d { "Core not ready. Caching dynamic config for later application." }
+                pendingDynamicConfig = dynamicCoreConfig
+            }
 
-        logger.d { "Applying dynamic config..." }
-        engine.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
+            LoaderStatus.ACTIVE -> {
+                logger.d { "Applying dynamic config..." }
+                engineManager?.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
+            }
+
+            LoaderStatus.RELEASING -> {
+                logger.w { "Ignored dynamic config request. Core is currently releasing." }
+            }
+        }
     }
 
     private fun onServerReady() {
@@ -171,27 +197,60 @@ abstract class P2PMediaLoaderCore(
     }
 
     open fun release() {
-        status.value = LoaderStatus.IDLE
+        while (true) {
+            val current = status.value
+            if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) {
+                logger.d { "Release ignored. Core is already ${status.value}." }
+                return
+            }
+            if (status.compareAndSet(current, LoaderStatus.RELEASING)) {
+                break
+            }
+        }
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
         eventEmitter.removeAllListeners()
 
-        serverModule?.destroy()
+        val jobToCancel = startJob
+        startJob = null
+        jobToCancel?.cancel()
+
+        val serverToDestroy = serverModule
         serverModule = null
 
-        engineManager?.destroy()
+        val engineToDestroy = engineManager
         engineManager = null
 
-        runBlocking {
-            playbackProvider?.resetData()
-        }
-
+        val providerToReset = playbackProvider
         playbackProvider = null
+
+        pendingDynamicConfig = null
 
         urlFactory.setPort(-1)
 
-        logger.d { "Release complete." }
+        val scopeToCancel = coreScope
+        coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+        scopeToCancel.launch {
+            try {
+                jobToCancel?.join()
+
+                runCatching { serverToDestroy?.destroy() }
+                    .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
+
+                runCatching { engineToDestroy?.destroy() }
+                    .onFailure { logger.e(it) { "Error destroying P2P engine: ${it.message}" } }
+
+                runCatching { providerToReset?.resetData() }
+                    .onFailure { logger.e(it) { "Error resetting playback provider: ${it.message}" } }
+
+                status.value = LoaderStatus.IDLE
+                logger.d { "Release complete." }
+            } finally {
+                scopeToCancel.cancel()
+            }
+        }
     }
 
     private fun <T> registerListener(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {

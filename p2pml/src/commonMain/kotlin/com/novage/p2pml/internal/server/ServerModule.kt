@@ -16,13 +16,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
@@ -49,10 +43,9 @@ internal class ServerModule(
 
     private val segmentService = SegmentService(engineManager, sequenceStateTracker)
 
-    private val serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
-    fun start() {
+    suspend fun start() {
         if (server != null) {
             logger.w { "Server is already running. Ignoring start request." }
             return
@@ -60,52 +53,50 @@ internal class ServerModule(
 
         logger.d { "Starting local P2P Server..." }
 
-        val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
-            if (enableCors) configureCORS()
-            configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
-        }
-        server = serverInstance
+        try {
+            val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
+                if (enableCors) configureCORS()
+                configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
+            }
+            server = serverInstance
 
-        serverScope.launch {
-            try {
-                serverInstance.start(wait = false)
+            serverInstance.start(wait = false)
 
-                val assignedPort = serverInstance.engine.resolvedConnectors().firstOrNull()?.port
-                    ?: error("Server started but failed to retrieve assigned port")
+            val assignedPort = serverInstance.engine.resolvedConnectors().firstOrNull()?.port
+                ?: error("Server started but failed to retrieve assigned port")
 
-                logger.i { "Server successfully bound to port: $assignedPort" }
+            logger.i { "Server successfully bound to port: $assignedPort" }
 
-                withContext(Dispatchers.Main) {
-                    onServerStarted(assignedPort)
-                }
-            } catch (e: IOException) {
-                withContext(Dispatchers.Main) {
-                    onError(
-                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                        "Network Error starting server: ${e.message}"
-                    )
-                }
-            } catch (e: IllegalStateException) {
-                withContext(Dispatchers.Main) {
-                    onError(
-                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                        "Invalid server state: ${e.message}"
-                    )
-                }
+            withContext(Dispatchers.Main) {
+                onServerStarted(assignedPort)
+            }
+        } catch (e: IOException) {
+            server?.stop()
+            server = null
+            withContext(Dispatchers.Main) {
+                onError(
+                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                    "Network Error starting server: ${e.message}"
+                )
+            }
+        } catch (e: IllegalStateException) {
+            server?.stop()
+            server = null
+            withContext(Dispatchers.Main) {
+                onError(
+                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                    "Invalid server state: ${e.message}"
+                )
             }
         }
     }
 
-    fun destroy() {
+    suspend fun destroy() {
         logger.i { "Destroying P2P Server module..." }
 
-        serverScope.cancel()
-
-        runBlocking {
-            segmentService.reset()
-            sequenceStateTracker.reset()
-            manifestService.resetState()
-        }
+        segmentService.reset()
+        sequenceStateTracker.reset()
+        manifestService.resetState()
 
         sequenceStateTracker.destroy()
         server?.stop()
