@@ -58,7 +58,7 @@ abstract class P2PMediaLoaderCore(
     private val urlFactory = LocalUrlFactory()
     internal val eventEmitter: CoreEventEmitter = EventEmitter()
     internal var engineManager: P2PEngine? = null
-    private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
@@ -234,20 +234,27 @@ abstract class P2PMediaLoaderCore(
 
         urlFactory.setPort(-1)
 
-        coreScope.launch {
-            jobToCancel?.join()
+        val scopeToCancel = coreScope
+        coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-            runCatching { serverToDestroy?.destroy() }
-                .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
+        scopeToCancel.launch {
+            try {
+                jobToCancel?.join()
 
-            runCatching { engineToDestroy?.destroy() }
-                .onFailure { logger.e(it) { "Error destroying P2P engine: ${it.message}" } }
+                runCatching { serverToDestroy?.destroy() }
+                    .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
 
-            runCatching { providerToReset?.resetData() }
-                .onFailure { logger.e(it) { "Error resetting playback provider: ${it.message}" } }
+                runCatching { engineToDestroy?.destroy() }
+                    .onFailure { logger.e(it) { "Error destroying P2P engine: ${it.message}" } }
 
-            status.value = LoaderStatus.IDLE
-            logger.d { "Release complete." }
+                runCatching { providerToReset?.resetData() }
+                    .onFailure { logger.e(it) { "Error resetting playback provider: ${it.message}" } }
+
+                status.value = LoaderStatus.IDLE
+                logger.d { "Release complete." }
+            } finally {
+                scopeToCancel.cancel()
+            }
         }
     }
 
