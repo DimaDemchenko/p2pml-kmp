@@ -6,6 +6,7 @@ import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.suspendRunCatching
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,7 +19,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlin.math.abs
 
 internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
@@ -60,7 +60,8 @@ internal class SequenceStateTracker(
 
     private suspend fun pollPlaybackInfo() {
         val actualInfo = suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
-            .getOrElse { return }
+            .onFailure { e -> logger.e(e) { "Failed to poll native playback info: ${e.message}" } }
+            .getOrNull() ?: return
 
         val effectiveInfo = mutex.withLock {
             val forcedPos = forcedPlaybackPosition ?: return@withLock actualInfo
@@ -90,17 +91,16 @@ internal class SequenceStateTracker(
             val lastState = trackStates[manifestUrl]
 
             val isFirstRequest = lastState == null
-            val isExactMatch = lastState != null && 
-                    segment.externalId == lastState.lastId && 
-                    segment.startTime == lastState.lastStartTime
+            val isExactMatch = lastState != null &&
+                segment.externalId == lastState.lastId &&
+                segment.startTime == lastState.lastStartTime
             val isNextSegment = lastState != null && segment.externalId == lastState.lastId + 1
-            
+
             val isSequential = isFirstRequest || isExactMatch || isNextSegment
 
             trackStates[manifestUrl] = TrackState(segment.externalId, segment.startTime)
 
             if (isSequential) {
-                logger.i { "SEQUENTIAL: segment externalId=${segment.externalId}. Previous state=$lastState" }
                 false
             } else {
                 val duration = segment.endTime - segment.startTime
@@ -113,6 +113,7 @@ internal class SequenceStateTracker(
         if (needsForcedUpdate) {
             suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
                 .onSuccess { info -> pushToEngineSafely(info.copy(currentPlayPosition = segment.startTime)) }
+                .onFailure { e -> logger.e(e) { "Failed to fetch native info for forced seek update: ${e.message}" } }
         }
     }
 

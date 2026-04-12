@@ -8,12 +8,10 @@ import kotlin.coroutines.cancellation.CancellationException
  * for Kotlin Coroutines.
  */
 @Suppress("TooGenericExceptionCaught")
-internal inline fun <T> suspendRunCatching(block: () -> T): Result<T> {
-    return try {
-        Result.success(block())
-    } catch (c: CancellationException) {
-        throw c
-    } catch (e: Throwable) {
-        Result.failure(e)
-    }
+internal inline fun <T> suspendRunCatching(block: () -> T): Result<T> = try {
+    Result.success(block())
+} catch (c: CancellationException) {
+    throw c
+} catch (e: Throwable) {
+    Result.failure(e)
 }
