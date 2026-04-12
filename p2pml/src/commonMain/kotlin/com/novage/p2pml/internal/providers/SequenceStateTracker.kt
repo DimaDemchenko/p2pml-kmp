@@ -103,7 +103,7 @@ internal class SequenceStateTracker(
             if (isSequential) {
                 false
             } else {
-                val duration = segment.endTime - segment.startTime
+                val duration = (segment.endTime - segment.startTime).coerceAtLeast(DEFAULT_CATCH_UP_THRESHOLD_SEC)
                 logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
                 suspendPollingLocked(segment.startTime, duration)
                 true
@@ -112,7 +112,9 @@ internal class SequenceStateTracker(
 
         if (needsForcedUpdate) {
             suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
-                .onSuccess { info -> updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime)) }
+                .onSuccess { info ->
+                    updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
+                }
                 .onFailure { e -> logger.e(e) { "Failed to fetch native info for forced seek update: ${e.message}" } }
         }
     }
