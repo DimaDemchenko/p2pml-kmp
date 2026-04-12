@@ -81,8 +81,11 @@ private fun Route.segmentDownloadRoute(
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, onError, byteRange)
         } catch (_: SegmentAbortedException) {
-            logger.w { "P2P Engine aborted segment. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
+            logger.w {
+                "P2P Engine aborted segment (Abandoned by ABR/Seek). " +
+                    "Terminating cleanly without ghost fallback."
+            }
+            call.respond(HttpStatusCode.RequestTimeout)
         } catch (_: CancellationException) {
             logger.i { "Request cancelled (Service Reset). Terminating connection." }
             call.respond(HttpStatusCode.ServiceUnavailable)

@@ -5,6 +5,7 @@ import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
+import com.novage.p2pml.internal.utils.suspendRunCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlin.math.abs
 
 internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
@@ -31,20 +33,21 @@ internal class SequenceStateTracker(
     private var suspensionJob: Job? = null
 
     private var forcedPlaybackPosition: Double? = null
-    private val isSuspended: Boolean get() = forcedPlaybackPosition != null
+    private var catchUpThresholdSec: Double = DEFAULT_CATCH_UP_THRESHOLD_SEC
+    private val isSuspended get() = forcedPlaybackPosition != null
 
     private val trackStates = mutableMapOf<String, TrackState>()
 
-    private data class TrackState(val lastRequestedSegmentId: Long, val lastRequestedSegmentStartTime: Double)
+    private data class TrackState(val lastId: Long, val lastStartTime: Double)
 
     companion object {
         private const val PLAYBACK_UPDATE_INTERVAL_MS = 1000L
-        private const val SUSPENSION_TIMEOUT_MS = 3000L
+        private const val SUSPENSION_TIMEOUT_MS = 8000L
+        private const val DEFAULT_CATCH_UP_THRESHOLD_SEC = 5.0
     }
 
     fun start() {
         if (pollingJob?.isActive == true) return
-
         logger.d { "Starting playback sequence poller." }
 
         pollingJob = scope.launch {
@@ -56,95 +59,73 @@ internal class SequenceStateTracker(
     }
 
     private suspend fun pollPlaybackInfo() {
-        try {
-            val actualInfo = playbackProvider.getPlaybackPositionAndSpeed()
-            val effectiveInfo = mutex.withLock {
-                forcedPlaybackPosition?.let { forcedPos ->
-                    actualInfo.copy(currentPlayPosition = forcedPos)
-                } ?: actualInfo
-            }
+        val actualInfo = suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
+            .getOrElse { return }
 
-            p2pEngine.updatePlaybackInfo(Json.encodeToString(effectiveInfo))
-        } catch (e: SerializationException) {
-            logger.e { "Serialization error polling playback info: ${e.message}" }
-        } catch (e: IllegalStateException) {
-            logger.e { "State error polling playback info: ${e.message}" }
-        } catch (e: IllegalArgumentException) {
-            logger.e { "Argument error polling playback info: ${e.message}" }
+        val effectiveInfo = mutex.withLock {
+            val forcedPos = forcedPlaybackPosition ?: return@withLock actualInfo
+            val diff = abs(actualInfo.currentPlayPosition - forcedPos)
+
+            if (diff <= catchUpThresholdSec) {
+                logger.i { "Native player caught up to seek target ($forcedPos). Resuming standard tracking." }
+                resumePollingLocked()
+                actualInfo
+            } else {
+                actualInfo.copy(currentPlayPosition = forcedPos)
+            }
         }
+
+        pushToEngineSafely(effectiveInfo)
     }
 
     suspend fun onSegmentRequested(runtimeId: String) {
         start()
 
-        val segmentInfo = hlsManifestManager.getSegmentWithManifestByUrl(runtimeId)
-        if (segmentInfo == null) {
+        val (manifestUrl, segment) = hlsManifestManager.getSegmentWithManifestByUrl(runtimeId) ?: run {
             logger.w { "Segment requested but not tracked in manifest: $runtimeId" }
             return
         }
 
-        val (manifestUrl, segment) = segmentInfo
-
         val needsForcedUpdate = mutex.withLock {
-            val isSequential = isSequentialSegment(manifestUrl, segment)
+            val lastState = trackStates[manifestUrl]
+
+            val isFirstRequest = lastState == null
+            val isExactMatch = lastState != null && 
+                    segment.externalId == lastState.lastId && 
+                    segment.startTime == lastState.lastStartTime
+            val isNextSegment = lastState != null && segment.externalId == lastState.lastId + 1
+            
+            val isSequential = isFirstRequest || isExactMatch || isNextSegment
+
             trackStates[manifestUrl] = TrackState(segment.externalId, segment.startTime)
 
             if (isSequential) {
-                if (isSuspended) {
-                    logger.i {
-                        "Sequential segment requested (${segment.externalId} on $manifestUrl). Resuming polling."
-                    }
-                    resumePollingLocked()
-                }
-
+                logger.i { "SEQUENTIAL: segment externalId=${segment.externalId}. Previous state=$lastState" }
                 false
             } else {
-                logger.i {
-                    "Non-sequential segment detected on $manifestUrl. Seek assumed. " +
-                        "Suspending polling and forcing pos: ${segment.startTime}"
-                }
-                suspendPollingLocked(segment.startTime)
-
+                val duration = segment.endTime - segment.startTime
+                logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
+                suspendPollingLocked(segment.startTime, duration)
                 true
             }
         }
 
         if (needsForcedUpdate) {
-            sendForcedPositionUpdate(segment.startTime)
+            suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
+                .onSuccess { info -> pushToEngineSafely(info.copy(currentPlayPosition = segment.startTime)) }
         }
     }
 
-    private suspend fun sendForcedPositionUpdate(position: Double) {
-        try {
-            val info = playbackProvider.getPlaybackPositionAndSpeed()
-            p2pEngine.updatePlaybackInfo(Json.encodeToString(info.copy(currentPlayPosition = position)))
-        } catch (e: SerializationException) {
-            logger.e { "Failed to send forced position update (Serialization): ${e.message}" }
-        } catch (e: IllegalStateException) {
-            logger.e { "Failed to send forced position update (Player State): ${e.message}" }
-        } catch (e: IllegalArgumentException) {
-            logger.e { "Failed to send forced position update (Argument Error): ${e.message}" }
-        }
-    }
-
-    private fun isSequentialSegment(manifestUrl: String, segment: Segment): Boolean {
-        val lastState = trackStates[manifestUrl] ?: return true
-
-        val isExactMatch = segment.externalId == lastState.lastRequestedSegmentId &&
-            segment.startTime == lastState.lastRequestedSegmentStartTime
-        val isNextSegment = segment.externalId == lastState.lastRequestedSegmentId + 1
-
-        return isExactMatch || isNextSegment
-    }
-
-    private fun suspendPollingLocked(position: Double) {
+    private fun suspendPollingLocked(position: Double, segmentDuration: Double) {
         forcedPlaybackPosition = position
+        catchUpThresholdSec = segmentDuration
+
         suspensionJob?.cancel()
         suspensionJob = scope.launch {
             delay(SUSPENSION_TIMEOUT_MS)
             mutex.withLock {
                 if (isSuspended) {
-                    logger.w { "Seek suspension timeout reached without sequential segments. Resuming polling." }
+                    logger.w { "Seek suspension timeout ($SUSPENSION_TIMEOUT_MS ms) elapsed. Resuming polling." }
                     resumePollingLocked()
                 }
             }
@@ -164,5 +145,17 @@ internal class SequenceStateTracker(
     fun destroy() {
         logger.i { "Destroying SequenceStateTracker..." }
         scope.cancel()
+    }
+
+    private inline fun <reified T> pushToEngineSafely(info: T) {
+        try {
+            p2pEngine.updatePlaybackInfo(Json.encodeToString(info))
+        } catch (e: SerializationException) {
+            logger.e { "Serialization error updating P2P engine: ${e.message}" }
+        } catch (e: IllegalStateException) {
+            logger.e { "State error updating P2P engine: ${e.message}" }
+        } catch (e: IllegalArgumentException) {
+            logger.e { "Argument error updating P2P engine: ${e.message}" }
+        }
     }
 }
