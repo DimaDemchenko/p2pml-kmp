@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.providers
 
 import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.Segment
+import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -76,7 +76,7 @@ internal class SequenceStateTracker(
             }
         }
 
-        pushToEngineSafely(effectiveInfo)
+        updateEnginePlaybackInfoSafely(effectiveInfo)
     }
 
     suspend fun onSegmentRequested(runtimeId: String) {
@@ -112,7 +112,7 @@ internal class SequenceStateTracker(
 
         if (needsForcedUpdate) {
             suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
-                .onSuccess { info -> pushToEngineSafely(info.copy(currentPlayPosition = segment.startTime)) }
+                .onSuccess { info -> updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime)) }
                 .onFailure { e -> logger.e(e) { "Failed to fetch native info for forced seek update: ${e.message}" } }
         }
     }
@@ -148,7 +148,7 @@ internal class SequenceStateTracker(
         scope.cancel()
     }
 
-    private inline fun <reified T> pushToEngineSafely(info: T) {
+    private fun updateEnginePlaybackInfoSafely(info: PlaybackInfo) {
         try {
             p2pEngine.updatePlaybackInfo(Json.encodeToString(info))
         } catch (e: SerializationException) {
