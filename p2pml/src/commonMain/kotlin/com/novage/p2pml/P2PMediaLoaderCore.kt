@@ -114,7 +114,7 @@ abstract class P2PMediaLoaderCore(
                     }
                 }
             )
-            
+
             if (!isActive) {
                 module.destroy()
                 return@launch
