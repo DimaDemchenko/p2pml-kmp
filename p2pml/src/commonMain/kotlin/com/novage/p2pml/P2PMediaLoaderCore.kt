@@ -114,6 +114,11 @@ abstract class P2PMediaLoaderCore(
                     }
                 }
             )
+            
+            if (!isActive) {
+                module.destroy()
+                return@launch
+            }
 
             this@P2PMediaLoaderCore.serverModule = module
             module.start()
