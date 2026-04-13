@@ -32,8 +32,9 @@ class MainActivity : ComponentActivity() {
         // headless WebView for the P2P engine.
         runCatching {
             CookieManager.getInstance()
-            WebView(this).apply {
-                loadData("", "text/html", null)
+            WebView(applicationContext).apply {
+                loadData("", "text/html", "utf-8")
+                destroy()
             }
         }.onFailure {
             Log.e("MainActivity", "WebView warmup failed", it)
