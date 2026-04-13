@@ -29,7 +29,6 @@ import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
 import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableTracks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

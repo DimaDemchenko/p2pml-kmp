@@ -30,11 +30,13 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING }
 
@@ -116,7 +118,10 @@ abstract class P2PMediaLoaderCore(
             )
 
             if (!isActive) {
-                module.destroy()
+                withContext(NonCancellable) {
+                    runCatching { module.destroy() }
+                        .onFailure { logger.e(it) { "Error explicitly destroying module on cancel: ${it.message}" } }
+                }
                 return@launch
             }
 
