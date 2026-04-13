@@ -1,7 +1,6 @@
 package com.novage.p2pml.demo
 
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebView

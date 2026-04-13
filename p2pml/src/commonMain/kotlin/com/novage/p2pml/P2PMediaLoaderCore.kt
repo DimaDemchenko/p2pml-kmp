@@ -217,9 +217,6 @@ abstract class P2PMediaLoaderCore(
         startJob = null
         jobToCancel?.cancel()
 
-        val serverToDestroy = serverModule
-        serverModule = null
-
         val engineToDestroy = engineManager
         engineManager = null
 
@@ -236,6 +233,9 @@ abstract class P2PMediaLoaderCore(
         scopeToCancel.launch {
             try {
                 jobToCancel?.join()
+
+                val serverToDestroy = serverModule
+                serverModule = null
 
                 runCatching { serverToDestroy?.destroy() }
                     .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
