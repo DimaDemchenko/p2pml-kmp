@@ -47,7 +47,6 @@ private const val BUFFER_FOR_REBUFFER_MS = 5_000
 private const val P2P_SIMULTANEOUS_DOWNLOADS = 3
 private const val WEBRTC_MAX_MESSAGE_SIZE = 65535
 private const val P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS = 1000
-private const val NAVIGATION_TRANSITION_DELAY_MS = 300L
 
 class PlayerViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
@@ -104,11 +103,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             exoPlayer.playWhenReady = shouldAutoPlay
             Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader shouldAutoPlay=$shouldAutoPlay")
             player = exoPlayer
-
-            // Wait 300ms to allow the Jetpack Compose navigation screen transition
-            // to finish its 60fps animation before we instantiate the heavy Android WebView widget
-            // on the main thread, effectively eliminating the transition lag.
-            delay(NAVIGATION_TRANSITION_DELAY_MS)
 
             initializeP2PLoader(context, exoPlayer, manifestUrl, customEngineUrl)
         }
