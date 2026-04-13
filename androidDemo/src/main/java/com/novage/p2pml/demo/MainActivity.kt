@@ -25,7 +25,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Pre-warm the native Chromium engine during Activity startup (behind the Splash Screen).
+        // Pre-warm the native Chromium engine during Activity startup.
+        // On Android 12+, this processing happens cleanly behind the system Splash Screen.
         // Initializing a WebView for the first time usually takes 500-1000ms natively.
         // We do this proactively here to prevent the UI thread from freezing and dropping frames
         // during subsequent screen navigation when P2PMediaLoader needs to instantiate its
