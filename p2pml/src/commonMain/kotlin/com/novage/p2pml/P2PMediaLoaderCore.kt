@@ -85,36 +85,37 @@ abstract class P2PMediaLoaderCore(
     }
 
     private fun startLocalServer(provider: PlaybackProvider, engine: P2PEngine) {
-        val module = ServerModule(
-            playbackProvider = provider,
-            engineManager = engine,
-            urlFactory = urlFactory,
-            enableCors = customEngineUrl != null,
-            onError = { errorType, message ->
-                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
-                    when (errorType) {
-                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
-                        else -> onError(errorType, message)
-                    }
-                }
-            },
-            onServerStarted = { port ->
-                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
-                    logger.i { "Local P2P Server started on port: $port" }
-                    urlFactory.setPort(port)
-                    onServerReady()
-                } else {
-                    logger.w { "Server started on port $port but core is ${status.value}, ignoring port." }
-                }
-            }
-        )
-        this.serverModule = module
-
         startJob = coreScope.launch {
             if (!isActive) {
                 logger.d { "Start job cancelled before execution. Aborting server start." }
                 return@launch
             }
+
+            val module = ServerModule(
+                playbackProvider = provider,
+                engineManager = engine,
+                urlFactory = urlFactory,
+                enableCors = customEngineUrl != null,
+                onError = { errorType, message ->
+                    if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                        when (errorType) {
+                            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
+                            else -> onError(errorType, message)
+                        }
+                    }
+                },
+                onServerStarted = { port ->
+                    if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                        logger.i { "Local P2P Server started on port: $port" }
+                        urlFactory.setPort(port)
+                        onServerReady()
+                    } else {
+                        logger.w { "Server started on port $port but core is ${status.value}, ignoring port." }
+                    }
+                }
+            )
+
+            this@P2PMediaLoaderCore.serverModule = module
             module.start()
         }
     }
