@@ -1,6 +1,9 @@
 package com.novage.p2pml.demo
 
 import android.os.Bundle
+import android.util.Log
+import android.webkit.CookieManager
+import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,6 +24,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Pre-warm the native Chromium engine during Activity startup.
+        // On Android 12+, this processing happens cleanly behind the system Splash Screen.
+        // Initializing a WebView for the first time usually takes 500-1000ms natively.
+        // We do this proactively here to prevent the UI thread from freezing and dropping frames
+        // during subsequent screen navigation when P2PMediaLoader needs to instantiate its
+        // headless WebView for the P2P engine.
+        runCatching {
+            CookieManager.getInstance()
+            WebView(applicationContext).apply {
+                loadData("", "text/html", "utf-8")
+                destroy()
+            }
+        }.onFailure {
+            Log.e("MainActivity", "WebView warmup failed", it)
+        }
 
         setContent {
             P2PDemoTheme {

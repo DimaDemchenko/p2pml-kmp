@@ -30,11 +30,13 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING }
 
@@ -85,36 +87,45 @@ abstract class P2PMediaLoaderCore(
     }
 
     private fun startLocalServer(provider: PlaybackProvider, engine: P2PEngine) {
-        val module = ServerModule(
-            playbackProvider = provider,
-            engineManager = engine,
-            urlFactory = urlFactory,
-            enableCors = customEngineUrl != null,
-            onError = { errorType, message ->
-                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
-                    when (errorType) {
-                        P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
-                        else -> onError(errorType, message)
-                    }
-                }
-            },
-            onServerStarted = { port ->
-                if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
-                    logger.i { "Local P2P Server started on port: $port" }
-                    urlFactory.setPort(port)
-                    onServerReady()
-                } else {
-                    logger.w { "Server started on port $port but core is ${status.value}, ignoring port." }
-                }
-            }
-        )
-        this.serverModule = module
-
         startJob = coreScope.launch {
             if (!isActive) {
                 logger.d { "Start job cancelled before execution. Aborting server start." }
                 return@launch
             }
+
+            val module = ServerModule(
+                playbackProvider = provider,
+                engineManager = engine,
+                urlFactory = urlFactory,
+                enableCors = customEngineUrl != null,
+                onError = { errorType, message ->
+                    if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                        when (errorType) {
+                            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
+                            else -> onError(errorType, message)
+                        }
+                    }
+                },
+                onServerStarted = { port ->
+                    if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                        logger.i { "Local P2P Server started on port: $port" }
+                        urlFactory.setPort(port)
+                        onServerReady()
+                    } else {
+                        logger.w { "Server started on port $port but core is ${status.value}, ignoring port." }
+                    }
+                }
+            )
+
+            if (!isActive) {
+                withContext(NonCancellable) {
+                    runCatching { module.destroy() }
+                        .onFailure { logger.e(it) { "Error explicitly destroying module on cancel: ${it.message}" } }
+                }
+                return@launch
+            }
+
+            this@P2PMediaLoaderCore.serverModule = module
             module.start()
         }
     }
@@ -216,9 +227,6 @@ abstract class P2PMediaLoaderCore(
         startJob = null
         jobToCancel?.cancel()
 
-        val serverToDestroy = serverModule
-        serverModule = null
-
         val engineToDestroy = engineManager
         engineManager = null
 
@@ -235,6 +243,9 @@ abstract class P2PMediaLoaderCore(
         scopeToCancel.launch {
             try {
                 jobToCancel?.join()
+
+                val serverToDestroy = serverModule
+                serverModule = null
 
                 runCatching { serverToDestroy?.destroy() }
                     .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
