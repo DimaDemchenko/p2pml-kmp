@@ -56,6 +56,7 @@ internal class IosWebViewEventDispatcher(
         events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun handleComplexEvent(type: String, body: NSDictionary) {
         val payloadDict = body.objectForKey("payload") as? NSDictionary ?: return
 

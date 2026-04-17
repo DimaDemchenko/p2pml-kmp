@@ -34,6 +34,7 @@ internal class AndroidWebViewEventDispatcher(
         events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
 
+    @Suppress("CyclomaticComplexMethod")
     @JavascriptInterface
     fun postMessage(message: String) {
         try {
