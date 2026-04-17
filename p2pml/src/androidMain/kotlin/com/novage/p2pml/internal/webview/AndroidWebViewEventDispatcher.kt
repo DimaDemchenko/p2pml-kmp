@@ -3,18 +3,21 @@ package com.novage.p2pml.internal.webview
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
+import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.internal.events.CoreEventEmitter
-import com.novage.p2pml.internal.events.CoreEventMap
 import com.novage.p2pml.internal.utils.CoreLogger
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import org.json.JSONException
-import org.json.JSONObject
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+
+@Serializable
+internal data class JsEventEnvelope(val type: String, val payload: JsonElement? = null)
 
 internal class AndroidWebViewEventDispatcher(
-    private val eventEmitter: CoreEventEmitter,
+    private val events: P2PEventRegistry,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null
 ) {
@@ -23,79 +26,42 @@ internal class AndroidWebViewEventDispatcher(
 
     @JavascriptInterface
     fun onChunkDownloaded(bytesLength: Int, downloadSource: String, peerId: String?) {
-        if (!eventEmitter.hasListeners(CoreEventMap.OnChunkDownloaded)) return
-
-        mainHandler.post {
-            val details = ChunkDownloadedDetails(bytesLength, downloadSource, peerId)
-            eventEmitter.emit(CoreEventMap.OnChunkDownloaded, details)
-        }
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, downloadSource, peerId))
     }
 
     @JavascriptInterface
     fun onChunkUploaded(bytesLength: Int, peerId: String) {
-        if (!eventEmitter.hasListeners(CoreEventMap.OnChunkUploaded)) return
-
-        mainHandler.post {
-            val details = ChunkUploadedDetails(bytesLength, peerId)
-            eventEmitter.emit(CoreEventMap.OnChunkUploaded, details)
-        }
+        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
 
     @JavascriptInterface
     fun postMessage(message: String) {
-        mainHandler.post {
-            handleGenericMessage(message)
-        }
-    }
-
-    private fun handleGenericMessage(message: String) {
         try {
-            val root = JSONObject(message)
-            val type = root.optString("type")
+            val envelope = json.decodeFromString<JsEventEnvelope>(message)
 
-            val payloadStr = root.opt("payload")?.toString() ?: "{}"
-
-            when (type) {
-                "onWebViewLoaded" -> {
-                    onPageReady?.invoke()
-                }
-
-                "onSegmentLoaded" -> emitEvent(CoreEventMap.OnSegmentLoaded, payloadStr)
-
-                "onSegmentStart" -> emitEvent(CoreEventMap.OnSegmentStart, payloadStr)
-
-                "onSegmentError" -> emitEvent(CoreEventMap.OnSegmentError, payloadStr)
-
-                "onSegmentAbort" -> emitEvent(CoreEventMap.OnSegmentAbort, payloadStr)
-
-                "onPeerConnect" -> emitEvent(CoreEventMap.OnPeerConnect, payloadStr)
-
-                "onPeerClose" -> emitEvent(CoreEventMap.OnPeerClose, payloadStr)
-
-                "onPeerError" -> emitEvent(CoreEventMap.OnPeerError, payloadStr)
-
-                "onTrackerError" -> emitEvent(CoreEventMap.OnTrackerError, payloadStr)
-
-                "onTrackerWarning" -> emitEvent(CoreEventMap.OnTrackerWarning, payloadStr)
-
-                else -> logger.w { "Unknown message type received from WebView: $type" }
+            if (envelope.type == "onWebViewLoaded") {
+                mainHandler.post { onPageReady?.invoke() }
+                return
             }
-        } catch (e: JSONException) {
-            logger.e { "Failed to parse message JSON: ${e.message}" }
-        }
-    }
 
-    /** Helper function to deserialize JSON payload and emit the event safely. */
-    private inline fun <reified T> emitEvent(event: CoreEventMap<T>, jsonStr: String) {
-        if (!eventEmitter.hasListeners(event)) return
+            val payload = envelope.payload ?: return
 
-        try {
-            val data = json.decodeFromString<T>(jsonStr)
-            eventEmitter.emit(event, data)
+            when (envelope.type) {
+                "onSegmentLoaded" -> events.emitSegmentLoaded(json.decodeFromJsonElement(payload))
+                "onSegmentStart" -> events.emitSegmentStart(json.decodeFromJsonElement(payload))
+                "onSegmentError" -> events.emitSegmentError(json.decodeFromJsonElement(payload))
+                "onSegmentAbort" -> events.emitSegmentAbort(json.decodeFromJsonElement(payload))
+                "onPeerConnect" -> events.emitPeerConnect(json.decodeFromJsonElement(payload))
+                "onPeerClose" -> events.emitPeerClose(json.decodeFromJsonElement(payload))
+                "onPeerError" -> events.emitPeerError(json.decodeFromJsonElement(payload))
+                "onTrackerError" -> events.emitTrackerError(json.decodeFromJsonElement(payload))
+                "onTrackerWarning" -> events.emitTrackerWarning(json.decodeFromJsonElement(payload))
+                else -> logger.w { "Unknown message type received from WebView: ${envelope.type}" }
+            }
         } catch (e: SerializationException) {
-            logger.e { "Failed to deserialize payload for ${event.eventName}: ${e.message}" }
+            logger.e { "Failed to deserialize JSON payload: ${e.message}" }
         } catch (e: IllegalArgumentException) {
-            logger.e { "Invalid arguments for ${event.eventName}: ${e.message}" }
+            logger.e { "Invalid argument in JSON payload: ${e.message}" }
         }
     }
 }

@@ -18,7 +18,6 @@ import androidx.media3.exoplayer.LoadControl
 import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.api.interfaces.Cancellable
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.CoreConfigBuilder
 import com.novage.p2pml.api.models.DynamicCoreConfig
@@ -59,7 +58,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         private set
 
     private var p2pLoader: P2PMediaLoader? = null
-    private val eventSubscriptions = mutableListOf<Cancellable>()
+    private val eventJobs = mutableListOf<Job>()
     private var playerInitializationJob: Job? = null
 
     init {
@@ -214,46 +213,54 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     }
 
     private fun setupP2PEvents(loader: P2PMediaLoader) {
-        eventSubscriptions.add(
-            loader.onChunkDownloaded { chunk ->
-                _uiState.update { state ->
-                    state.copy(
-                        totalDownloaded = state.totalDownloaded + chunk.bytesLength,
-                        p2pDownloaded = if (chunk.downloadSource == "p2p") {
-                            state.p2pDownloaded + chunk.bytesLength
-                        } else {
-                            state.p2pDownloaded
-                        },
-                        httpDownloaded = if (chunk.downloadSource == "http") {
-                            state.httpDownloaded + chunk.bytesLength
-                        } else {
-                            state.httpDownloaded
-                        }
-                    )
+        eventJobs.add(
+            viewModelScope.launch {
+                loader.events.onChunkDownloaded.collect { chunk ->
+                    _uiState.update { state ->
+                        state.copy(
+                            totalDownloaded = state.totalDownloaded + chunk.bytesLength,
+                            p2pDownloaded = if (chunk.downloadSource == "p2p") {
+                                state.p2pDownloaded + chunk.bytesLength
+                            } else {
+                                state.p2pDownloaded
+                            },
+                            httpDownloaded = if (chunk.downloadSource == "http") {
+                                state.httpDownloaded + chunk.bytesLength
+                            } else {
+                                state.httpDownloaded
+                            }
+                        )
+                    }
                 }
             }
         )
 
-        eventSubscriptions.add(
-            loader.onChunkUploaded { chunk ->
-                _uiState.update { state ->
-                    state.copy(uploadTotal = state.uploadTotal + chunk.bytesLength)
+        eventJobs.add(
+            viewModelScope.launch {
+                loader.events.onChunkUploaded.collect { chunk ->
+                    _uiState.update { state ->
+                        state.copy(uploadTotal = state.uploadTotal + chunk.bytesLength)
+                    }
                 }
             }
         )
 
-        eventSubscriptions.add(
-            loader.onPeerConnect { peer ->
-                _uiState.update { state ->
-                    state.copy(peers = state.peers + peer)
+        eventJobs.add(
+            viewModelScope.launch {
+                loader.events.onPeerConnect.collect { peer ->
+                    _uiState.update { state ->
+                        state.copy(peers = state.peers + peer)
+                    }
                 }
             }
         )
 
-        eventSubscriptions.add(
-            loader.onPeerClose { peer ->
-                _uiState.update { state ->
-                    state.copy(peers = state.peers.filter { it.peerId != peer.peerId })
+        eventJobs.add(
+            viewModelScope.launch {
+                loader.events.onPeerClose.collect { peer ->
+                    _uiState.update { state ->
+                        state.copy(peers = state.peers.filter { it.peerId != peer.peerId })
+                    }
                 }
             }
         )
@@ -289,8 +296,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private fun releaseResources() {
         playerInitializationJob?.cancel()
 
-        eventSubscriptions.forEach { it.cancel() }
-        eventSubscriptions.clear()
+        eventJobs.forEach { it.cancel() }
+        eventJobs.clear()
 
         player?.release()
         player = null

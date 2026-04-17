@@ -1,17 +1,8 @@
 package com.novage.p2pml.internal.webview
 
+import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.api.models.PeerDetails
-import com.novage.p2pml.api.models.PeerErrorDetails
-import com.novage.p2pml.api.models.SegmentAbortDetails
-import com.novage.p2pml.api.models.SegmentErrorDetails
-import com.novage.p2pml.api.models.SegmentLoadDetails
-import com.novage.p2pml.api.models.SegmentStartDetails
-import com.novage.p2pml.api.models.TrackerErrorDetails
-import com.novage.p2pml.api.models.TrackerWarningDetails
-import com.novage.p2pml.internal.events.CoreEventEmitter
-import com.novage.p2pml.internal.events.CoreEventMap
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.decodeFromNSDictionary
 import kotlinx.serialization.SerializationException
@@ -23,7 +14,7 @@ import platform.WebKit.WKUserContentController
 import platform.darwin.NSObject
 
 internal class IosWebViewEventDispatcher(
-    private val eventEmitter: CoreEventEmitter,
+    private val events: P2PEventRegistry,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null
 ) : NSObject(),
@@ -47,27 +38,22 @@ internal class IosWebViewEventDispatcher(
     }
 
     private fun handleChunkDownloaded(body: NSDictionary) {
-        if (!eventEmitter.hasListeners(CoreEventMap.OnChunkDownloaded)) return
-
         val payload = body.objectForKey("payload") as? NSDictionary ?: return
         val bytesLength = (payload.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val downloadSource = payload.objectForKey("downloadSource") as? String ?: return
         val peerId = payload.objectForKey("peerId") as? String
 
-        eventEmitter.emit(
-            CoreEventMap.OnChunkDownloaded,
+        events.emitChunkDownloaded(
             ChunkDownloadedDetails(bytesLength, downloadSource, peerId)
         )
     }
 
     private fun handleChunkUploaded(body: NSDictionary) {
-        if (!eventEmitter.hasListeners(CoreEventMap.OnChunkUploaded)) return
-
         val payload = body.objectForKey("payload") as? NSDictionary ?: return
         val bytesLength = (payload.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val peerId = payload.objectForKey("peerId") as? String ?: return
 
-        eventEmitter.emit(CoreEventMap.OnChunkUploaded, ChunkUploadedDetails(bytesLength, peerId))
+        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
 
     private fun handleComplexEvent(type: String, body: NSDictionary) {
@@ -75,57 +61,23 @@ internal class IosWebViewEventDispatcher(
 
         try {
             when (type) {
-                "onSegmentLoaded" -> {
-                    val details = json.decodeFromNSDictionary<SegmentLoadDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnSegmentLoaded, details)
-                }
-
-                "onSegmentStart" -> {
-                    val details = json.decodeFromNSDictionary<SegmentStartDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnSegmentStart, details)
-                }
-
-                "onSegmentAbort" -> {
-                    val details = json.decodeFromNSDictionary<SegmentAbortDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnSegmentAbort, details)
-                }
-
-                "onSegmentError" -> {
-                    val details = json.decodeFromNSDictionary<SegmentErrorDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnSegmentError, details)
-                }
-
-                "onPeerConnect" -> {
-                    val details = json.decodeFromNSDictionary<PeerDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnPeerConnect, details)
-                }
-
-                "onPeerClose" -> {
-                    val details = json.decodeFromNSDictionary<PeerDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnPeerClose, details)
-                }
-
-                "onPeerError" -> {
-                    val details = json.decodeFromNSDictionary<PeerErrorDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnPeerError, details)
-                }
-
-                "onTrackerError" -> {
-                    val details = json.decodeFromNSDictionary<TrackerErrorDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnTrackerError, details)
-                }
-
-                "onTrackerWarning" -> {
-                    val details = json.decodeFromNSDictionary<TrackerWarningDetails>(payloadDict)
-                    eventEmitter.emit(CoreEventMap.OnTrackerWarning, details)
-                }
+                "onSegmentLoaded" -> events.emitSegmentLoaded(json.decodeFromNSDictionary(payloadDict))
+                "onSegmentStart" -> events.emitSegmentStart(json.decodeFromNSDictionary(payloadDict))
+                "onSegmentAbort" -> events.emitSegmentAbort(json.decodeFromNSDictionary(payloadDict))
+                "onSegmentError" -> events.emitSegmentError(json.decodeFromNSDictionary(payloadDict))
+                "onPeerConnect" -> events.emitPeerConnect(json.decodeFromNSDictionary(payloadDict))
+                "onPeerClose" -> events.emitPeerClose(json.decodeFromNSDictionary(payloadDict))
+                "onPeerError" -> events.emitPeerError(json.decodeFromNSDictionary(payloadDict))
+                "onTrackerError" -> events.emitTrackerError(json.decodeFromNSDictionary(payloadDict))
+                "onTrackerWarning" -> events.emitTrackerWarning(json.decodeFromNSDictionary(payloadDict))
+                else -> logger.w { "Unknown message type received from WebView: $type" }
             }
         } catch (e: SerializationException) {
-            logger.e { "JSON Decoding failed for '$type': ${e.message}" }
+            logger.e { "Failed to deserialize NSDictionary payload for '$type': ${e.message}" }
         } catch (e: IllegalArgumentException) {
-            logger.e { "Invalid argument for '$type': ${e.message}" }
-        } catch (e: IllegalStateException) {
-            logger.e { "State error handling '$type': ${e.message}" }
+            logger.e { "Invalid argument in NSDictionary payload for '$type': ${e.message}" }
+        } catch (e: ClassCastException) {
+            logger.e { "Type cast failed for NSDictionary payload in '$type': ${e.message}" }
         }
     }
 }

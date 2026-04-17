@@ -27,7 +27,7 @@ class P2PMediaLoader(
 
         initialize(provider) {
             IosWebViewFactory().createHeadlessWebView(
-                eventEmitter = eventEmitter,
+                events = events,
                 onWebViewLoaded = ::onWebViewLoaded,
                 onWebViewError = ::failInitialization
             )
