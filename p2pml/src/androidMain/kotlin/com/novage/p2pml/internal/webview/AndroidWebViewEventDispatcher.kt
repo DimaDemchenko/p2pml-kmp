@@ -60,9 +60,9 @@ internal class AndroidWebViewEventDispatcher(
                 else -> logger.w { "Unknown message type received from WebView: ${envelope.type}" }
             }
         } catch (e: SerializationException) {
-            logger.e { "Failed to deserialize JSON payload: ${e.message}" }
+            logger.e { "Failed to parse WebView JSON message: ${e.message}. Raw message: $message" }
         } catch (e: IllegalArgumentException) {
-            logger.e { "Invalid argument in JSON payload: ${e.message}" }
+            logger.e { "Invalid argument in WebView JSON message: ${e.message}. Raw message: $message" }
         }
     }
 }
