@@ -15,6 +15,28 @@ import kotlinx.coroutines.flow.onEach
 class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /**
+     * Subscribes to P2P engine events.
+     *
+     * **Important:** All listener callbacks are invoked on a background thread (`Dispatchers.Default`).
+     * If you need to update the UI or interact with views inside a callback, you must explicitly
+     * switch to the main thread.
+     *
+     * **Java Example:**
+     * ```java
+     * loader.addListener(new P2PEventAdapter() {
+     *     @Override
+     *     public void onPeerConnect(PeerDetails details) {
+     *         new Handler(Looper.getMainLooper()).post(() -> {
+     *             // Update UI here
+     *         });
+     *     }
+     * });
+     * ```
+     *
+     * @param listener The listener to receive event callbacks.
+     * @return An [AutoCloseable] that cancels the subscriptions when closed.
+     */
     fun addListener(listener: P2PEventListener): AutoCloseable {
         val jobs = listOf(
             loader.events.onSegmentLoaded.onEach(listener::onSegmentLoaded).launchIn(scope),
