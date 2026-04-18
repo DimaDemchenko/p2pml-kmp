@@ -24,7 +24,7 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
      *
      * **Java Example:**
      * ```java
-     * loader.addListener(new P2PEventAdapter() {
+     * AutoCloseable subscription = loader.addListener(new P2PEventListener() {
      *     @Override
      *     public void onPeerConnect(PeerDetails details) {
      *         new Handler(Looper.getMainLooper()).post(() -> {
@@ -32,6 +32,13 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
      *         });
      *     }
      * });
+     * 
+     * // Later, when you want to stop listening and avoid leaks:
+     * try {
+     *     subscription.close();
+     * } catch (Exception e) {
+     *     e.printStackTrace();
+     * }
      * ```
      *
      * @param listener The listener to receive event callbacks.
