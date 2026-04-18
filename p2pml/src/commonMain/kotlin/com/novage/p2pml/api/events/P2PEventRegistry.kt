@@ -26,56 +26,56 @@ class P2PEventRegistry internal constructor(
     private val engineManagerProvider: () -> P2PEngine?,
     private val isCoreActive: () -> Boolean
 ) {
-    private val _onSegmentLoaded = MutableSharedFlow<SegmentLoadDetails>()
-    val onSegmentLoaded: SharedFlow<SegmentLoadDetails> = _onSegmentLoaded.asSharedFlow()
+    private fun <T> createFlow(capacity: Int = 64) = 
+        MutableSharedFlow<T>(
+            extraBufferCapacity = capacity, 
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
 
-    private val _onSegmentStart = MutableSharedFlow<SegmentStartDetails>()
-    val onSegmentStart: SharedFlow<SegmentStartDetails> = _onSegmentStart.asSharedFlow()
+    private val _onSegmentLoaded = createFlow<SegmentLoadDetails>()
+    val onSegmentLoaded = _onSegmentLoaded.asSharedFlow()
 
-    private val _onSegmentError = MutableSharedFlow<SegmentErrorDetails>()
-    val onSegmentError: SharedFlow<SegmentErrorDetails> = _onSegmentError.asSharedFlow()
+    private val _onSegmentStart = createFlow<SegmentStartDetails>()
+    val onSegmentStart = _onSegmentStart.asSharedFlow()
 
-    private val _onSegmentAbort = MutableSharedFlow<SegmentAbortDetails>()
-    val onSegmentAbort: SharedFlow<SegmentAbortDetails> = _onSegmentAbort.asSharedFlow()
+    private val _onSegmentError = createFlow<SegmentErrorDetails>()
+    val onSegmentError = _onSegmentError.asSharedFlow()
 
-    private val _onPeerConnect = MutableSharedFlow<PeerDetails>()
-    val onPeerConnect: SharedFlow<PeerDetails> = _onPeerConnect.asSharedFlow()
+    private val _onSegmentAbort = createFlow<SegmentAbortDetails>()
+    val onSegmentAbort = _onSegmentAbort.asSharedFlow()
 
-    private val _onPeerClose = MutableSharedFlow<PeerDetails>()
-    val onPeerClose: SharedFlow<PeerDetails> = _onPeerClose.asSharedFlow()
+    private val _onPeerConnect = createFlow<PeerDetails>()
+    val onPeerConnect = _onPeerConnect.asSharedFlow()
 
-    private val _onPeerError = MutableSharedFlow<PeerErrorDetails>()
-    val onPeerError: SharedFlow<PeerErrorDetails> = _onPeerError.asSharedFlow()
+    private val _onPeerClose = createFlow<PeerDetails>()
+    val onPeerClose = _onPeerClose.asSharedFlow()
 
-    private val _onChunkDownloaded = MutableSharedFlow<ChunkDownloadedDetails>(
-        extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val onChunkDownloaded: SharedFlow<ChunkDownloadedDetails> = _onChunkDownloaded.asSharedFlow()
+    private val _onPeerError = createFlow<PeerErrorDetails>()
+    val onPeerError = _onPeerError.asSharedFlow()
 
-    private val _onChunkUploaded = MutableSharedFlow<ChunkUploadedDetails>(
-        extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val onChunkUploaded: SharedFlow<ChunkUploadedDetails> = _onChunkUploaded.asSharedFlow()
+    private val _onTrackerError = createFlow<TrackerErrorDetails>()
+    val onTrackerError = _onTrackerError.asSharedFlow()
 
-    private val _onTrackerError = MutableSharedFlow<TrackerErrorDetails>()
-    val onTrackerError: SharedFlow<TrackerErrorDetails> = _onTrackerError.asSharedFlow()
+    private val _onTrackerWarning = createFlow<TrackerWarningDetails>()
+    val onTrackerWarning = _onTrackerWarning.asSharedFlow()
 
-    private val _onTrackerWarning = MutableSharedFlow<TrackerWarningDetails>()
-    val onTrackerWarning: SharedFlow<TrackerWarningDetails> = _onTrackerWarning.asSharedFlow()
+    private val _onChunkDownloaded = createFlow<ChunkDownloadedDetails>(capacity = 256)
+    val onChunkDownloaded = _onChunkDownloaded.asSharedFlow()
 
-    internal fun emitSegmentLoaded(details: SegmentLoadDetails) = _onSegmentLoaded.tryEmit(details)
-    internal fun emitSegmentStart(details: SegmentStartDetails) = _onSegmentStart.tryEmit(details)
-    internal fun emitSegmentError(details: SegmentErrorDetails) = _onSegmentError.tryEmit(details)
-    internal fun emitSegmentAbort(details: SegmentAbortDetails) = _onSegmentAbort.tryEmit(details)
-    internal fun emitPeerConnect(details: PeerDetails) = _onPeerConnect.tryEmit(details)
-    internal fun emitPeerClose(details: PeerDetails) = _onPeerClose.tryEmit(details)
-    internal fun emitPeerError(details: PeerErrorDetails) = _onPeerError.tryEmit(details)
-    internal fun emitChunkDownloaded(details: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(details)
-    internal fun emitChunkUploaded(details: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(details)
-    internal fun emitTrackerError(details: TrackerErrorDetails) = _onTrackerError.tryEmit(details)
-    internal fun emitTrackerWarning(details: TrackerWarningDetails) = _onTrackerWarning.tryEmit(details)
+    private val _onChunkUploaded = createFlow<ChunkUploadedDetails>(capacity = 256)
+    val onChunkUploaded = _onChunkUploaded.asSharedFlow()
+
+    internal fun emitSegmentLoaded(d: SegmentLoadDetails) = _onSegmentLoaded.tryEmit(d)
+    internal fun emitSegmentStart(d: SegmentStartDetails) = _onSegmentStart.tryEmit(d)
+    internal fun emitSegmentError(d: SegmentErrorDetails) = _onSegmentError.tryEmit(d)
+    internal fun emitSegmentAbort(d: SegmentAbortDetails) = _onSegmentAbort.tryEmit(d)
+    internal fun emitPeerConnect(d: PeerDetails) = _onPeerConnect.tryEmit(d)
+    internal fun emitPeerClose(d: PeerDetails) = _onPeerClose.tryEmit(d)
+    internal fun emitPeerError(d: PeerErrorDetails) = _onPeerError.tryEmit(d)
+    internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
+    internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
+    internal fun emitTrackerError(d: TrackerErrorDetails) = _onTrackerError.tryEmit(d)
+    internal fun emitTrackerWarning(d: TrackerWarningDetails) = _onTrackerWarning.tryEmit(d)
 
     internal val flowsWithNames = listOf(
         "onSegmentLoaded" to _onSegmentLoaded,
