@@ -84,7 +84,7 @@ class P2PEventRegistry internal constructor(
     internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
     internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
 
-    fun dispatchEventFromJsonElement(eventName: String, payload: JsonElement, json: Json) {
+    internal fun dispatchEventFromJsonElement(eventName: String, payload: JsonElement, json: Json) {
         val dispatcher = dispatchersElement[eventName]
         if (dispatcher != null) {
             dispatcher.invoke(payload, json)
@@ -93,7 +93,7 @@ class P2PEventRegistry internal constructor(
         }
     }
 
-    fun dispatchEventFromJsonString(eventName: String, payload: String, json: Json) {
+    internal fun dispatchEventFromJsonString(eventName: String, payload: String, json: Json) {
         val dispatcher = dispatchersString[eventName]
         if (dispatcher != null) {
             dispatcher.invoke(payload, json)
