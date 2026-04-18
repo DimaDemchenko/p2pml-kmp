@@ -45,7 +45,11 @@ internal class AndroidWebViewEventDispatcher(
                 return
             }
 
-            val payload = envelope.payload ?: return
+            val payload = envelope.payload
+            if (payload == null) {
+                logger.w { "Received message of type '${envelope.type}' without a payload. Raw message: $message" }
+                return
+            }
 
             when (envelope.type) {
                 "onSegmentLoaded" -> events.emitSegmentLoaded(json.decodeFromJsonElement(payload))
