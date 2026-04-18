@@ -12,6 +12,7 @@ import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
 import com.novage.p2pml.internal.engine.P2PEngine
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -19,7 +20,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 
 class P2PEventRegistry internal constructor(
     private val coreScope: CoroutineScope,
@@ -47,10 +47,16 @@ class P2PEventRegistry internal constructor(
     private val _onPeerError = MutableSharedFlow<PeerErrorDetails>()
     val onPeerError: SharedFlow<PeerErrorDetails> = _onPeerError.asSharedFlow()
 
-    private val _onChunkDownloaded = MutableSharedFlow<ChunkDownloadedDetails>()
+    private val _onChunkDownloaded = MutableSharedFlow<ChunkDownloadedDetails>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val onChunkDownloaded: SharedFlow<ChunkDownloadedDetails> = _onChunkDownloaded.asSharedFlow()
 
-    private val _onChunkUploaded = MutableSharedFlow<ChunkUploadedDetails>()
+    private val _onChunkUploaded = MutableSharedFlow<ChunkUploadedDetails>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val onChunkUploaded: SharedFlow<ChunkUploadedDetails> = _onChunkUploaded.asSharedFlow()
 
     private val _onTrackerError = MutableSharedFlow<TrackerErrorDetails>()
@@ -59,17 +65,17 @@ class P2PEventRegistry internal constructor(
     private val _onTrackerWarning = MutableSharedFlow<TrackerWarningDetails>()
     val onTrackerWarning: SharedFlow<TrackerWarningDetails> = _onTrackerWarning.asSharedFlow()
 
-    internal fun emitSegmentLoaded(d: SegmentLoadDetails) = coreScope.launch { _onSegmentLoaded.emit(d) }
-    internal fun emitSegmentStart(d: SegmentStartDetails) = coreScope.launch { _onSegmentStart.emit(d) }
-    internal fun emitSegmentError(d: SegmentErrorDetails) = coreScope.launch { _onSegmentError.emit(d) }
-    internal fun emitSegmentAbort(d: SegmentAbortDetails) = coreScope.launch { _onSegmentAbort.emit(d) }
-    internal fun emitPeerConnect(d: PeerDetails) = coreScope.launch { _onPeerConnect.emit(d) }
-    internal fun emitPeerClose(d: PeerDetails) = coreScope.launch { _onPeerClose.emit(d) }
-    internal fun emitPeerError(d: PeerErrorDetails) = coreScope.launch { _onPeerError.emit(d) }
-    internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = coreScope.launch { _onChunkDownloaded.emit(d) }
-    internal fun emitChunkUploaded(d: ChunkUploadedDetails) = coreScope.launch { _onChunkUploaded.emit(d) }
-    internal fun emitTrackerError(d: TrackerErrorDetails) = coreScope.launch { _onTrackerError.emit(d) }
-    internal fun emitTrackerWarning(d: TrackerWarningDetails) = coreScope.launch { _onTrackerWarning.emit(d) }
+    internal fun emitSegmentLoaded(details: SegmentLoadDetails) = _onSegmentLoaded.tryEmit(details)
+    internal fun emitSegmentStart(details: SegmentStartDetails) = _onSegmentStart.tryEmit(details)
+    internal fun emitSegmentError(details: SegmentErrorDetails) = _onSegmentError.tryEmit(details)
+    internal fun emitSegmentAbort(details: SegmentAbortDetails) = _onSegmentAbort.tryEmit(details)
+    internal fun emitPeerConnect(details: PeerDetails) = _onPeerConnect.tryEmit(details)
+    internal fun emitPeerClose(details: PeerDetails) = _onPeerClose.tryEmit(details)
+    internal fun emitPeerError(details: PeerErrorDetails) = _onPeerError.tryEmit(details)
+    internal fun emitChunkDownloaded(details: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(details)
+    internal fun emitChunkUploaded(details: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(details)
+    internal fun emitTrackerError(details: TrackerErrorDetails) = _onTrackerError.tryEmit(details)
+    internal fun emitTrackerWarning(details: TrackerWarningDetails) = _onTrackerWarning.tryEmit(details)
 
     internal val flowsWithNames = listOf(
         "onSegmentLoaded" to _onSegmentLoaded,
@@ -105,8 +111,8 @@ class P2PEventRegistry internal constructor(
     }
 
     internal fun syncEarlySubscriptions() {
-        if (!isCoreActive()) return
         val engine = engineManagerProvider() ?: return
+        if (!isCoreActive()) return
 
         flowsWithNames.forEach { (eventName, flow) ->
             if (flow.subscriptionCount.value > 0) {
