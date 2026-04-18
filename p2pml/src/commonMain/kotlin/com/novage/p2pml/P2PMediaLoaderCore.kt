@@ -2,18 +2,8 @@ package com.novage.p2pml
 
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.ChunkDownloadedDetails
-import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.PeerDetails
-import com.novage.p2pml.api.models.PeerErrorDetails
-import com.novage.p2pml.api.models.SegmentAbortDetails
-import com.novage.p2pml.api.models.SegmentErrorDetails
-import com.novage.p2pml.api.models.SegmentLoadDetails
-import com.novage.p2pml.api.models.SegmentStartDetails
-import com.novage.p2pml.api.models.TrackerErrorDetails
-import com.novage.p2pml.api.models.TrackerWarningDetails
 import com.novage.p2pml.api.models.toJsExpression
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
@@ -30,10 +20,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
