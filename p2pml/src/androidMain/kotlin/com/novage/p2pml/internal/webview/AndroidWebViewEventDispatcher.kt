@@ -34,7 +34,6 @@ internal class AndroidWebViewEventDispatcher(
         events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
 
-    @Suppress("CyclomaticComplexMethod")
     @JavascriptInterface
     fun postMessage(message: String) {
         try {
@@ -51,18 +50,7 @@ internal class AndroidWebViewEventDispatcher(
                 return
             }
 
-            when (envelope.type) {
-                "onSegmentLoaded" -> events.emitSegmentLoaded(json.decodeFromJsonElement(payload))
-                "onSegmentStart" -> events.emitSegmentStart(json.decodeFromJsonElement(payload))
-                "onSegmentError" -> events.emitSegmentError(json.decodeFromJsonElement(payload))
-                "onSegmentAbort" -> events.emitSegmentAbort(json.decodeFromJsonElement(payload))
-                "onPeerConnect" -> events.emitPeerConnect(json.decodeFromJsonElement(payload))
-                "onPeerClose" -> events.emitPeerClose(json.decodeFromJsonElement(payload))
-                "onPeerError" -> events.emitPeerError(json.decodeFromJsonElement(payload))
-                "onTrackerError" -> events.emitTrackerError(json.decodeFromJsonElement(payload))
-                "onTrackerWarning" -> events.emitTrackerWarning(json.decodeFromJsonElement(payload))
-                else -> logger.w { "Unknown message type received from WebView: ${envelope.type}" }
-            }
+            events.dispatchEventFromJsonElement(envelope.type, payload, json)
         } catch (e: SerializationException) {
             logger.e { "Failed to parse WebView JSON message: ${e.message}. Raw message: $message" }
         } catch (e: IllegalArgumentException) {

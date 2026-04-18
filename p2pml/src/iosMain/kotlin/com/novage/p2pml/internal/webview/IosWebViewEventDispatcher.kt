@@ -4,7 +4,7 @@ import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.decodeFromNSDictionary
+import com.novage.p2pml.internal.utils.dictionaryToJson
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
@@ -56,23 +56,12 @@ internal class IosWebViewEventDispatcher(
         events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
 
-    @Suppress("CyclomaticComplexMethod")
     private fun handleComplexEvent(type: String, body: NSDictionary) {
         val payloadDict = body.objectForKey("payload") as? NSDictionary ?: return
 
         try {
-            when (type) {
-                "onSegmentLoaded" -> events.emitSegmentLoaded(json.decodeFromNSDictionary(payloadDict))
-                "onSegmentStart" -> events.emitSegmentStart(json.decodeFromNSDictionary(payloadDict))
-                "onSegmentAbort" -> events.emitSegmentAbort(json.decodeFromNSDictionary(payloadDict))
-                "onSegmentError" -> events.emitSegmentError(json.decodeFromNSDictionary(payloadDict))
-                "onPeerConnect" -> events.emitPeerConnect(json.decodeFromNSDictionary(payloadDict))
-                "onPeerClose" -> events.emitPeerClose(json.decodeFromNSDictionary(payloadDict))
-                "onPeerError" -> events.emitPeerError(json.decodeFromNSDictionary(payloadDict))
-                "onTrackerError" -> events.emitTrackerError(json.decodeFromNSDictionary(payloadDict))
-                "onTrackerWarning" -> events.emitTrackerWarning(json.decodeFromNSDictionary(payloadDict))
-                else -> logger.w { "Unknown message type received from WebView: $type" }
-            }
+            val jsonString = dictionaryToJson(payloadDict).toString()
+            events.dispatchEventFromJsonString(type, jsonString, json)
         } catch (e: SerializationException) {
             logger.e { "Failed to deserialize NSDictionary payload for '$type': ${e.message}" }
         } catch (e: IllegalArgumentException) {
