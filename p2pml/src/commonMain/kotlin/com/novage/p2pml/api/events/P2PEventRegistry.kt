@@ -11,6 +11,7 @@ import com.novage.p2pml.api.models.SegmentStartDetails
 import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
 import com.novage.p2pml.internal.engine.P2PEngine
+import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,61 +20,87 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 
 class P2PEventRegistry internal constructor(
     private val coreScope: CoroutineScope,
     private val engineManagerProvider: () -> P2PEngine?,
     private val isCoreActive: () -> Boolean
 ) {
-    private fun <T> createFlow(capacity: Int = 64) = MutableSharedFlow<T>(
-        extraBufferCapacity = capacity,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val logger = CoreLogger("P2PEventRegistry")
 
-    private val _onSegmentLoaded = createFlow<SegmentLoadDetails>()
+    private val dispatchersElement = mutableMapOf<String, (JsonElement, Json) -> Unit>()
+    private val dispatchersString = mutableMapOf<String, (String, Json) -> Unit>()
+
+    private inline fun <reified T> createAndRegisterFlow(eventName: String, capacity: Int = 64): MutableSharedFlow<T> {
+        val flow = MutableSharedFlow<T>(
+            extraBufferCapacity = capacity,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+        dispatchersElement[eventName] = { payload, json ->
+            flow.tryEmit(json.decodeFromJsonElement<T>(payload))
+        }
+        dispatchersString[eventName] = { payloadStr, json ->
+            flow.tryEmit(json.decodeFromString<T>(payloadStr))
+        }
+        return flow
+    }
+
+    private val _onSegmentLoaded = createAndRegisterFlow<SegmentLoadDetails>("onSegmentLoaded")
     val onSegmentLoaded = _onSegmentLoaded.asSharedFlow()
 
-    private val _onSegmentStart = createFlow<SegmentStartDetails>()
+    private val _onSegmentStart = createAndRegisterFlow<SegmentStartDetails>("onSegmentStart")
     val onSegmentStart = _onSegmentStart.asSharedFlow()
 
-    private val _onSegmentError = createFlow<SegmentErrorDetails>()
+    private val _onSegmentError = createAndRegisterFlow<SegmentErrorDetails>("onSegmentError")
     val onSegmentError = _onSegmentError.asSharedFlow()
 
-    private val _onSegmentAbort = createFlow<SegmentAbortDetails>()
+    private val _onSegmentAbort = createAndRegisterFlow<SegmentAbortDetails>("onSegmentAbort")
     val onSegmentAbort = _onSegmentAbort.asSharedFlow()
 
-    private val _onPeerConnect = createFlow<PeerDetails>()
+    private val _onPeerConnect = createAndRegisterFlow<PeerDetails>("onPeerConnect")
     val onPeerConnect = _onPeerConnect.asSharedFlow()
 
-    private val _onPeerClose = createFlow<PeerDetails>()
+    private val _onPeerClose = createAndRegisterFlow<PeerDetails>("onPeerClose")
     val onPeerClose = _onPeerClose.asSharedFlow()
 
-    private val _onPeerError = createFlow<PeerErrorDetails>()
+    private val _onPeerError = createAndRegisterFlow<PeerErrorDetails>("onPeerError")
     val onPeerError = _onPeerError.asSharedFlow()
 
-    private val _onTrackerError = createFlow<TrackerErrorDetails>()
+    private val _onTrackerError = createAndRegisterFlow<TrackerErrorDetails>("onTrackerError")
     val onTrackerError = _onTrackerError.asSharedFlow()
 
-    private val _onTrackerWarning = createFlow<TrackerWarningDetails>()
+    private val _onTrackerWarning = createAndRegisterFlow<TrackerWarningDetails>("onTrackerWarning")
     val onTrackerWarning = _onTrackerWarning.asSharedFlow()
 
-    private val _onChunkDownloaded = createFlow<ChunkDownloadedDetails>(capacity = 256)
+    private val _onChunkDownloaded = createAndRegisterFlow<ChunkDownloadedDetails>("onChunkDownloaded", capacity = 256)
     val onChunkDownloaded = _onChunkDownloaded.asSharedFlow()
 
-    private val _onChunkUploaded = createFlow<ChunkUploadedDetails>(capacity = 256)
+    private val _onChunkUploaded = createAndRegisterFlow<ChunkUploadedDetails>("onChunkUploaded", capacity = 256)
     val onChunkUploaded = _onChunkUploaded.asSharedFlow()
 
-    internal fun emitSegmentLoaded(d: SegmentLoadDetails) = _onSegmentLoaded.tryEmit(d)
-    internal fun emitSegmentStart(d: SegmentStartDetails) = _onSegmentStart.tryEmit(d)
-    internal fun emitSegmentError(d: SegmentErrorDetails) = _onSegmentError.tryEmit(d)
-    internal fun emitSegmentAbort(d: SegmentAbortDetails) = _onSegmentAbort.tryEmit(d)
-    internal fun emitPeerConnect(d: PeerDetails) = _onPeerConnect.tryEmit(d)
-    internal fun emitPeerClose(d: PeerDetails) = _onPeerClose.tryEmit(d)
-    internal fun emitPeerError(d: PeerErrorDetails) = _onPeerError.tryEmit(d)
     internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
     internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
-    internal fun emitTrackerError(d: TrackerErrorDetails) = _onTrackerError.tryEmit(d)
-    internal fun emitTrackerWarning(d: TrackerWarningDetails) = _onTrackerWarning.tryEmit(d)
+
+    internal fun dispatchEventFromJsonElement(eventName: String, payload: JsonElement, json: Json) {
+        val dispatcher = dispatchersElement[eventName]
+        if (dispatcher != null) {
+            dispatcher.invoke(payload, json)
+        } else {
+            logger.w { "No dispatcher found for event: $eventName" }
+        }
+    }
+
+    internal fun dispatchEventFromJsonString(eventName: String, payload: String, json: Json) {
+        val dispatcher = dispatchersString[eventName]
+        if (dispatcher != null) {
+            dispatcher.invoke(payload, json)
+        } else {
+            logger.w { "No dispatcher found for event: $eventName" }
+        }
+    }
 
     internal val flowsWithNames = listOf(
         "onSegmentLoaded" to _onSegmentLoaded,
