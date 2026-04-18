@@ -5,7 +5,6 @@ import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.dictionaryToJson
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage
