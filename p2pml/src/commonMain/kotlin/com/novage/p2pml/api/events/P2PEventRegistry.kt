@@ -30,14 +30,11 @@ class P2PEventRegistry internal constructor(
     private val isCoreActive: () -> Boolean
 ) {
     private val logger = CoreLogger("P2PEventRegistry")
-    
+
     private val dispatchersElement = mutableMapOf<String, (JsonElement, Json) -> Unit>()
     private val dispatchersString = mutableMapOf<String, (String, Json) -> Unit>()
 
-    private inline fun <reified T> createAndRegisterFlow(
-        eventName: String,
-        capacity: Int = 64
-    ): MutableSharedFlow<T> {
+    private inline fun <reified T> createAndRegisterFlow(eventName: String, capacity: Int = 64): MutableSharedFlow<T> {
         val flow = MutableSharedFlow<T>(
             extraBufferCapacity = capacity,
             onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -149,4 +146,3 @@ class P2PEventRegistry internal constructor(
         }
     }
 }
-
