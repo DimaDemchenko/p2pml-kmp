@@ -59,15 +59,11 @@ internal class IosWebViewEventDispatcher(
     private fun handleComplexEvent(type: String, body: NSDictionary) {
         val payloadDict = body.objectForKey("payload") as? NSDictionary ?: return
 
-        try {
+        runCatching {
             val jsonString = dictionaryToJson(payloadDict).toString()
             events.dispatchEventFromJsonString(type, jsonString, json)
-        } catch (e: SerializationException) {
-            logger.e { "Failed to deserialize NSDictionary payload for '$type': ${e.message}" }
-        } catch (e: IllegalArgumentException) {
-            logger.e { "Invalid argument in NSDictionary payload for '$type': ${e.message}" }
-        } catch (e: ClassCastException) {
-            logger.e { "Type cast failed for NSDictionary payload in '$type': ${e.message}" }
+        }.onFailure { e ->
+            logger.e { "Failed to process complex event '$type': ${e.message}" }
         }
     }
 }
