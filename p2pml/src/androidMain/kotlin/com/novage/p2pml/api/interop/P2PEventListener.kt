@@ -11,6 +11,7 @@ import com.novage.p2pml.api.models.SegmentStartDetails
 import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
 
+@JvmDefaultWithCompatibility
 interface P2PEventListener {
     fun onSegmentLoaded(details: SegmentLoadDetails) {}
     fun onSegmentStart(details: SegmentStartDetails) {}
