@@ -26,11 +26,10 @@ class P2PEventRegistry internal constructor(
     private val engineManagerProvider: () -> P2PEngine?,
     private val isCoreActive: () -> Boolean
 ) {
-    private fun <T> createFlow(capacity: Int = 64) = 
-        MutableSharedFlow<T>(
-            extraBufferCapacity = capacity, 
-            onBufferOverflow = BufferOverflow.DROP_OLDEST
-        )
+    private fun <T> createFlow(capacity: Int = 64) = MutableSharedFlow<T>(
+        extraBufferCapacity = capacity,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     private val _onSegmentLoaded = createFlow<SegmentLoadDetails>()
     val onSegmentLoaded = _onSegmentLoaded.asSharedFlow()
