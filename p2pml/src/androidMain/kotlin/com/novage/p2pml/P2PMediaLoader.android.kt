@@ -32,7 +32,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     private fun startInternal(provider: PlaybackProvider) {
         initialize(provider) {
             AndroidWebViewFactory(context).createHeadlessWebView(
-                eventEmitter = eventEmitter,
+                events = events,
                 onWebViewLoaded = ::onWebViewLoaded,
                 onWebViewError = ::failInitialization
             )

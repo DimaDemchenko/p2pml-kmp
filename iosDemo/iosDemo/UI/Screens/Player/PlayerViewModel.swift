@@ -9,7 +9,7 @@ class PlayerViewModel: ObservableObject {
     @Published var player: AVPlayer? = nil
 
     private var p2pLoader: P2PMediaLoader? = nil
-    private var eventSubscriptions: [P2PML.Cancellable] = []
+    private var eventTasks: [Task<Void, Never>] = []
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
     private var shouldAutoPlay = true
@@ -189,23 +189,31 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func setupP2PEvents(_ loader: P2PMediaLoader) {
-        eventSubscriptions.append(loader.onChunkDownloaded { [weak self] details in
-            guard let self = self else { return }
-            self.uiState.totalDownloaded += Int64(details.bytesLength)
-            if details.downloadSource == "p2p" {
-                self.uiState.p2pDownloaded += Int64(details.bytesLength)
-            } else {
-                self.uiState.httpDownloaded += Int64(details.bytesLength)
+        eventTasks.append(Task { [weak self] in
+            for await details in loader.events.onChunkDownloaded {
+                guard let self = self else { return }
+                self.uiState.totalDownloaded += Int64(details.bytesLength)
+                if details.downloadSource == "p2p" {
+                    self.uiState.p2pDownloaded += Int64(details.bytesLength)
+                } else {
+                    self.uiState.httpDownloaded += Int64(details.bytesLength)
+                }
             }
         })
-        eventSubscriptions.append(loader.onChunkUploaded { [weak self] details in
-            self?.uiState.uploadTotal += Int64(details.bytesLength)
+        eventTasks.append(Task { [weak self] in
+            for await details in loader.events.onChunkUploaded {
+                self?.uiState.uploadTotal += Int64(details.bytesLength)
+            }
         })
-        eventSubscriptions.append(loader.onPeerConnect { [weak self] _ in
-            self?.uiState.peerCount += 1
+        eventTasks.append(Task { [weak self] in
+            for await _ in loader.events.onPeerConnect {
+                self?.uiState.peerCount += 1
+            }
         })
-        eventSubscriptions.append(loader.onPeerClose { [weak self] _ in
-            self?.uiState.peerCount = max(0, (self?.uiState.peerCount ?? 1) - 1)
+        eventTasks.append(Task { [weak self] in
+            for await _ in loader.events.onPeerClose {
+                self?.uiState.peerCount = max(0, (self?.uiState.peerCount ?? 1) - 1)
+            }
         })
     }
 
@@ -236,11 +244,15 @@ class PlayerViewModel: ObservableObject {
     func releaseResources() {
         player?.pause()
         playerItemObserver?.invalidate()
+
         playerItemObserver = nil
         player = nil
-        eventSubscriptions.forEach { $0.cancel() }
-        eventSubscriptions.removeAll()
+
+        eventTasks.forEach { $0.cancel() }
+        eventTasks.removeAll()
+
         p2pLoader?.release()
+        
         p2pLoader = nil
     }
 }

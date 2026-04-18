@@ -1,26 +1,12 @@
 package com.novage.p2pml
 
-import com.novage.p2pml.api.interfaces.Cancellable
+import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.ChunkDownloadedDetails
-import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.PeerDetails
-import com.novage.p2pml.api.models.PeerErrorDetails
-import com.novage.p2pml.api.models.SegmentAbortDetails
-import com.novage.p2pml.api.models.SegmentErrorDetails
-import com.novage.p2pml.api.models.SegmentLoadDetails
-import com.novage.p2pml.api.models.SegmentStartDetails
-import com.novage.p2pml.api.models.TrackerErrorDetails
-import com.novage.p2pml.api.models.TrackerWarningDetails
 import com.novage.p2pml.api.models.toJsExpression
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
-import com.novage.p2pml.internal.events.CoreEventEmitter
-import com.novage.p2pml.internal.events.CoreEventMap
-import com.novage.p2pml.internal.events.EventEmitter
-import com.novage.p2pml.internal.events.EventListener
 import com.novage.p2pml.internal.server.ServerModule
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -58,7 +44,6 @@ abstract class P2PMediaLoaderCore(
 
     private val logger = CoreLogger("P2PMediaLoaderCore")
     private val urlFactory = LocalUrlFactory()
-    internal val eventEmitter: CoreEventEmitter = EventEmitter()
     internal var engineManager: P2PEngine? = null
     private var coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -68,6 +53,9 @@ abstract class P2PMediaLoaderCore(
     private var startJob: Job? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
+    var events: P2PEventRegistry =
+        P2PEventRegistry(coreScope, { engineManager }, { status.value == LoaderStatus.ACTIVE })
+        private set
     private var pendingDynamicConfig: DynamicCoreConfig? = null
 
     internal fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
@@ -182,15 +170,8 @@ abstract class P2PMediaLoaderCore(
             uploadUrl = urlFactory.buildUploadUrl()
         )
 
-        val subscribedEvents = eventEmitter.getSubscribedEventNames()
-        if (subscribedEvents.isNotEmpty()) {
-            logger.d { "Subscribing to events: $subscribedEvents" }
-            subscribedEvents.forEach { eventName ->
-                engine.subscribeToP2PEvent(eventName)
-            }
-        }
-
         status.value = LoaderStatus.ACTIVE
+        events.syncEarlySubscriptions()
 
         pendingDynamicConfig?.let {
             logger.i { "Applying cached pending dynamic config..." }
@@ -221,8 +202,6 @@ abstract class P2PMediaLoaderCore(
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
-        eventEmitter.removeAllListeners()
-
         val jobToCancel = startJob
         startJob = null
         jobToCancel?.cancel()
@@ -239,6 +218,7 @@ abstract class P2PMediaLoaderCore(
 
         val scopeToCancel = coreScope
         coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        events = P2PEventRegistry(coreScope, { engineManager }, { status.value == LoaderStatus.ACTIVE })
 
         scopeToCancel.launch {
             try {
@@ -263,44 +243,4 @@ abstract class P2PMediaLoaderCore(
             }
         }
     }
-
-    private fun <T> registerListener(event: CoreEventMap<T>, block: (T) -> Unit): Cancellable {
-        val listener = EventListener<T> { block(it) }
-        val isFirstListener = !eventEmitter.hasListeners(event)
-
-        eventEmitter.addEventListener(event, listener)
-
-        if (status.value == LoaderStatus.ACTIVE && isFirstListener) {
-            engineManager?.subscribeToP2PEvent(event.eventName)
-        }
-
-        return object : Cancellable {
-            override fun cancel() {
-                eventEmitter.removeEventListener(event, listener)
-
-                val isNowEmpty = !eventEmitter.hasListeners(event)
-                if (status.value == LoaderStatus.ACTIVE && isNowEmpty) {
-                    engineManager?.unsubscribeFromP2PEvent(event.eventName)
-                }
-            }
-        }
-    }
-
-    fun onSegmentLoaded(block: (SegmentLoadDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentLoaded, block)
-    fun onSegmentStart(block: (SegmentStartDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentStart, block)
-    fun onSegmentError(block: (SegmentErrorDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentError, block)
-    fun onSegmentAbort(block: (SegmentAbortDetails) -> Unit) = registerListener(CoreEventMap.OnSegmentAbort, block)
-
-    fun onPeerConnect(block: (PeerDetails) -> Unit) = registerListener(CoreEventMap.OnPeerConnect, block)
-    fun onPeerClose(block: (PeerDetails) -> Unit) = registerListener(CoreEventMap.OnPeerClose, block)
-    fun onPeerError(block: (PeerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnPeerError, block)
-
-    fun onChunkDownloaded(block: (ChunkDownloadedDetails) -> Unit) =
-        registerListener(CoreEventMap.OnChunkDownloaded, block)
-
-    fun onChunkUploaded(block: (ChunkUploadedDetails) -> Unit) = registerListener(CoreEventMap.OnChunkUploaded, block)
-
-    fun onTrackerError(block: (TrackerErrorDetails) -> Unit) = registerListener(CoreEventMap.OnTrackerError, block)
-    fun onTrackerWarning(block: (TrackerWarningDetails) -> Unit) =
-        registerListener(CoreEventMap.OnTrackerWarning, block)
 }

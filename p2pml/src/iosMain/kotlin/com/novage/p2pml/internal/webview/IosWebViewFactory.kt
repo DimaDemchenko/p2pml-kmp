@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.webview
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.internal.events.CoreEventEmitter
+import com.novage.p2pml.api.events.P2PEventRegistry
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
@@ -20,14 +20,14 @@ import platform.darwin.dispatch_get_main_queue
 
 internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
-        eventEmitter: CoreEventEmitter,
+        events: P2PEventRegistry,
         onWebViewLoaded: () -> Unit,
         onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
-    ): HeadlessWebView = IosHeadlessWebView(eventEmitter, onWebViewLoaded, onWebViewError)
+    ): HeadlessWebView = IosHeadlessWebView(events, onWebViewLoaded, onWebViewError)
 }
 
 private class IosHeadlessWebView(
-    private val eventEmitter: CoreEventEmitter,
+    private val events: P2PEventRegistry,
     private val onWebViewLoaded: () -> Unit,
     private val onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
 ) : HeadlessWebView {
@@ -45,7 +45,7 @@ private class IosHeadlessWebView(
     private fun initWebView() {
         val configuration = WKWebViewConfiguration()
 
-        val scriptMessageHandler = IosWebViewEventDispatcher(eventEmitter) { onWebViewLoaded() }
+        val scriptMessageHandler = IosWebViewEventDispatcher(events) { onWebViewLoaded() }
         configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
 
         val preferences = WKPreferences()

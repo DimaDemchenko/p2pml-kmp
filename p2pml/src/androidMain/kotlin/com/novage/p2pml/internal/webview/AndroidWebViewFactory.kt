@@ -10,19 +10,19 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.internal.events.CoreEventEmitter
+import com.novage.p2pml.api.events.P2PEventRegistry
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
-        eventEmitter: CoreEventEmitter,
+        events: P2PEventRegistry,
         onWebViewLoaded: () -> Unit,
         onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
-    ): HeadlessWebView = AndroidHeadlessWebView(context, eventEmitter, onWebViewLoaded, onWebViewError)
+    ): HeadlessWebView = AndroidHeadlessWebView(context, events, onWebViewLoaded, onWebViewError)
 }
 
 private class AndroidHeadlessWebView(
     context: Context,
-    eventEmitter: CoreEventEmitter,
+    events: P2PEventRegistry,
     private val onWebViewLoaded: () -> Unit,
     private val onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
 ) : HeadlessWebView {
@@ -56,7 +56,7 @@ private class AndroidHeadlessWebView(
         }
 
         val dispatcher = AndroidWebViewEventDispatcher(
-            eventEmitter = eventEmitter,
+            events = events,
             onPageReady = onWebViewLoaded
         )
 
