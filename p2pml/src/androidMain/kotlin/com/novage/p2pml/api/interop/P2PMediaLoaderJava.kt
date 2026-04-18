@@ -32,7 +32,7 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
      *         });
      *     }
      * });
-     * 
+     *
      * // Later, when you want to stop listening and avoid leaks:
      * try {
      *     subscription.close();
