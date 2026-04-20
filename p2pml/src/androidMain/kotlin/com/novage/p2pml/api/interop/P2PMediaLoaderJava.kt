@@ -5,6 +5,7 @@ import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.api.models.PlaybackInfo
 import java.lang.AutoCloseable
+import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,7 +13,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.future.future
-import java.util.concurrent.CompletableFuture
 
 class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -63,18 +63,14 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
-    fun start(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void> {
-        return scope.future {
-            loader.start(getPlaybackInfo)
-            null as Void
-        }
+    fun start(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void> = scope.future {
+        loader.start(getPlaybackInfo)
+        null as Void
     }
 
-    fun start(exoPlayer: ExoPlayer): CompletableFuture<Void> {
-        return scope.future {
-            loader.start(exoPlayer)
-            null as Void
-        }
+    fun start(exoPlayer: ExoPlayer): CompletableFuture<Void> = scope.future {
+        loader.start(exoPlayer)
+        null as Void
     }
 
     fun getManifestUrl(manifestUrl: String): String = loader.getManifestUrl(manifestUrl)

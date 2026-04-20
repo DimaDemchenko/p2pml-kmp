@@ -1,18 +1,16 @@
 package com.novage.p2pml
 
 import com.novage.p2pml.api.models.CoreConfig
-import kotlinx.coroutines.CancellationException
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
+import kotlinx.coroutines.CancellationException
 
-class P2PMediaLoader(
-    coreConfig: CoreConfig = CoreConfig(),
-    customEngineUrl: String? = null
-) : P2PMediaLoaderCore(
-    coreConfig,
-    customEngineUrl
-) {
+class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) :
+    P2PMediaLoaderCore(
+        coreConfig,
+        customEngineUrl
+    ) {
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
