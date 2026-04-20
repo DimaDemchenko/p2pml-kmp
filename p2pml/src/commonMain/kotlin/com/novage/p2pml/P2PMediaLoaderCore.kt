@@ -211,15 +211,15 @@ abstract class P2PMediaLoaderCore(
         val providerToReset = playbackProvider
         playbackProvider = null
 
-        val serverToDestroy = serverModule
-        serverModule = null
-
         pendingDynamicConfig = null
         urlFactory.setPort(-1)
 
         coreScope.launch {
             try {
                 jobToCancel?.join()
+
+                val serverToDestroy = serverModule
+                serverModule = null
 
                 runCatching { serverToDestroy?.destroy() }
                     .onFailure { logger.e(it) { "Error destroying server module: ${it.message}" } }
