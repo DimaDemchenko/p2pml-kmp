@@ -24,7 +24,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING }
+private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
 abstract class P2PMediaLoaderCore(
     private val onReady: () -> Unit,
@@ -45,7 +45,7 @@ abstract class P2PMediaLoaderCore(
     private val logger = CoreLogger("P2PMediaLoaderCore")
     private val urlFactory = LocalUrlFactory()
     internal var engineManager: P2PEngine? = null
-    private var coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var serverModule: ServerModule? = null
     private var playbackProvider: PlaybackProvider? = null
@@ -53,9 +53,8 @@ abstract class P2PMediaLoaderCore(
     private var startJob: Job? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
-    var events: P2PEventRegistry =
+    val events: P2PEventRegistry =
         P2PEventRegistry(coreScope, { engineManager }, { status.value == LoaderStatus.ACTIVE })
-        private set
     private var pendingDynamicConfig: DynamicCoreConfig? = null
 
     internal fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
@@ -87,7 +86,7 @@ abstract class P2PMediaLoaderCore(
                 urlFactory = urlFactory,
                 enableCors = customEngineUrl != null,
                 onError = { errorType, message ->
-                    if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                    if (status.value == LoaderStatus.INITIALIZING || status.value == LoaderStatus.ACTIVE) {
                         when (errorType) {
                             P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
                             else -> onError(errorType, message)
@@ -95,7 +94,7 @@ abstract class P2PMediaLoaderCore(
                     }
                 },
                 onServerStarted = { port ->
-                    if (status.value != LoaderStatus.RELEASING && status.value != LoaderStatus.IDLE) {
+                    if (status.value == LoaderStatus.INITIALIZING || status.value == LoaderStatus.ACTIVE) {
                         logger.i { "Local P2P Server started on port: $port" }
                         urlFactory.setPort(port)
                         onServerReady()
@@ -143,8 +142,8 @@ abstract class P2PMediaLoaderCore(
                 engineManager?.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
             }
 
-            LoaderStatus.RELEASING -> {
-                logger.w { "Ignored dynamic config request. Core is currently releasing." }
+            LoaderStatus.RELEASING, LoaderStatus.RELEASED -> {
+                logger.w { "Ignored dynamic config request. Core is currently in state ${status.value}." }
             }
         }
     }
@@ -213,14 +212,9 @@ abstract class P2PMediaLoaderCore(
         playbackProvider = null
 
         pendingDynamicConfig = null
-
         urlFactory.setPort(-1)
 
-        val scopeToCancel = coreScope
-        coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-        events = P2PEventRegistry(coreScope, { engineManager }, { status.value == LoaderStatus.ACTIVE })
-
-        scopeToCancel.launch {
+        coreScope.launch {
             try {
                 jobToCancel?.join()
 
@@ -236,10 +230,10 @@ abstract class P2PMediaLoaderCore(
                 runCatching { providerToReset?.resetData() }
                     .onFailure { logger.e(it) { "Error resetting playback provider: ${it.message}" } }
 
-                status.value = LoaderStatus.IDLE
+                status.value = LoaderStatus.RELEASED
                 logger.d { "Release complete." }
             } finally {
-                scopeToCancel.cancel()
+                coreScope.cancel()
             }
         }
     }
