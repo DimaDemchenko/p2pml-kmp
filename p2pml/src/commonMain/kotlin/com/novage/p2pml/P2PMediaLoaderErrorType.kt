@@ -30,3 +30,11 @@ enum class P2PMediaLoaderErrorType {
      */
     ENGINE_STARTUP_ERROR
 }
+
+/**
+ * Exception thrown when the P2P Media Loader fails to initialize.
+ */
+class P2PMediaLoaderException(
+    val type: P2PMediaLoaderErrorType,
+    message: String
+) : Exception(message)

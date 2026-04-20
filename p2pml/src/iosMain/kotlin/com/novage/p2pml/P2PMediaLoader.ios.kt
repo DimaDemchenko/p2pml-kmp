@@ -1,18 +1,15 @@
 package com.novage.p2pml
 
 import com.novage.p2pml.api.models.CoreConfig
+import kotlinx.coroutines.CancellationException
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
 
 class P2PMediaLoader(
-    onReady: () -> Unit,
-    onError: (P2PMediaLoaderErrorType, String) -> Unit,
     coreConfig: CoreConfig = CoreConfig(),
     customEngineUrl: String? = null
 ) : P2PMediaLoaderCore(
-    onReady = onReady,
-    onError = onError,
     coreConfig,
     customEngineUrl
 ) {
@@ -22,14 +19,15 @@ class P2PMediaLoader(
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 
-    fun start(getPlaybackInfo: () -> PlaybackInfo) {
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
+    suspend fun start(getPlaybackInfo: () -> PlaybackInfo) {
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
 
-        initialize(provider) {
+        start(provider) { onLoaded, onError ->
             IosWebViewFactory().createHeadlessWebView(
                 events = events,
-                onWebViewLoaded = ::onWebViewLoaded,
-                onWebViewError = ::failInitialization
+                onWebViewLoaded = onLoaded,
+                onWebViewError = onError
             )
         }
     }

@@ -22,13 +22,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
 abstract class P2PMediaLoaderCore(
-    private val onReady: () -> Unit,
-    private val onError: (P2PMediaLoaderErrorType, String) -> Unit,
     private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
 ) {
@@ -57,23 +59,69 @@ abstract class P2PMediaLoaderCore(
         P2PEventRegistry(coreScope, { engineManager }, { status.value == LoaderStatus.ACTIVE })
     private var pendingDynamicConfig: DynamicCoreConfig? = null
 
-    internal fun initialize(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView) {
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
+    internal suspend fun start(
+        provider: PlaybackProvider,
+        webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
+    ) {
         if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
-            logger.w { "Initialization skipped: Core is already in state ${status.value}" }
-            return
+            val message = "Initialization skipped: Core is already in state ${status.value}"
+            logger.w { message }
+            throw IllegalStateException(message)
         }
 
         logger.d { "Initializing P2PMediaLoaderCore..." }
         this.playbackProvider = provider
 
-        val webView = webViewFactory()
-        val engine = P2PEngineManager(webView)
-        this.engineManager = engine
+        suspendCancellableCoroutine<Unit> { continuation ->
+            continuation.invokeOnCancellation {
+                logger.w { "Core initialization cancelled. Releasing resources." }
+                release()
+            }
 
-        startLocalServer(provider, engine)
+            val onLoaded = {
+                val engine = engineManager
+                if (engine == null) {
+                    val msg = "WebView loaded but engineManager is null."
+                    logger.w { msg }
+                    if (continuation.isActive) continuation.resumeWithException(IllegalStateException(msg))
+                } else {
+                    logger.i { "WebView loaded. Initializing Core JS Engine." }
+                    engine.initCoreEngine(
+                        coreConfig = coreConfig.toJsExpression(),
+                        uploadUrl = urlFactory.buildUploadUrl()
+                    )
+                    status.value = LoaderStatus.ACTIVE
+                    events.syncEarlySubscriptions()
+
+                    pendingDynamicConfig?.let {
+                        logger.i { "Applying cached pending dynamic config..." }
+                        engine.applyDynamicConfig(it.toJsExpression())
+                        pendingDynamicConfig = null
+                    }
+                    if (continuation.isActive) continuation.resume(Unit)
+                }
+            }
+
+            val onError = { errorType: P2PMediaLoaderErrorType, message: String ->
+                logger.e { "Initialization failed: $message" }
+                release()
+                if (continuation.isActive) continuation.resumeWithException(P2PMediaLoaderException(errorType, message))
+            }
+
+            val webView = webViewFactory(onLoaded, onError)
+            val engine = P2PEngineManager(webView)
+            this.engineManager = engine
+
+            startLocalServer(provider, engine, onError)
+        }
     }
 
-    private fun startLocalServer(provider: PlaybackProvider, engine: P2PEngine) {
+    private fun startLocalServer(
+        provider: PlaybackProvider,
+        engine: P2PEngine,
+        onStartupError: (P2PMediaLoaderErrorType, String) -> Unit
+    ) {
         startJob = coreScope.launch {
             if (!isActive) {
                 logger.d { "Start job cancelled before execution. Aborting server start." }
@@ -88,8 +136,8 @@ abstract class P2PMediaLoaderCore(
                 onError = { errorType, message ->
                     if (status.value == LoaderStatus.INITIALIZING || status.value == LoaderStatus.ACTIVE) {
                         when (errorType) {
-                            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> failInitialization(errorType, message)
-                            else -> onError(errorType, message)
+                            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR -> onStartupError(errorType, message)
+                            else -> logger.e { "Server module runtime error: $errorType - $message" }
                         }
                     }
                 },
@@ -154,37 +202,6 @@ abstract class P2PMediaLoaderCore(
         val engineFileUrl = customEngineUrl ?: urlFactory.buildStaticPageUrl()
         logger.d { "Loading P2P Engine from: $engineFileUrl" }
         engine.loadUrl(engineFileUrl)
-    }
-
-    protected fun onWebViewLoaded() {
-        val engine = engineManager ?: run {
-            logger.w { "WebView loaded but engineManager is null." }
-            return
-        }
-
-        logger.i { "WebView loaded. Initializing Core JS Engine." }
-
-        engine.initCoreEngine(
-            coreConfig = coreConfig.toJsExpression(),
-            uploadUrl = urlFactory.buildUploadUrl()
-        )
-
-        status.value = LoaderStatus.ACTIVE
-        events.syncEarlySubscriptions()
-
-        pendingDynamicConfig?.let {
-            logger.i { "Applying cached pending dynamic config..." }
-            engine.applyDynamicConfig(it.toJsExpression())
-            pendingDynamicConfig = null
-        }
-
-        onReady()
-    }
-
-    protected fun failInitialization(errorType: P2PMediaLoaderErrorType, message: String) {
-        logger.e { "Initialization failed: $message" }
-        onError(errorType, message)
-        release()
     }
 
     open fun release() {

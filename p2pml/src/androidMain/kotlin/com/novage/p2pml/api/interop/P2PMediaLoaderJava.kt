@@ -11,6 +11,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.future.future
+import java.util.concurrent.CompletableFuture
 
 class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -61,9 +63,19 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
-    fun start(getPlaybackInfo: () -> PlaybackInfo) = loader.start(getPlaybackInfo)
+    fun start(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void> {
+        return scope.future {
+            loader.start(getPlaybackInfo)
+            null as Void
+        }
+    }
 
-    fun start(exoPlayer: ExoPlayer) = loader.start(exoPlayer)
+    fun start(exoPlayer: ExoPlayer): CompletableFuture<Void> {
+        return scope.future {
+            loader.start(exoPlayer)
+            null as Void
+        }
+    }
 
     fun getManifestUrl(manifestUrl: String): String = loader.getManifestUrl(manifestUrl)
 
