@@ -34,33 +34,34 @@ class PlayerViewModel: ObservableObject {
             .build()
 
         let loader = P2PMediaLoader(
-            onReady: { [weak self] in
-                guard let self = self else { return }
-                let p2pUrl = self.p2pLoader?.getManifestUrl(manifestUrl: manifestUrl) ?? manifestUrl
-                self.startPlayback(url: p2pUrl)
-                self.uiState.isP2PActive = true
-            },
-            onError: { [weak self] errorType, errorMessage in
-                self?.handleP2PError(errorMessage: errorMessage, originalUrl: manifestUrl)
-            },
             coreConfig: coreConfig,
             customEngineUrl: customEngineUrl
         )
 
         setupP2PEvents(loader)
-
-        loader.start(getPlaybackInfo: { [weak self] in
-            guard let validPlayer = self?.player else {
-                return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
-            }
-            let currentSeconds = CMTimeGetSeconds(validPlayer.currentTime())
-            return PlaybackInfo(
-                currentPlayPosition: currentSeconds.isNaN ? 0.0 : currentSeconds,
-                currentPlaybackSpeed: Float(validPlayer.rate)
-            )
-        })
-
         self.p2pLoader = loader
+
+        Task { [weak self] in
+            guard let self = self else { return }
+            do {
+                try await loader.start(getPlaybackInfo: { [weak self] in
+                    guard let validPlayer = self?.player else {
+                        return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
+                    }
+                    let currentSeconds = CMTimeGetSeconds(validPlayer.currentTime())
+                    return PlaybackInfo(
+                        currentPlayPosition: currentSeconds.isNaN ? 0.0 : currentSeconds,
+                        currentPlaybackSpeed: Float(validPlayer.rate)
+                    )
+                })
+
+                let p2pUrl = self.p2pLoader?.getManifestUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                self.startPlayback(url: p2pUrl)
+                self.uiState.isP2PActive = true
+            } catch let error as NSError {
+                self.handleP2PError(errorMessage: error.localizedDescription, originalUrl: manifestUrl)
+            }
+        }
     }
 
     private func handleP2PError(errorMessage: String, originalUrl: String) {
