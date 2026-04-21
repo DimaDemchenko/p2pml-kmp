@@ -68,7 +68,7 @@ abstract class P2PMediaLoaderCore(
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
                 val message = "Initialization skipped: Core is already in state ${status.value}"
                 logger.w { message }
-                throw IllegalStateException(message)
+                throw P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, message)
             }
 
             logger.d { "Initializing P2PMediaLoaderCore..." }
@@ -85,7 +85,7 @@ abstract class P2PMediaLoaderCore(
                     if (engine == null) {
                         val msg = "WebView loaded but engineManager is null."
                         logger.w { msg }
-                        if (continuation.isActive) continuation.resumeWithException(IllegalStateException(msg))
+                        if (continuation.isActive) continuation.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
                     } else {
                         logger.i { "WebView loaded. Initializing Core JS Engine." }
                         engine.initCoreEngine(
