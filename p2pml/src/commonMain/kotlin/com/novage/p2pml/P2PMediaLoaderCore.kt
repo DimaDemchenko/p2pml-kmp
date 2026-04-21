@@ -73,7 +73,7 @@ abstract class P2PMediaLoaderCore(
         logger.d { "Initializing P2PMediaLoaderCore..." }
         this.playbackProvider = provider
 
-        suspendCancellableCoroutine<Unit> { continuation ->
+        suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation {
                 logger.w { "Core initialization cancelled. Releasing resources." }
                 release()

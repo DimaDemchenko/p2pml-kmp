@@ -63,14 +63,14 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
-    fun start(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void> = scope.future {
+    fun start(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void?> = scope.future {
         loader.start(getPlaybackInfo)
-        null as Void
+        null
     }
 
-    fun start(exoPlayer: ExoPlayer): CompletableFuture<Void> = scope.future {
+    fun start(exoPlayer: ExoPlayer): CompletableFuture<Void?> = scope.future {
         loader.start(exoPlayer)
-        null as Void
+        null
     }
 
     fun getManifestUrl(manifestUrl: String): String = loader.getManifestUrl(manifestUrl)

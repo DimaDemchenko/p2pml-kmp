@@ -154,8 +154,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             handleP2PError(e.type, e.message ?: "Unknown Error", manifestUrl)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            Log.e("PlayerViewModel", "Unexpected error starting P2PMediaLoader", e)
         }
     }
 
