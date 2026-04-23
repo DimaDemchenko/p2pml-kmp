@@ -1,6 +1,5 @@
 package com.novage.p2pml.internal.server.routes
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.parser.encoding.decodeFromUrlSafeBase64
 import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
@@ -11,6 +10,7 @@ import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.server.utils.respondFallback
 import com.novage.p2pml.internal.server.utils.respondVideoSegment
 import com.novage.p2pml.internal.utils.CoreLogger
+import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -23,16 +23,19 @@ import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 
 private val logger = CoreLogger("SegmentRoute")
+private const val P2P_ENGINE_TIMEOUT_MS = 30_000L
 
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
     parser: HlsManifestManager,
-    onError: (P2PMediaLoaderErrorType, String) -> Unit
+    errorDispatcher: RuntimeErrorDispatcher
 ) {
-    segmentDownloadRoute(httpClient, segmentService, parser, onError)
+    segmentDownloadRoute(httpClient, segmentService, parser, errorDispatcher)
     segmentUploadRoute(segmentService)
 }
 
@@ -40,7 +43,7 @@ private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
     parser: HlsManifestManager,
-    onError: (P2PMediaLoaderErrorType, String) -> Unit
+    errorDispatcher: RuntimeErrorDispatcher
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
@@ -57,7 +60,7 @@ private fun Route.segmentDownloadRoute(
 
         if (!parser.isCurrentSegment(segmentUrl)) {
             logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
-            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
             return@get
         }
 
@@ -67,28 +70,28 @@ private fun Route.segmentDownloadRoute(
             deferred = segmentService.createOrReplaceRequest(segmentUrl)
 
             logger.d { "Waiting for segment data from p2p engine for: $segmentUrl" }
-            val bytes = deferred.await()
-            logger.d { "Serving ${bytes.size} bytes to Player for: $segmentUrl" }
 
+            val bytes = withTimeout(P2P_ENGINE_TIMEOUT_MS) {
+                deferred.await()
+            }
+
+            logger.d { "Serving ${bytes.size} bytes to Player for: $segmentUrl" }
             call.respondVideoSegment(bytes, byteRange)
+        } catch (_: TimeoutCancellationException) {
+            logger.w { "P2P Engine timed out providing segment. Falling back to HTTP." }
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
         } catch (_: SegmentReplacedException) {
             logger.i { "Request replaced. Terminating old request." }
             call.respond(HttpStatusCode.RequestTimeout)
         } catch (_: TooManyRetriesException) {
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
         } catch (e: SegmentProcessingException) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, onError, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
         } catch (_: SegmentAbortedException) {
-            logger.w {
-                "P2P Engine aborted segment (Abandoned by ABR/Seek). " +
-                    "Terminating cleanly without ghost fallback."
-            }
+            logger.w { "P2P Engine aborted segment (Abandoned by ABR/Seek). Terminating cleanly." }
             call.respond(HttpStatusCode.RequestTimeout)
-        } catch (_: CancellationException) {
-            logger.i { "Request cancelled (Service Reset). Terminating connection." }
-            call.respond(HttpStatusCode.ServiceUnavailable)
         } finally {
             if (deferred?.isActive == true) {
                 logger.d { "Cleaning up active request." }
@@ -117,25 +120,22 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
                 deferredSegment.completeExceptionally(
                     SegmentAbortedException("Segment aborted - $segmentId")
                 )
-                segmentService.removeRequest(segmentId)
             } else {
                 logger.w { "Error processing segment: $segmentId - $error" }
                 deferredSegment.completeExceptionally(
                     SegmentProcessingException("Error processing segment - $segmentId - $error")
                 )
-                segmentService.removeRequest(segmentId)
             }
+
+            segmentService.removeRequest(segmentId)
 
             call.respond(HttpStatusCode.OK)
             return@post
         }
 
         val segmentBytes = call.receiveChannel().toByteArray()
-
         logger.i { "Received segment bytes for $segmentId (Size: ${segmentBytes.size} bytes)" }
-
         segmentService.completeRequest(segmentId, segmentBytes)
-
         call.respond(HttpStatusCode.OK)
     }
 }

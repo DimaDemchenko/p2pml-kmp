@@ -3,13 +3,13 @@ package com.novage.p2pml.demo.ui.screens.player
 import android.app.Application
 import android.content.Context
 import android.os.Looper
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import android.util.Log
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -152,8 +152,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             _uiState.update { it.copy(isP2PActive = true) }
         } catch (e: P2PMediaLoaderException) {
             handleP2PError(e.type, e.message ?: "Unknown Error", manifestUrl)
-        } catch (e: CancellationException) {
-            throw e
         }
     }
 

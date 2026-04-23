@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.server.utils
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
@@ -16,8 +17,6 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 private val EXCLUDED_PROXY_HEADERS =
@@ -46,8 +45,6 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
 }
 
 internal suspend fun HttpClient.fetchSegment(call: ApplicationCall, segmentUrl: String): ByteArray {
-    // If the URL contains a pipe '|', the part after is the byte range.
-    // We strip it for the actual HTTP request, as the range header handles the rest.
     val cleanUrl = segmentUrl.substringBeforeLast("|")
 
     val response = this.get(cleanUrl) {
@@ -83,7 +80,7 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteR
 internal suspend fun ApplicationCall.respondFallback(
     httpClient: HttpClient,
     segmentUrl: String,
-    onError: (P2PMediaLoaderErrorType, String) -> Unit,
+    errorDispatcher: RuntimeErrorDispatcher,
     byteRangeHeader: String?
 ) {
     try {
@@ -91,23 +88,19 @@ internal suspend fun ApplicationCall.respondFallback(
         respondVideoSegment(bytes, byteRangeHeader)
     } catch (e: ResponseException) {
         val status = e.response.status
-        withContext(Dispatchers.Main) {
-            onError(
-                P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
-                "Fallback failed (HTTP $status) for: [$segmentUrl]"
-            )
-        }
 
+        errorDispatcher.tryEmit(
+            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+            "Fallback failed (HTTP $status) for: [$segmentUrl]"
+        )
         respond(HttpStatusCode.BadGateway, "Upstream error: $status")
     } catch (e: IOException) {
         val errorDetail = e.message ?: "Connection lost"
-        withContext(Dispatchers.Main) {
-            onError(
-                P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
-                "Fallback network failure: $errorDetail for: [$segmentUrl]"
-            )
-        }
 
+        errorDispatcher.tryEmit(
+            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
+            "Fallback network failure: $errorDetail for: [$segmentUrl]"
+        )
         respond(HttpStatusCode.BadGateway, "Network failure: $errorDetail")
     }
 }

@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.server
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.http.createHttpClient
@@ -12,12 +13,11 @@ import com.novage.p2pml.internal.server.routes.configureRoutes
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
+import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 internal class ServerModule(
@@ -25,14 +25,14 @@ internal class ServerModule(
     engineManager: P2PEngine,
     urlFactory: LocalUrlFactory,
     private val enableCors: Boolean,
-    private val onServerStarted: (serverPort: Int) -> Unit,
-    private val onError: (errorType: P2PMediaLoaderErrorType, message: String) -> Unit
+    private val errorDispatcher: RuntimeErrorDispatcher
 ) {
     private val logger = CoreLogger("ServerModule")
 
     private val client = createHttpClient()
     private val hlsManifestManager = HlsManifestManager(playbackProvider, urlFactory)
-    private val sequenceStateTracker = SequenceStateTracker(playbackProvider, engineManager, hlsManifestManager)
+    private val sequenceStateTracker =
+        SequenceStateTracker(playbackProvider, engineManager, hlsManifestManager, errorDispatcher)
 
     private val manifestService = ManifestService(hlsManifestManager, engineManager) {
         logger.d { "Resetting playback and parser state" }
@@ -45,10 +45,16 @@ internal class ServerModule(
 
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
-    suspend fun start() {
+    @Suppress("ThrowsCount")
+    suspend fun start(): Int {
         if (server != null) {
-            logger.w { "Server is already running. Ignoring start request." }
-            return
+            val port = server?.engine?.resolvedConnectors()?.firstOrNull()?.port
+                ?: throw P2PMediaLoaderException(
+                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                    "Server running but port unknown."
+                )
+            logger.w { "Server is already running on port $port." }
+            return port
         }
 
         logger.d { "Starting local P2P Server..." }
@@ -56,38 +62,44 @@ internal class ServerModule(
         try {
             val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
                 if (enableCors) configureCORS()
-                configureRoutes(client, manifestService, hlsManifestManager, segmentService, onError)
+                configureRoutes(client, manifestService, hlsManifestManager, segmentService, errorDispatcher)
             }
             server = serverInstance
 
             serverInstance.start(wait = false)
 
             val assignedPort = serverInstance.engine.resolvedConnectors().firstOrNull()?.port
-                ?: error("Server started but failed to retrieve assigned port")
+            checkNotNull(assignedPort) { "Server started but failed to retrieve assigned port" }
 
             logger.i { "Server successfully bound to port: $assignedPort" }
-
-            withContext(Dispatchers.Main) {
-                onServerStarted(assignedPort)
-            }
+            return assignedPort
         } catch (e: IOException) {
             server?.stop()
             server = null
-            withContext(Dispatchers.Main) {
-                onError(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                    "Network Error starting server: ${e.message}"
-                )
-            }
+
+            throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                "Network Error starting server: ${e.message}",
+                e
+            )
         } catch (e: IllegalStateException) {
             server?.stop()
             server = null
-            withContext(Dispatchers.Main) {
-                onError(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                    "Invalid server state: ${e.message}"
-                )
-            }
+
+            throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                "Invalid server state: ${e.message}",
+                e
+            )
+        } catch (e: IllegalArgumentException) {
+            server?.stop()
+            server = null
+
+            throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                "Invalid server configuration: ${e.message}",
+                e
+            )
         }
     }
 
