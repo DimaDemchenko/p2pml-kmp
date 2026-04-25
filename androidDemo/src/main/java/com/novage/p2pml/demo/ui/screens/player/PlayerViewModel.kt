@@ -25,7 +25,6 @@ import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
 import com.novage.p2pml.demo.ui.screens.player.utils.getAvailableTracks
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive

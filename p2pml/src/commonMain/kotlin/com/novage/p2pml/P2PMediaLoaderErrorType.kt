@@ -32,7 +32,10 @@ enum class P2PMediaLoaderErrorType {
 }
 
 /**
- * Exception thrown when the P2P Media Loader fails to initialize.
+ * Exception thrown when the P2P Media Loader encounters a startup or runtime failure.
+ *
+ * This exception is used for initialization problems as well as manifest, segment download,
+ * and engine runtime errors. Inspect [type] to determine the specific failure category.
  */
 class P2PMediaLoaderException(val type: P2PMediaLoaderErrorType, message: String, cause: Throwable? = null) :
     Exception(message, cause)
