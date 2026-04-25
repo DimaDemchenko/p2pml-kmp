@@ -31,7 +31,7 @@ import kotlinx.coroutines.withTimeout
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
-abstract class P2PMediaLoaderCore(
+internal class P2PMediaLoaderCore(
     private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
 ) {
@@ -206,7 +206,7 @@ abstract class P2PMediaLoaderCore(
         }
     }
 
-    open fun release() {
+    fun release() {
         while (true) {
             val current = status.value
             if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) return

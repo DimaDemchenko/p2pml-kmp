@@ -9,15 +9,21 @@ import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
 import kotlinx.coroutines.CancellationException
+import com.novage.p2pml.api.models.DynamicCoreConfig
 
 class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,
     coreConfig: CoreConfig = CoreConfig(),
     customEngineUrl: String? = null
-) : P2PMediaLoaderCore(
-    coreConfig = coreConfig,
-    customEngineUrl = customEngineUrl
 ) {
+    private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+
+    val events get() = core.events
+    val fatalErrors get() = core.fatalErrors
+
+    fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
+    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
+    fun release() = core.release()
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
@@ -31,11 +37,10 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
-    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        start(DefaultPlaybackProvider(getPlaybackInfo)) { onLoaded, onError ->
+        core.start(DefaultPlaybackProvider(getPlaybackInfo)) { onLoaded, onError ->
             AndroidWebViewFactory(context).createHeadlessWebView(
-                events = events,
+                events = core.events,
                 onWebViewLoaded = onLoaded,
                 onWebViewError = onError
             )
@@ -49,11 +54,10 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
-    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun start(exoPlayer: ExoPlayer) {
-        start(ExoPlayerPlaybackProvider(exoPlayer)) { onLoaded, onError ->
+        core.start(ExoPlayerPlaybackProvider(exoPlayer)) { onLoaded, onError ->
             AndroidWebViewFactory(context).createHeadlessWebView(
-                events = events,
+                events = core.events,
                 onWebViewLoaded = onLoaded,
                 onWebViewError = onError
             )
