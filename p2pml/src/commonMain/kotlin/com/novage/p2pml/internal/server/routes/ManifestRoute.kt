@@ -13,6 +13,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import kotlinx.io.IOException
+import kotlinx.serialization.SerializationException
 
 private val logger = CoreLogger("ManifestRoute")
 
@@ -67,6 +68,14 @@ internal fun Route.registerManifestRoute(
                 "Invalid manifest format. Parser failed: ${e.message}"
             )
             call.respondText("Invalid manifest state", status = HttpStatusCode.InternalServerError)
+        } catch (e: SerializationException) {
+            logger.e(e) { "Serialization crashed on manifest [$manifestUrl]" }
+
+            errorDispatcher.tryEmit(
+                P2PMediaLoaderErrorType.MANIFEST_PARSE_ERROR,
+                "Manifest serialization failed: ${e.message}"
+            )
+            call.respondText("Invalid manifest serialization", status = HttpStatusCode.InternalServerError)
         }
     }
 }
