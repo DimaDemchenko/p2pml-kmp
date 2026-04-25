@@ -1,6 +1,8 @@
 package com.novage.p2pml.internal.webview
 
 import com.novage.p2pml.api.events.P2PEventRegistry
+import com.novage.p2pml.api.models.ChunkDownloadedDetails
+import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
