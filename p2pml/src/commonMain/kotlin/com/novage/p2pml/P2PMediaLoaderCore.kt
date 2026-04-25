@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -88,8 +89,16 @@ abstract class P2PMediaLoaderCore(
                 logger.e { "Initialization failed: ${e.message}" }
                 release()
                 throw e
+            } catch (e: TimeoutCancellationException) {
+                logger.e { "Initialization timed out waiting for WebView." }
+                release()
+                throw P2PMediaLoaderException(
+                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                    "WebView initialization timed out",
+                    e
+                )
             } catch (e: CancellationException) {
-                logger.d { "Initialization cancelled by coroutine scope or timeout." }
+                logger.d { "Initialization cancelled by coroutine scope." }
                 release()
                 throw e
             } catch (e: IllegalStateException) {
