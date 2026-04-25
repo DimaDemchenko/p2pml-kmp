@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.io.IOException
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
@@ -229,13 +230,27 @@ internal class P2PMediaLoaderCore(
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                runCatching { serverToDestroy?.destroy() }
-                runCatching { engineToDestroy?.destroy() }
-                runCatching { providerToReset?.resetData() }
+                safeTeardown("server") { serverToDestroy?.destroy() }
+                safeTeardown("engine") { engineToDestroy?.destroy() }
+                safeTeardown("provider") { providerToReset?.resetData() }
             } finally {
                 status.value = LoaderStatus.RELEASED
                 logger.d { "Release complete." }
             }
+        }
+    }
+
+    private suspend fun safeTeardown(name: String, action: suspend () -> Unit) {
+        try {
+            action()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            logger.e { "IO Error during $name teardown: ${e.message}" }
+        } catch (e: IllegalStateException) {
+            logger.e { "State Error during $name teardown: ${e.message}" }
+        } catch (e: IllegalArgumentException) {
+            logger.e { "Arg Error during $name teardown: ${e.message}" }
         }
     }
 }

@@ -159,7 +159,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         when (type) {
             P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR -> {
+            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+            P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR -> {
                 startPlayback(exoPlayer, originalUrl)
 
                 _uiState.update {
