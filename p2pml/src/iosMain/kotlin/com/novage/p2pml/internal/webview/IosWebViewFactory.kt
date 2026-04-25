@@ -37,7 +37,7 @@ private class IosHeadlessWebView(
     private var navigationDelegate: NavigationDelegate? = null
 
     init {
-        initWebView()
+        runOnMainThread { initWebView() }
     }
 
     private inline fun runOnMainThread(crossinline block: () -> Unit) {
