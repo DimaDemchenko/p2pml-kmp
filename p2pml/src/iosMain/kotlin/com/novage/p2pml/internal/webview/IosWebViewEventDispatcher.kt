@@ -14,26 +14,31 @@ import platform.darwin.NSObject
 
 internal class IosWebViewEventDispatcher(
     private val events: P2PEventRegistry,
-    private val json: Json = Json { ignoreUnknownKeys = true },
-    private val onPageReady: (() -> Unit)? = null
+    json: Json = Json { ignoreUnknownKeys = true },
+    onPageReady: (() -> Unit)? = null
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 
     private val logger = CoreLogger("IosWebViewEventDispatcher")
+    private val router = WebViewMessageRouter(events, json, onPageReady)
 
     override fun userContentController(
         userContentController: WKUserContentController,
         didReceiveScriptMessage: WKScriptMessage
     ) {
         val body = didReceiveScriptMessage.body as? NSDictionary ?: return
-        val type = body.objectForKey("type") as? String ?: return
+        val type = body.objectForKey("type") as? String
 
-        when (type) {
-            "onWebViewLoaded" -> onPageReady?.invoke()
-            "onChunkDownloaded" -> handleChunkDownloaded(body)
-            "onChunkUploaded" -> handleChunkUploaded(body)
-            else -> handleComplexEvent(type, body)
+        if (type == "onChunkDownloaded") {
+            handleChunkDownloaded(body)
+            return
+        } else if (type == "onChunkUploaded") {
+            handleChunkUploaded(body)
+            return
         }
+
+        val jsonString = dictionaryToJson(body).toString()
+        router.handleMessage(jsonString)
     }
 
     private fun handleChunkDownloaded(body: NSDictionary) {
@@ -42,9 +47,7 @@ internal class IosWebViewEventDispatcher(
         val downloadSource = payload.objectForKey("downloadSource") as? String ?: return
         val peerId = payload.objectForKey("peerId") as? String
 
-        events.emitChunkDownloaded(
-            ChunkDownloadedDetails(bytesLength, downloadSource, peerId)
-        )
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, downloadSource, peerId))
     }
 
     private fun handleChunkUploaded(body: NSDictionary) {
@@ -53,16 +56,5 @@ internal class IosWebViewEventDispatcher(
         val peerId = payload.objectForKey("peerId") as? String ?: return
 
         events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
-    }
-
-    private fun handleComplexEvent(type: String, body: NSDictionary) {
-        val payloadDict = body.objectForKey("payload") as? NSDictionary ?: return
-
-        runCatching {
-            val jsonString = dictionaryToJson(payloadDict).toString()
-            events.dispatchEventFromJsonString(type, jsonString, json)
-        }.onFailure { e ->
-            logger.e { "Failed to process complex event '$type': ${e.message}" }
-        }
     }
 }

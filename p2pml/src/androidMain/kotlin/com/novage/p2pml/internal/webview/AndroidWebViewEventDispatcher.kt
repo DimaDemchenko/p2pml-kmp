@@ -6,22 +6,17 @@ import android.webkit.JavascriptInterface
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.internal.utils.CoreLogger
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-
-@Serializable
-internal data class JsEventEnvelope(val type: String, val payload: JsonElement? = null)
 
 internal class AndroidWebViewEventDispatcher(
     private val events: P2PEventRegistry,
-    private val json: Json = Json { ignoreUnknownKeys = true },
-    private val onPageReady: (() -> Unit)? = null
+    json: Json = Json { ignoreUnknownKeys = true },
+    onPageReady: (() -> Unit)? = null
 ) {
-    private val logger = CoreLogger("AndroidWebViewEventDispatcher")
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val router = WebViewMessageRouter(events, json) {
+        mainHandler.post { onPageReady?.invoke() }
+    }
 
     @JavascriptInterface
     fun onChunkDownloaded(bytesLength: Int, downloadSource: String, peerId: String?) {
@@ -35,25 +30,6 @@ internal class AndroidWebViewEventDispatcher(
 
     @JavascriptInterface
     fun postMessage(message: String) {
-        try {
-            val envelope = json.decodeFromString<JsEventEnvelope>(message)
-
-            if (envelope.type == "onWebViewLoaded") {
-                mainHandler.post { onPageReady?.invoke() }
-                return
-            }
-
-            val payload = envelope.payload
-            if (payload == null) {
-                logger.w { "Received message of type '${envelope.type}' without a payload. Raw message: $message" }
-                return
-            }
-
-            events.dispatchEventFromJsonElement(envelope.type, payload, json)
-        } catch (e: SerializationException) {
-            logger.e { "Failed to parse WebView JSON message: ${e.message}. Raw message: $message" }
-        } catch (e: IllegalArgumentException) {
-            logger.e { "Invalid argument in WebView JSON message: ${e.message}. Raw message: $message" }
-        }
+        router.handleMessage(message)
     }
 }
