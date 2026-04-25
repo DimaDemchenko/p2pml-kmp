@@ -28,7 +28,12 @@ enum class P2PMediaLoaderErrorType {
     /**
      * The internal proxy server failed to start.
      */
-    ENGINE_STARTUP_ERROR
+    ENGINE_STARTUP_ERROR,
+
+    /**
+     * The P2P Media Loader was accessed before initialization completed.
+     */
+    CORE_NOT_INITIALIZED_ERROR
 }
 
 /**

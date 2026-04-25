@@ -183,10 +183,13 @@ abstract class P2PMediaLoaderCore(
         }.launchIn(coreScope)
     }
 
+    @Throws(P2PMediaLoaderException::class)
     fun getManifestUrl(manifestUrl: String): String {
         if (status.value != LoaderStatus.ACTIVE) {
-            logger.e { "Core not ACTIVE. Returning original URL." }
-            return manifestUrl
+            throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
+                "P2PMediaLoader is not ready. Current state: ${status.value}"
+            )
         }
         return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
     }
