@@ -3,7 +3,6 @@ package com.novage.p2pml.internal.webview
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.dictionaryToJson
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
@@ -19,7 +18,6 @@ internal class IosWebViewEventDispatcher(
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 
-    private val logger = CoreLogger("IosWebViewEventDispatcher")
     private val router = WebViewMessageRouter(events, json, onPageReady)
 
     override fun userContentController(

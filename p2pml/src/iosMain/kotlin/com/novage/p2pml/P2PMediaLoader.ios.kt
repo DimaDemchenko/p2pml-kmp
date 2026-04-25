@@ -1,11 +1,11 @@
 package com.novage.p2pml
 
 import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
 import kotlinx.coroutines.CancellationException
-import com.novage.p2pml.api.models.DynamicCoreConfig
 
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
@@ -18,7 +18,7 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
-    
+
     fun release() = core.release()
 
     companion object {
