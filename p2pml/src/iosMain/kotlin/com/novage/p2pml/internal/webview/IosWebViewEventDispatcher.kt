@@ -25,7 +25,7 @@ internal class IosWebViewEventDispatcher(
         didReceiveScriptMessage: WKScriptMessage
     ) {
         val body = didReceiveScriptMessage.body as? NSDictionary ?: return
-        val type = body.objectForKey("type") as? String
+        val type = body.objectForKey("type") as? String ?: return
 
         if (type == "onChunkDownloaded") {
             handleChunkDownloaded(body)

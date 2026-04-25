@@ -9,6 +9,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -63,8 +64,8 @@ internal class WebViewMessageRouter(
     private fun handleChunkDownloaded(payload: JsonElement?) {
         val obj = payload as? JsonObject ?: return
         val bytesLength = obj["bytesLength"]?.jsonPrimitive?.intOrNull ?: return
-        val downloadSource = obj["downloadSource"]?.jsonPrimitive?.content ?: return
-        val peerId = obj["peerId"]?.jsonPrimitive?.content
+        val downloadSource = obj["downloadSource"]?.jsonPrimitive?.contentOrNull ?: return
+        val peerId = obj["peerId"]?.jsonPrimitive?.contentOrNull
 
         events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, downloadSource, peerId))
     }
@@ -72,7 +73,7 @@ internal class WebViewMessageRouter(
     private fun handleChunkUploaded(payload: JsonElement?) {
         val obj = payload as? JsonObject ?: return
         val bytesLength = obj["bytesLength"]?.jsonPrimitive?.intOrNull ?: return
-        val peerId = obj["peerId"]?.jsonPrimitive?.content ?: return
+        val peerId = obj["peerId"]?.jsonPrimitive?.contentOrNull ?: return
 
         events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
     }
