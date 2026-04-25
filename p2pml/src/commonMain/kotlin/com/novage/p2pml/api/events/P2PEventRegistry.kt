@@ -31,74 +31,78 @@ class P2PEventRegistry internal constructor(
 ) {
     private val logger = CoreLogger("P2PEventRegistry")
 
-    private val dispatchersElement = mutableMapOf<String, (JsonElement, Json) -> Unit>()
-    private val dispatchersString = mutableMapOf<String, (String, Json) -> Unit>()
+    private fun <T> createFlow(capacity: Int = 64): MutableSharedFlow<T> = MutableSharedFlow(
+        extraBufferCapacity = capacity,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
-    private inline fun <reified T> createAndRegisterFlow(eventName: String, capacity: Int = 64): MutableSharedFlow<T> {
-        val flow = MutableSharedFlow<T>(
-            extraBufferCapacity = capacity,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST
-        )
-        dispatchersElement[eventName] = { payload, json ->
-            flow.tryEmit(json.decodeFromJsonElement<T>(payload))
-        }
-        dispatchersString[eventName] = { payloadStr, json ->
-            flow.tryEmit(json.decodeFromString<T>(payloadStr))
-        }
-        return flow
-    }
-
-    private val _onSegmentLoaded = createAndRegisterFlow<SegmentLoadDetails>("onSegmentLoaded")
+    private val _onSegmentLoaded = createFlow<SegmentLoadDetails>()
     val onSegmentLoaded = _onSegmentLoaded.asSharedFlow()
 
-    private val _onSegmentStart = createAndRegisterFlow<SegmentStartDetails>("onSegmentStart")
+    private val _onSegmentStart = createFlow<SegmentStartDetails>()
     val onSegmentStart = _onSegmentStart.asSharedFlow()
 
-    private val _onSegmentError = createAndRegisterFlow<SegmentErrorDetails>("onSegmentError")
+    private val _onSegmentError = createFlow<SegmentErrorDetails>()
     val onSegmentError = _onSegmentError.asSharedFlow()
 
-    private val _onSegmentAbort = createAndRegisterFlow<SegmentAbortDetails>("onSegmentAbort")
+    private val _onSegmentAbort = createFlow<SegmentAbortDetails>()
     val onSegmentAbort = _onSegmentAbort.asSharedFlow()
 
-    private val _onPeerConnect = createAndRegisterFlow<PeerDetails>("onPeerConnect")
+    private val _onPeerConnect = createFlow<PeerDetails>()
     val onPeerConnect = _onPeerConnect.asSharedFlow()
 
-    private val _onPeerClose = createAndRegisterFlow<PeerDetails>("onPeerClose")
+    private val _onPeerClose = createFlow<PeerDetails>()
     val onPeerClose = _onPeerClose.asSharedFlow()
 
-    private val _onPeerError = createAndRegisterFlow<PeerErrorDetails>("onPeerError")
+    private val _onPeerError = createFlow<PeerErrorDetails>()
     val onPeerError = _onPeerError.asSharedFlow()
 
-    private val _onTrackerError = createAndRegisterFlow<TrackerErrorDetails>("onTrackerError")
+    private val _onTrackerError = createFlow<TrackerErrorDetails>()
     val onTrackerError = _onTrackerError.asSharedFlow()
 
-    private val _onTrackerWarning = createAndRegisterFlow<TrackerWarningDetails>("onTrackerWarning")
+    private val _onTrackerWarning = createFlow<TrackerWarningDetails>()
     val onTrackerWarning = _onTrackerWarning.asSharedFlow()
 
-    private val _onChunkDownloaded = createAndRegisterFlow<ChunkDownloadedDetails>("onChunkDownloaded", capacity = 256)
+    private val _onChunkDownloaded = createFlow<ChunkDownloadedDetails>(capacity = 256)
     val onChunkDownloaded = _onChunkDownloaded.asSharedFlow()
 
-    private val _onChunkUploaded = createAndRegisterFlow<ChunkUploadedDetails>("onChunkUploaded", capacity = 256)
+    private val _onChunkUploaded = createFlow<ChunkUploadedDetails>(capacity = 256)
     val onChunkUploaded = _onChunkUploaded.asSharedFlow()
 
     internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
     internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
 
     internal fun dispatchEventFromJsonElement(eventName: String, payload: JsonElement, json: Json) {
-        val dispatcher = dispatchersElement[eventName]
-        if (dispatcher != null) {
-            dispatcher.invoke(payload, json)
-        } else {
-            logger.w { "No dispatcher found for event: $eventName" }
+        when (eventName) {
+            "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromJsonElement(payload))
+            "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromJsonElement(payload))
+            "onSegmentError" -> _onSegmentError.tryEmit(json.decodeFromJsonElement(payload))
+            "onSegmentAbort" -> _onSegmentAbort.tryEmit(json.decodeFromJsonElement(payload))
+            "onPeerConnect" -> _onPeerConnect.tryEmit(json.decodeFromJsonElement(payload))
+            "onPeerClose" -> _onPeerClose.tryEmit(json.decodeFromJsonElement(payload))
+            "onPeerError" -> _onPeerError.tryEmit(json.decodeFromJsonElement(payload))
+            "onTrackerError" -> _onTrackerError.tryEmit(json.decodeFromJsonElement(payload))
+            "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromJsonElement(payload))
+            "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromJsonElement(payload))
+            "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromJsonElement(payload))
+            else -> logger.w { "No dispatcher found for event: $eventName" }
         }
     }
 
     internal fun dispatchEventFromJsonString(eventName: String, payload: String, json: Json) {
-        val dispatcher = dispatchersString[eventName]
-        if (dispatcher != null) {
-            dispatcher.invoke(payload, json)
-        } else {
-            logger.w { "No dispatcher found for event: $eventName" }
+        when (eventName) {
+            "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromString(payload))
+            "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromString(payload))
+            "onSegmentError" -> _onSegmentError.tryEmit(json.decodeFromString(payload))
+            "onSegmentAbort" -> _onSegmentAbort.tryEmit(json.decodeFromString(payload))
+            "onPeerConnect" -> _onPeerConnect.tryEmit(json.decodeFromString(payload))
+            "onPeerClose" -> _onPeerClose.tryEmit(json.decodeFromString(payload))
+            "onPeerError" -> _onPeerError.tryEmit(json.decodeFromString(payload))
+            "onTrackerError" -> _onTrackerError.tryEmit(json.decodeFromString(payload))
+            "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromString(payload))
+            "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromString(payload))
+            "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromString(payload))
+            else -> logger.w { "No dispatcher found for event: $eventName" }
         }
     }
 

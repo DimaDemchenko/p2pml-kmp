@@ -28,5 +28,19 @@ enum class P2PMediaLoaderErrorType {
     /**
      * The internal proxy server failed to start.
      */
-    ENGINE_STARTUP_ERROR
+    ENGINE_STARTUP_ERROR,
+
+    /**
+     * The P2P Media Loader was accessed before initialization completed.
+     */
+    CORE_NOT_INITIALIZED_ERROR
 }
+
+/**
+ * Exception thrown when the P2P Media Loader encounters a startup or runtime failure.
+ *
+ * This exception is used for initialization problems as well as manifest, segment download,
+ * and engine runtime errors. Inspect [type] to determine the specific failure category.
+ */
+class P2PMediaLoaderException(val type: P2PMediaLoaderErrorType, message: String, cause: Throwable? = null) :
+    Exception(message, cause)

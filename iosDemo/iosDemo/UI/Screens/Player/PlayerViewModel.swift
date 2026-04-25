@@ -34,39 +34,46 @@ class PlayerViewModel: ObservableObject {
             .build()
 
         let loader = P2PMediaLoader(
-            onReady: { [weak self] in
-                guard let self = self else { return }
-                let p2pUrl = self.p2pLoader?.getManifestUrl(manifestUrl: manifestUrl) ?? manifestUrl
-                self.startPlayback(url: p2pUrl)
-                self.uiState.isP2PActive = true
-            },
-            onError: { [weak self] errorType, errorMessage in
-                self?.handleP2PError(errorMessage: errorMessage, originalUrl: manifestUrl)
-            },
             coreConfig: coreConfig,
             customEngineUrl: customEngineUrl
         )
 
         setupP2PEvents(loader)
-
-        loader.start(getPlaybackInfo: { [weak self] in
-            guard let validPlayer = self?.player else {
-                return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
-            }
-            let currentSeconds = CMTimeGetSeconds(validPlayer.currentTime())
-            return PlaybackInfo(
-                currentPlayPosition: currentSeconds.isNaN ? 0.0 : currentSeconds,
-                currentPlaybackSpeed: Float(validPlayer.rate)
-            )
-        })
-
         self.p2pLoader = loader
+
+        Task { [weak self] in
+            guard let self = self else { return }
+            do {
+                try await loader.start(getPlaybackInfo: { [weak self] in
+                    guard let validPlayer = self?.player else {
+                        return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
+                    }
+                    let currentSeconds = CMTimeGetSeconds(validPlayer.currentTime())
+                    return PlaybackInfo(
+                        currentPlayPosition: currentSeconds.isNaN ? 0.0 : currentSeconds,
+                        currentPlaybackSpeed: Float(validPlayer.rate)
+                    )
+                })
+
+                let p2pUrl = self.p2pLoader?.getManifestUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                self.startPlayback(url: p2pUrl)
+                self.uiState.isP2PActive = true
+            } catch let error as P2PMediaLoaderException {
+                self.handleP2PError(type: error.type, errorMessage: error.message ?? "Unknown Error", originalUrl: manifestUrl)
+            } catch {
+                self.handleP2PError(errorMessage: error.localizedDescription, originalUrl: manifestUrl)
+            }
+        }
     }
 
-    private func handleP2PError(errorMessage: String, originalUrl: String) {
-        startPlayback(url: originalUrl)
-        uiState.isP2PActive = false
-        uiState.userMessage = "P2P Engine failed. Switched to HTTP mode."
+    private func handleP2PError(type: P2PMediaLoaderErrorType? = nil, errorMessage: String, originalUrl: String) {
+        if type == .manifestLoadError || type == .manifestParseError {
+            uiState.fatalError = "Video unavailable: \(errorMessage)"
+        } else {
+            startPlayback(url: originalUrl)
+            uiState.isP2PActive = false
+            uiState.userMessage = "P2P Engine failed. Switched to HTTP mode."
+        }
     }
 
     private func startPlayback(url: String) {

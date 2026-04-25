@@ -6,6 +6,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSError
+import platform.Foundation.NSThread
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
 import platform.Foundation.setValue
@@ -36,8 +37,14 @@ private class IosHeadlessWebView(
     private var navigationDelegate: NavigationDelegate? = null
 
     init {
-        dispatch_async(dispatch_get_main_queue()) {
-            initWebView()
+        runOnMainThread { initWebView() }
+    }
+
+    private inline fun runOnMainThread(crossinline block: () -> Unit) {
+        if (NSThread.isMainThread) {
+            block()
+        } else {
+            dispatch_async(dispatch_get_main_queue()) { block() }
         }
     }
 
@@ -67,18 +74,18 @@ private class IosHeadlessWebView(
     }
 
     override fun loadUrl(url: String) {
-        dispatch_async(dispatch_get_main_queue()) {
-            val view = webView ?: return@dispatch_async
+        runOnMainThread {
+            val view = webView ?: return@runOnMainThread
 
-            val nsUrl = NSURL.URLWithString(url) ?: return@dispatch_async
+            val nsUrl = NSURL.URLWithString(url) ?: return@runOnMainThread
             val request = NSURLRequest.requestWithURL(nsUrl)
             view.loadRequest(request)
         }
     }
 
     override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
-        dispatch_async(dispatch_get_main_queue()) {
-            val view = webView ?: return@dispatch_async
+        runOnMainThread {
+            val view = webView ?: return@runOnMainThread
 
             view.evaluateJavaScript(script) { result, error ->
                 if (error == null && result is String) {
@@ -91,8 +98,8 @@ private class IosHeadlessWebView(
     }
 
     override fun destroy() {
-        dispatch_async(dispatch_get_main_queue()) {
-            val view = webView ?: return@dispatch_async
+        runOnMainThread {
+            val view = webView ?: return@runOnMainThread
 
             view.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
             view.stopLoading()

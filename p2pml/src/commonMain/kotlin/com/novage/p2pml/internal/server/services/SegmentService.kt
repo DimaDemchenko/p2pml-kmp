@@ -24,52 +24,67 @@ internal class SegmentService(
         private const val MAX_RETRIES = 4
     }
 
-    suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<ByteArray> = mutex.withLock {
-        val previousState = requests[segmentUrl]
-        val currentAttempts = previousState?.attemptCount ?: 0
+    suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<ByteArray> {
+        val previousDeferred: CompletableDeferred<ByteArray>?
+        val exceptionToThrow: Exception?
+        val isFirstRequest: Boolean
+        val newDeferred = CompletableDeferred<ByteArray>()
 
-        if (currentAttempts >= MAX_RETRIES) {
-            logger.w { "Max retries ($MAX_RETRIES) exceeded for segment: $segmentUrl" }
-            requests.remove(segmentUrl)
-            previousState?.deferred?.completeExceptionally(
-                TooManyRetriesException("Max retries exceeded for segment: $segmentUrl")
-            )
-            throw TooManyRetriesException("Max retries exceeded")
+        mutex.withLock {
+            val previousState = requests[segmentUrl]
+            val currentAttempts = previousState?.attemptCount ?: 0
+
+            if (currentAttempts >= MAX_RETRIES) {
+                logger.w { "Max retries ($MAX_RETRIES) exceeded for segment: $segmentUrl" }
+                requests.remove(segmentUrl)
+
+                previousDeferred = previousState?.deferred
+                exceptionToThrow = TooManyRetriesException("Max retries exceeded for segment: $segmentUrl")
+                isFirstRequest = false
+            } else {
+                if (previousState != null) {
+                    logger.d { "Re-queueing pending download (Attempt ${currentAttempts + 1}) for: $segmentUrl" }
+                    previousDeferred = previousState.deferred
+                    exceptionToThrow = SegmentReplacedException("Segment request replaced by newer one")
+                } else {
+                    logger.d { "Registered pending download for: $segmentUrl" }
+                    previousDeferred = null
+                    exceptionToThrow = null
+                }
+
+                requests[segmentUrl] = RequestState(newDeferred, currentAttempts + 1)
+                isFirstRequest = previousState == null
+            }
         }
 
-        if (previousState != null) {
-            logger.d { "Re-queueing pending download (Attempt ${currentAttempts + 1}) for: $segmentUrl" }
-            previousState.deferred.completeExceptionally(
-                SegmentReplacedException("Segment request replaced by newer one")
-            )
-        } else {
-            logger.d { "Registered pending download for: $segmentUrl" }
+        previousDeferred?.completeExceptionally(
+            exceptionToThrow ?: RuntimeException("Unknown Error")
+        )
+
+        if (exceptionToThrow is TooManyRetriesException) {
+            throw exceptionToThrow
         }
 
-        val deferred = CompletableDeferred<ByteArray>()
-        requests[segmentUrl] = RequestState(deferred, currentAttempts + 1)
-
-        if (previousState == null) {
+        if (isFirstRequest) {
             sequenceStateTracker.onSegmentRequested(segmentUrl)
             p2pEngine.requestSegmentBytes(segmentUrl)
         }
 
-        deferred
+        return newDeferred
     }
 
     suspend fun completeRequest(segmentUrl: String, segmentData: ByteArray) {
-        mutex.withLock {
-            val state = requests[segmentUrl]
-
-            if (state == null) {
-                logger.d { "Received data for unknown/cancelled segment: $segmentUrl. Ignoring." }
-                return
-            }
-
-            logger.d { "Segment bytes received. Resolving pending download for: $segmentUrl" }
-            state.deferred.complete(segmentData)
+        val state = mutex.withLock {
             requests.remove(segmentUrl)
         }
+
+        if (state == null) {
+            logger.d { "Received data for unknown/cancelled segment: $segmentUrl. Ignoring." }
+            return
+        }
+
+        logger.d { "Segment bytes received. Resolving pending download for: $segmentUrl" }
+        state.deferred.complete(segmentData)
     }
 
     suspend fun getPendingRequest(segmentUrl: String): CompletableDeferred<ByteArray>? = mutex.withLock {
@@ -78,9 +93,8 @@ internal class SegmentService(
 
     suspend fun removeRequest(segmentUrl: String) {
         mutex.withLock {
-            if (requests.containsKey(segmentUrl)) {
-                logger.d { "Removing pending download state: $segmentUrl" }
-                requests.remove(segmentUrl)
+            if (requests.remove(segmentUrl) != null) {
+                logger.d { "Removed pending download state: $segmentUrl" }
             }
         }
     }
@@ -97,13 +111,15 @@ internal class SegmentService(
     }
 
     suspend fun reset() {
-        mutex.withLock {
+        val deferredsToCancel = mutex.withLock {
             if (requests.isNotEmpty()) {
                 logger.i { "Resetting service. Cancelling ${requests.size} pending downloads." }
             }
-
-            requests.values.forEach { it.deferred.cancel() }
+            val copy = requests.values.map { it.deferred }
             requests.clear()
+            copy
         }
+
+        deferredsToCancel.forEach { it.cancel() }
     }
 }

@@ -3,38 +3,46 @@ package com.novage.p2pml
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.interop.OnError
-import com.novage.p2pml.api.interop.OnReady
 import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
 import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
+import kotlinx.coroutines.CancellationException
 
 class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,
-    onReady: OnReady,
-    onError: OnError,
     coreConfig: CoreConfig = CoreConfig(),
     customEngineUrl: String? = null
-) : P2PMediaLoaderCore(
-    onReady = { onReady.onReady() },
-    onError = { errorType, message -> onError.onError(errorType, message) },
-    coreConfig = coreConfig,
-    customEngineUrl = customEngineUrl
 ) {
+    private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+
+    val events get() = core.events
+    val fatalErrors get() = core.fatalErrors
+
+    fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
+    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
+    fun release() = core.release()
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 
-    private fun startInternal(provider: PlaybackProvider) {
-        initialize(provider) {
+    /**
+     * Initializes and starts P2P media streaming components.
+     *
+     * @param getPlaybackInfo Function to retrieve playback information
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
+     */
+    suspend fun start(getPlaybackInfo: () -> PlaybackInfo) {
+        core.start(DefaultPlaybackProvider(getPlaybackInfo)) { onLoaded, onError ->
             AndroidWebViewFactory(context).createHeadlessWebView(
-                events = events,
-                onWebViewLoaded = ::onWebViewLoaded,
-                onWebViewError = ::failInitialization
+                events = core.events,
+                onWebViewLoaded = onLoaded,
+                onWebViewError = onError
             )
         }
     }
@@ -42,20 +50,17 @@ class P2PMediaLoader @JvmOverloads constructor(
     /**
      * Initializes and starts P2P media streaming components.
      *
-     * @param getPlaybackInfo Function to retrieve playback information
-     * @throws IllegalStateException if called in an invalid state
-     */
-    fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        startInternal(DefaultPlaybackProvider(getPlaybackInfo))
-    }
-
-    /**
-     * Initializes and starts P2P media streaming components.
-     *
      * @param exoPlayer ExoPlayer instance for media playback
-     * @throws IllegalStateException if called in an invalid state
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
      */
-    fun start(exoPlayer: ExoPlayer) {
-        startInternal(ExoPlayerPlaybackProvider(exoPlayer))
+    suspend fun start(exoPlayer: ExoPlayer) {
+        core.start(ExoPlayerPlaybackProvider(exoPlayer)) { onLoaded, onError ->
+            AndroidWebViewFactory(context).createHeadlessWebView(
+                events = core.events,
+                onWebViewLoaded = onLoaded,
+                onWebViewError = onError
+            )
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.novage.p2pml.demo.ui.screens.player
 import android.app.Application
 import android.content.Context
 import android.os.Looper
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -10,7 +11,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
-import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -18,6 +18,7 @@ import androidx.media3.exoplayer.LoadControl
 import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.models.CoreConfigBuilder
 import com.novage.p2pml.api.models.DynamicCoreConfigBuilder
 import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
@@ -103,7 +104,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         }
     }
 
-    private fun initializeP2PLoader(
+    private suspend fun initializeP2PLoader(
         context: Context,
         exoPlayer: ExoPlayer,
         manifestUrl: String,
@@ -130,26 +131,23 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         val loader = P2PMediaLoader(
             context = context,
             coreConfig = coreConfig,
-            customEngineUrl = customEngineUrl,
-            onReady = {
-                val activeLoader = p2pLoader ?: return@P2PMediaLoader
-                val p2pUrl = try {
-                    activeLoader.getManifestUrl(manifestUrl)
-                } catch (_: IllegalStateException) {
-                    manifestUrl
-                }
-
-                startPlayback(exoPlayer, p2pUrl)
-                _uiState.update { it.copy(isP2PActive = true) }
-            },
-            onError = { type, msg ->
-                handleP2PError(type, msg, manifestUrl)
-            }
+            customEngineUrl = customEngineUrl
         )
 
         setupP2PEvents(loader)
-        loader.start(exoPlayer)
         p2pLoader = loader
+
+        try {
+            loader.start(exoPlayer)
+
+            val activeLoader = p2pLoader ?: return
+            val p2pUrl = activeLoader.getManifestUrl(manifestUrl)
+
+            startPlayback(exoPlayer, p2pUrl)
+            _uiState.update { it.copy(isP2PActive = true) }
+        } catch (e: P2PMediaLoaderException) {
+            handleP2PError(e.type, e.message ?: "Unknown Error", manifestUrl)
+        }
     }
 
     fun onMessageConsumed() {
@@ -161,7 +159,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         when (type) {
             P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR -> {
+            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+            P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR -> {
                 startPlayback(exoPlayer, originalUrl)
 
                 _uiState.update {

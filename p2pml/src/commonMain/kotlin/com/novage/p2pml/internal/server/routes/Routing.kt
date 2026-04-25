@@ -1,23 +1,23 @@
 package com.novage.p2pml.internal.server.routes
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
+import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.server.application.Application
 import io.ktor.server.routing.routing
 
 internal fun Application.configureRoutes(
-    client: HttpClient,
+    httpClient: HttpClient,
     manifestService: ManifestService,
-    manifestParser: HlsManifestManager,
+    hlsManifestManager: HlsManifestManager,
     segmentService: SegmentService,
-    onError: (P2PMediaLoaderErrorType, String) -> Unit
+    errorDispatcher: RuntimeErrorDispatcher
 ) {
     routing {
-        registerManifestRoute(client, manifestService, onError)
-        registerSegmentRoutes(client, segmentService, manifestParser, onError)
         registerWebAssets()
+        registerManifestRoute(httpClient, manifestService, errorDispatcher)
+        registerSegmentRoutes(httpClient, segmentService, hlsManifestManager, errorDispatcher)
     }
 }
