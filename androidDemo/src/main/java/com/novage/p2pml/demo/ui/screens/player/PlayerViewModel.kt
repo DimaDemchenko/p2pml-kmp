@@ -141,11 +141,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             loader.start(exoPlayer)
 
             val activeLoader = p2pLoader ?: return
-            val p2pUrl = try {
-                activeLoader.getManifestUrl(manifestUrl)
-            } catch (_: IllegalStateException) {
-                manifestUrl
-            }
+            val p2pUrl = activeLoader.getManifestUrl(manifestUrl)
 
             startPlayback(exoPlayer, p2pUrl)
             _uiState.update { it.copy(isP2PActive = true) }
