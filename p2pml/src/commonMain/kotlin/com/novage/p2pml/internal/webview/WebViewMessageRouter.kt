@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -54,13 +55,13 @@ internal class WebViewMessageRouter(
             logger.e { "Failed to parse WebView JSON message: ${e.message}. Raw message: $message" }
         } catch (e: IllegalArgumentException) {
             logger.e { "Invalid argument in WebView JSON message: ${e.message}. Raw message: $message" }
+        } catch (e: IllegalStateException) {
+            logger.e { "Invalid state in WebView JSON message: ${e.message}. Raw message: $message" }
         }
     }
 
     private fun handleChunkDownloaded(payload: JsonElement?) {
-        if (payload == null) return
-
-        val obj = payload.jsonObject
+        val obj = payload as? JsonObject ?: return
         val bytesLength = obj["bytesLength"]?.jsonPrimitive?.intOrNull ?: return
         val downloadSource = obj["downloadSource"]?.jsonPrimitive?.content ?: return
         val peerId = obj["peerId"]?.jsonPrimitive?.content
@@ -69,9 +70,7 @@ internal class WebViewMessageRouter(
     }
 
     private fun handleChunkUploaded(payload: JsonElement?) {
-        if (payload == null) return
-
-        val obj = payload.jsonObject
+        val obj = payload as? JsonObject ?: return
         val bytesLength = obj["bytesLength"]?.jsonPrimitive?.intOrNull ?: return
         val peerId = obj["peerId"]?.jsonPrimitive?.content ?: return
 
