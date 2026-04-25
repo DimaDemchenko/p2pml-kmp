@@ -37,7 +37,7 @@ internal class SegmentService(
             if (currentAttempts >= MAX_RETRIES) {
                 logger.w { "Max retries ($MAX_RETRIES) exceeded for segment: $segmentUrl" }
                 requests.remove(segmentUrl)
-                
+
                 previousDeferred = previousState?.deferred
                 exceptionToThrow = TooManyRetriesException("Max retries exceeded for segment: $segmentUrl")
                 isFirstRequest = false
