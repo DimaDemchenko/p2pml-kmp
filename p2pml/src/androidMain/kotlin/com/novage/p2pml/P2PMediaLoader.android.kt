@@ -28,7 +28,8 @@ class P2PMediaLoader @JvmOverloads constructor(
      * Initializes and starts P2P media streaming components.
      *
      * @param getPlaybackInfo Function to retrieve playback information
-     * @throws IllegalStateException if called in an invalid state
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun start(getPlaybackInfo: () -> PlaybackInfo) {
@@ -45,7 +46,8 @@ class P2PMediaLoader @JvmOverloads constructor(
      * Initializes and starts P2P media streaming components.
      *
      * @param exoPlayer ExoPlayer instance for media playback
-     * @throws IllegalStateException if called in an invalid state
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun start(exoPlayer: ExoPlayer) {
