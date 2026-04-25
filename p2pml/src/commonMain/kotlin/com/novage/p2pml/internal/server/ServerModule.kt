@@ -45,7 +45,6 @@ internal class ServerModule(
 
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
-    @Suppress("ThrowsCount")
     suspend fun start(): Int {
         if (server != null) {
             val port = server?.engine?.resolvedConnectors()?.firstOrNull()?.port
@@ -74,32 +73,11 @@ internal class ServerModule(
             logger.i { "Server successfully bound to port: $assignedPort" }
             return assignedPort
         } catch (e: IOException) {
-            server?.stop()
-            server = null
-
-            throw P2PMediaLoaderException(
-                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                "Network Error starting server: ${e.message}",
-                e
-            )
+            handleStartupError("Network Error starting server: ${e.message}", e)
         } catch (e: IllegalStateException) {
-            server?.stop()
-            server = null
-
-            throw P2PMediaLoaderException(
-                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                "Invalid server state: ${e.message}",
-                e
-            )
+            handleStartupError("Invalid server state: ${e.message}", e)
         } catch (e: IllegalArgumentException) {
-            server?.stop()
-            server = null
-
-            throw P2PMediaLoaderException(
-                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                "Invalid server configuration: ${e.message}",
-                e
-            )
+            handleStartupError("Invalid server configuration: ${e.message}", e)
         }
     }
 
@@ -111,9 +89,24 @@ internal class ServerModule(
         manifestService.resetState()
 
         sequenceStateTracker.destroy()
-        server?.stop()
-        server = null
+        stopServer()
 
         client.close()
+    }
+
+    private fun handleStartupError(message: String, e: Exception): Nothing {
+        logger.e { "Failed to start Ktor server. Forcing aggressive shutdown." }
+        stopServer()
+
+        throw P2PMediaLoaderException(
+            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+            message,
+            e
+        )
+    }
+
+    private fun stopServer() {
+        server?.stop(gracePeriodMillis = 0, timeoutMillis = 100)
+        server = null
     }
 }

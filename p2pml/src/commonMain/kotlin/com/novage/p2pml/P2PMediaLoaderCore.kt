@@ -225,16 +225,16 @@ internal class P2PMediaLoaderCore(
         pendingDynamicConfig = null
         urlFactory.setPort(-1)
 
-        coreScope.launch {
+        coreScope.cancel()
+
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 runCatching { serverToDestroy?.destroy() }
                 runCatching { engineToDestroy?.destroy() }
                 runCatching { providerToReset?.resetData() }
-
+            } finally {
                 status.value = LoaderStatus.RELEASED
                 logger.d { "Release complete." }
-            } finally {
-                coreScope.cancel()
             }
         }
     }
