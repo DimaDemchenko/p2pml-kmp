@@ -91,8 +91,19 @@ internal class P2PMediaLoaderCore(
             webViewFactory = webViewFactory
         )
 
+        if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
+            logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
+
+            withContext(NonCancellable) {
+                runCatching { session.destroy() }.onFailure { e ->
+                    logger.e { "Error destroying orphaned session: ${e.message}" }
+                }
+            }
+
+            throw CancellationException("Session initialization aborted due to concurrent release.")
+        }
+
         this@P2PMediaLoaderCore.activeSession = session
-        status.value = LoaderStatus.ACTIVE
         events.syncEarlySubscriptions()
 
         pendingDynamicConfig?.let {

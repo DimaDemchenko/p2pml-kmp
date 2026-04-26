@@ -40,59 +40,64 @@ internal class P2PSessionFactory(
         provider: PlaybackProvider,
         webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
     ): P2PSession {
-        val urlFactory = LocalUrlFactory()
-        val webViewLoadedDeferred = CompletableDeferred<Unit>()
-
-        val webView = webViewFactory(
-            { webViewLoadedDeferred.complete(Unit) },
-            { errorType, message ->
-                errorDispatcher.tryEmit(errorType, message)
-                webViewLoadedDeferred.completeExceptionally(P2PMediaLoaderException(errorType, message))
-            }
-        )
-
-        val engine = P2PEngineManager(webView)
-        val client = createHttpClient()
-        val hlsManifestManager = HlsManifestManager(provider, urlFactory)
-        val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, errorDispatcher)
-
-        val manifestService = ManifestService(hlsManifestManager, engine) {
-            logger.d { "Resetting playback and parser state via ManifestService" }
-            provider.resetData()
-            hlsManifestManager.reset()
-            sequenceStateTracker.reset()
-        }
-        val segmentService = SegmentService(engine, sequenceStateTracker)
-
-        val serverModule = ServerModule(
-            client = client,
-            hlsManifestManager = hlsManifestManager,
-            manifestService = manifestService,
-            segmentService = segmentService,
-            enableCors = customEngineUrl != null,
-            errorDispatcher = errorDispatcher
-        )
-
-        val fullTeardown: suspend () -> Unit = {
-            cleanupSafely(
-                { segmentService.reset() },
-                { sequenceStateTracker.reset() },
-                { manifestService.resetState() },
-                { sequenceStateTracker.destroy() },
-                { serverModule.destroy() },
-                { engine.destroy() },
-                { provider.resetData() },
-                { client.close() }
-            )
-        }
+        val cleanupTasks = mutableListOf<suspend () -> Unit>()
 
         return runCatching {
+            val urlFactory = LocalUrlFactory()
+            val webViewLoadedDeferred = CompletableDeferred<Unit>()
+
+            val webView = webViewFactory(
+                { webViewLoadedDeferred.complete(Unit) },
+                { errorType, message ->
+                    errorDispatcher.tryEmit(errorType, message)
+                    webViewLoadedDeferred.completeExceptionally(P2PMediaLoaderException(errorType, message))
+                }
+            )
+
+            val engine = P2PEngineManager(webView)
+            cleanupTasks.add { engine.destroy() }
+
+            val client = createHttpClient()
+            cleanupTasks.add { client.close() }
+
+            val hlsManifestManager = HlsManifestManager(provider, urlFactory)
+
+            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, errorDispatcher)
+            cleanupTasks.add { sequenceStateTracker.destroy() }
+            cleanupTasks.add { sequenceStateTracker.reset() }
+
+            val manifestService = ManifestService(hlsManifestManager, engine) {
+                logger.d { "Resetting playback and parser state via ManifestService" }
+                provider.resetData()
+                hlsManifestManager.reset()
+                sequenceStateTracker.reset()
+            }
+            cleanupTasks.add { manifestService.resetState() }
+
+            val segmentService = SegmentService(engine, sequenceStateTracker)
+            cleanupTasks.add { segmentService.reset() }
+
+            val serverModule = ServerModule(
+                client = client,
+                hlsManifestManager = hlsManifestManager,
+                manifestService = manifestService,
+                segmentService = segmentService,
+                enableCors = customEngineUrl != null,
+                errorDispatcher = errorDispatcher
+            )
+            cleanupTasks.add { serverModule.destroy() }
+            cleanupTasks.add { provider.resetData() }
+
+            val performFullTeardown: suspend () -> Unit = {
+                cleanupSafely(cleanupTasks.reversed())
+            }
+
             startServerAndEngine(engine, serverModule, urlFactory, webViewLoadedDeferred)
 
             P2PSession(
                 engineManager = engine,
                 urlFactory = urlFactory,
-                teardownAction = fullTeardown
+                teardownAction = performFullTeardown
             )
         }.onFailure { e ->
             if (e !is Exception) throw e
@@ -103,7 +108,7 @@ internal class P2PSessionFactory(
                 logger.e { "Session boot failed: ${e.message}" }
             }
 
-            fullTeardown()
+            cleanupSafely(cleanupTasks.reversed())
 
             throw e
         }.getOrThrow()
@@ -131,7 +136,7 @@ internal class P2PSessionFactory(
         )
     }
 
-    private suspend fun cleanupSafely(vararg actions: suspend () -> Unit) = withContext(NonCancellable) {
+    private suspend fun cleanupSafely(actions: Iterable<suspend () -> Unit>) = withContext(NonCancellable) {
         for (action in actions) {
             runCatching { action() }.onFailure {
                 logger.w { "Failed to clean up resource: ${it.message}" }
