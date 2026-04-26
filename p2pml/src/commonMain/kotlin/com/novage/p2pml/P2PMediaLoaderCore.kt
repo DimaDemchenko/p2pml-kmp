@@ -76,6 +76,7 @@ internal class P2PMediaLoaderCore(
             runCatching {
                 performSessionInitialization(provider, webViewFactory)
             }.onFailure { e ->
+                release()
                 val mappedException = if (e !is Exception) e else handleInitializationException(e)
                 throw mappedException
             }
@@ -113,32 +114,29 @@ internal class P2PMediaLoaderCore(
         }
     }
 
-    private fun handleInitializationException(e: Exception): Exception {
-        release()
-        return when (e) {
-            is TimeoutCancellationException -> {
-                logger.e { "Initialization timed out waiting for WebView." }
-                P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, "WebView timeout", e)
-            }
+    private fun handleInitializationException(e: Exception): Exception = when (e) {
+        is TimeoutCancellationException -> {
+            logger.e { "Initialization timed out waiting for WebView." }
+            P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, "WebView timeout", e)
+        }
 
-            is CancellationException -> {
-                logger.d { "Initialization cancelled by coroutine scope." }
+        is CancellationException -> {
+            logger.d { "Initialization cancelled by coroutine scope." }
+            e
+        }
+
+        is P2PMediaLoaderException -> {
+            logger.e { "Initialization failed: ${e.message}" }
+            e
+        }
+
+        else -> {
+            logger.e { "Initialization failed due to system error: ${e.message}" }
+            P2PMediaLoaderException(
+                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                e.message ?: "System error",
                 e
-            }
-
-            is P2PMediaLoaderException -> {
-                logger.e { "Initialization failed: ${e.message}" }
-                e
-            }
-
-            else -> {
-                logger.e { "Initialization failed due to system error: ${e.message}" }
-                P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                    e.message ?: "System error",
-                    e
-                )
-            }
+            )
         }
     }
 
