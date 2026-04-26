@@ -139,7 +139,7 @@ internal class P2PSessionFactory(
     private suspend fun cleanupSafely(actions: Iterable<suspend () -> Unit>) = withContext(NonCancellable) {
         for (action in actions) {
             runCatching { action() }.onFailure {
-                logger.w { "Failed to clean up resource: ${it.message}" }
+                logger.w { "Failed to clean up resource: $it" }
             }
         }
     }
