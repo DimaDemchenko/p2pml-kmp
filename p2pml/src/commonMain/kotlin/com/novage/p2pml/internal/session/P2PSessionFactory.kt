@@ -73,24 +73,26 @@ internal class P2PSessionFactory(
             errorDispatcher = errorDispatcher
         )
 
+        val fullTeardown: suspend () -> Unit = {
+            cleanupSafely(
+                { segmentService.reset() },
+                { sequenceStateTracker.reset() },
+                { manifestService.resetState() },
+                { sequenceStateTracker.destroy() },
+                { serverModule.destroy() },
+                { engine.destroy() },
+                { provider.resetData() },
+                { client.close() }
+            )
+        }
+
         return runCatching {
             startServerAndEngine(engine, serverModule, urlFactory, webViewLoadedDeferred)
 
             P2PSession(
                 engineManager = engine,
                 urlFactory = urlFactory,
-                teardownAction = {
-                    cleanupSafely(
-                        { segmentService.reset() },
-                        { sequenceStateTracker.reset() },
-                        { manifestService.resetState() },
-                        { sequenceStateTracker.destroy() },
-                        { serverModule.destroy() },
-                        { engine.destroy() },
-                        { provider.resetData() },
-                        { client.close() }
-                    )
-                }
+                teardownAction = fullTeardown
             )
         }.onFailure { e ->
             if (e !is Exception) throw e
@@ -101,7 +103,7 @@ internal class P2PSessionFactory(
                 logger.e { "Session boot failed: ${e.message}" }
             }
 
-            cleanupSafely({ serverModule.destroy() }, { engine.destroy() }, { client.close() })
+            fullTeardown()
 
             throw e
         }.getOrThrow()
