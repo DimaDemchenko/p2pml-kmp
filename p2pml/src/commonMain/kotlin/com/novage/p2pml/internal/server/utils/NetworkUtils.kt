@@ -64,27 +64,16 @@ private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
     }
 }
 
-internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteRangeHeader: String?) {
-    if (byteRangeHeader != null) {
-        respond(
-            object : OutgoingContent.ByteArrayContent() {
-                override val contentType = ContentType.parse("video/mp2t")
-                override val contentLength = bytes.size.toLong()
-                override val status = HttpStatusCode.PartialContent
-                override fun bytes(): ByteArray = bytes
-            }
-        )
-    } else {
-        respondBytes(bytes, ContentType.Application.OctetStream)
-    }
+internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray) {
+    respondBytes(bytes, ContentType.Application.OctetStream)
 }
 
-internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload, byteRangeHeader: String?) {
+internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload) {
     respond(
         object : OutgoingContent.ReadChannelContent() {
-            override val contentType = ContentType.parse("video/mp2t")
+            override val contentType = ContentType.Application.OctetStream
             override val contentLength = payload.contentLength
-            override val status = if (byteRangeHeader != null) HttpStatusCode.PartialContent else HttpStatusCode.OK
+            override val status = HttpStatusCode.OK
             override fun readFrom(): ByteReadChannel = payload.channel
         }
     )
@@ -93,12 +82,11 @@ internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentP
 internal suspend fun ApplicationCall.respondFallback(
     httpClient: HttpClient,
     segmentUrl: String,
-    errorDispatcher: RuntimeErrorDispatcher,
-    byteRangeHeader: String?
+    errorDispatcher: RuntimeErrorDispatcher
 ) {
     try {
         val bytes = httpClient.fetchSegment(this, segmentUrl)
-        respondVideoSegment(bytes, byteRangeHeader)
+        respondVideoSegment(bytes)
     } catch (e: ResponseException) {
         val status = e.response.status
 

@@ -57,13 +57,12 @@ private fun Route.segmentDownloadRoute(
         }
 
         val segmentUrl = decodeFromUrlSafeBase64(encodedSegmentUrl)
-        val byteRange = call.request.headers[HttpHeaders.Range]
 
-        logger.d { "Player requested segment: $segmentUrl (Range: $byteRange)" }
+        logger.d { "Player requested segment: $segmentUrl" }
 
         if (!parser.isCurrentSegment(segmentUrl)) {
             logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
             return@get
         }
 
@@ -79,19 +78,19 @@ private fun Route.segmentDownloadRoute(
             }
 
             logger.d { "Serving stream to Player for: $segmentUrl" }
-            call.respondVideoSegmentStream(payload, byteRange)
+            call.respondVideoSegmentStream(payload)
         } catch (_: TimeoutCancellationException) {
             logger.w { "P2P Engine timed out providing segment. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
         } catch (_: SegmentReplacedException) {
             logger.i { "Request replaced. Terminating old request." }
             call.respond(HttpStatusCode.RequestTimeout)
         } catch (_: TooManyRetriesException) {
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
         } catch (e: SegmentProcessingException) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
+            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
         } catch (_: SegmentAbortedException) {
             logger.w { "P2P Engine aborted segment (Abandoned by ABR/Seek). Terminating cleanly." }
             call.respond(HttpStatusCode.RequestTimeout)
