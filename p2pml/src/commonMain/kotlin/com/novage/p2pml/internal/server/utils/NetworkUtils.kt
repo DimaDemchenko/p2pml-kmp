@@ -95,12 +95,9 @@ private fun buildContentRange(rangeHeader: String, contentLength: Long?): String
 }
 
 internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstreamContentRange: String? = null) {
-    val rangeHeader = request.headers[HttpHeaders.Range]
     val contentType = ContentType.Application.OctetStream
 
-    val contentRange = upstreamContentRange ?: rangeHeader?.let { buildContentRange(it, bytes.size.toLong()) }
-
-    if (contentRange != null) {
+    if (upstreamContentRange != null) {
         respond(
             object : OutgoingContent.ByteArrayContent() {
                 override val contentType = contentType
@@ -108,7 +105,7 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstr
                 override val status = HttpStatusCode.PartialContent
                 override val headers = Headers.build {
                     append(HttpHeaders.AcceptRanges, "bytes")
-                    append(HttpHeaders.ContentRange, contentRange)
+                    append(HttpHeaders.ContentRange, upstreamContentRange)
                 }
                 override fun bytes(): ByteArray = bytes
             }
