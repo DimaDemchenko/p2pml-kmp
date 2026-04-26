@@ -7,10 +7,10 @@ import com.novage.p2pml.internal.server.exceptions.SegmentProcessingException
 import com.novage.p2pml.internal.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.internal.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.internal.utils.CoreLogger
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import io.ktor.utils.io.ByteReadChannel
 
 internal data class SegmentPayload(val channel: ByteReadChannel, val contentLength: Long?)
 
