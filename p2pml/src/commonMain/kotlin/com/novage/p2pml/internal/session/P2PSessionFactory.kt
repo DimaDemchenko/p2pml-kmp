@@ -85,8 +85,8 @@ internal class P2PSessionFactory(
                 enableCors = customEngineUrl != null,
                 errorDispatcher = errorDispatcher
             )
-            cleanupTasks.add { serverModule.destroy() }
             cleanupTasks.add { provider.resetData() }
+            cleanupTasks.add { serverModule.destroy() }
 
             val performFullTeardown: suspend () -> Unit = {
                 cleanupSafely(cleanupTasks.reversed())

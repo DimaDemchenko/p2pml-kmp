@@ -92,7 +92,10 @@ internal class P2PMediaLoaderCore(
             webViewFactory = webViewFactory
         )
 
+        this@P2PMediaLoaderCore.activeSession = session
+
         if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
+            this@P2PMediaLoaderCore.activeSession = null
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
 
             withContext(NonCancellable) {
@@ -104,7 +107,6 @@ internal class P2PMediaLoaderCore(
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
-        this@P2PMediaLoaderCore.activeSession = session
         events.syncEarlySubscriptions()
 
         pendingDynamicConfig?.let {
@@ -168,7 +170,13 @@ internal class P2PMediaLoaderCore(
         when (status.value) {
             LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> pendingDynamicConfig = dynamicCoreConfig
 
-            LoaderStatus.ACTIVE -> activeSession?.applyDynamicConfig(dynamicCoreConfig)
+            LoaderStatus.ACTIVE -> {
+                val session = activeSession ?: throw P2PMediaLoaderException(
+                    P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
+                    "Internal invariant violation: activeSession is null while status is ${status.value}"
+                )
+                session.applyDynamicConfig(dynamicCoreConfig)
+            }
 
             LoaderStatus.RELEASING, LoaderStatus.RELEASED -> logger.w {
                 "Ignored dynamic config. Core state: ${status.value}."
