@@ -2,50 +2,43 @@ package com.novage.p2pml.internal.server
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoaderException
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.internal.engine.P2PEngine
-import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestManager
-import com.novage.p2pml.internal.providers.SequenceStateTracker
-import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.server.plugins.configureCORS
 import com.novage.p2pml.internal.server.routes.configureRoutes
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
+import io.ktor.client.HttpClient
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
 
 internal class ServerModule(
-    private val playbackProvider: PlaybackProvider,
-    engineManager: P2PEngine,
-    urlFactory: LocalUrlFactory,
+    private val client: HttpClient,
+    private val hlsManifestManager: HlsManifestManager,
+    private val manifestService: ManifestService,
+    private val segmentService: SegmentService,
     private val enableCors: Boolean,
     private val errorDispatcher: RuntimeErrorDispatcher
 ) {
     private val logger = CoreLogger("ServerModule")
 
-    private val client = createHttpClient()
-    private val hlsManifestManager = HlsManifestManager(playbackProvider, urlFactory)
-    private val sequenceStateTracker =
-        SequenceStateTracker(playbackProvider, engineManager, hlsManifestManager, errorDispatcher)
-
-    private val manifestService = ManifestService(hlsManifestManager, engineManager) {
-        logger.d { "Resetting playback and parser state" }
-        playbackProvider.resetData()
-        hlsManifestManager.reset()
-        sequenceStateTracker.reset()
-    }
-
-    private val segmentService = SegmentService(engineManager, sequenceStateTracker)
-
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
-    suspend fun start(): Int {
+    private val serverMutex = Mutex()
+    private var isDestroyed = false
+
+    suspend fun start(): Int = serverMutex.withLock {
+        if (isDestroyed) {
+            throw CancellationException("ServerModule was destroyed before it could start.")
+        }
+
         if (server != null) {
             val port = server?.engine?.resolvedConnectors()?.firstOrNull()?.port
                 ?: throw P2PMediaLoaderException(
@@ -81,17 +74,10 @@ internal class ServerModule(
         }
     }
 
-    suspend fun destroy() {
+    suspend fun destroy() = serverMutex.withLock {
+        isDestroyed = true
         logger.i { "Destroying P2P Server module..." }
-
-        segmentService.reset()
-        sequenceStateTracker.reset()
-        manifestService.resetState()
-
-        sequenceStateTracker.destroy()
         stopServer()
-
-        client.close()
     }
 
     private fun handleStartupError(message: String, e: Exception): Nothing {
