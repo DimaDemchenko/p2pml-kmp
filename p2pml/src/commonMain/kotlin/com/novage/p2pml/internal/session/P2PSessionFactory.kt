@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -80,15 +81,16 @@ internal class P2PSessionFactory(
                 engineManager = engine,
                 urlFactory = urlFactory,
                 teardownAction = {
-                    segmentService.reset()
-                    sequenceStateTracker.reset()
-                    manifestService.resetState()
-                    sequenceStateTracker.destroy()
-
-                    serverModule.destroy()
-                    engine.destroy()
-                    provider.resetData()
-                    client.close()
+                    cleanupSafely(
+                        { segmentService.reset() },
+                        { sequenceStateTracker.reset() },
+                        { manifestService.resetState() },
+                        { sequenceStateTracker.destroy() },
+                        { serverModule.destroy() },
+                        { engine.destroy() },
+                        { provider.resetData() },
+                        { client.close() }
+                    )
                 }
             )
         }.onFailure { e ->
@@ -100,7 +102,7 @@ internal class P2PSessionFactory(
                 logger.e { "Session boot failed: ${e.message}" }
             }
 
-            cleanupPartialResources(serverModule, engine, client)
+            cleanupSafely({ serverModule.destroy() }, { engine.destroy() }, { client.close() })
 
             throw e
         }.getOrThrow()
@@ -128,21 +130,11 @@ internal class P2PSessionFactory(
         )
     }
 
-    private suspend fun destroySafely(action: suspend () -> Unit) {
-        runCatching { action() }.onFailure {
-            if (it is CancellationException) throw it
-
-            logger.w { "Failed to clean up resource: ${it.message}" }
+    private suspend fun cleanupSafely(vararg actions: suspend () -> Unit) = withContext(NonCancellable) {
+        for (action in actions) {
+            runCatching { action() }.onFailure {
+                logger.w { "Failed to clean up resource: ${it.message}" }
+            }
         }
-    }
-
-    private suspend fun cleanupPartialResources(
-        serverModule: ServerModule,
-        engine: P2PEngineManager,
-        client: HttpClient
-    ) {
-        destroySafely { serverModule.destroy() }
-        destroySafely { engine.destroy() }
-        destroySafely { client.close() }
     }
 }
