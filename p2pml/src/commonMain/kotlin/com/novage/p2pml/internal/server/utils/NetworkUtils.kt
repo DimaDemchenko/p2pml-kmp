@@ -1,11 +1,13 @@
 package com.novage.p2pml.internal.server.utils
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
@@ -17,6 +19,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.io.IOException
 
 private val EXCLUDED_PROXY_HEADERS =
@@ -44,14 +47,12 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
     )
 }
 
-internal suspend fun HttpClient.fetchSegment(call: ApplicationCall, segmentUrl: String): ByteArray {
+internal suspend fun HttpClient.fetchSegmentResponse(call: ApplicationCall, segmentUrl: String): HttpResponse {
     val cleanUrl = segmentUrl.substringBeforeLast("|")
 
-    val response = this.get(cleanUrl) {
+    return this.get(cleanUrl) {
         copyProxyHeaders(call.request.headers)
     }
-
-    return response.bodyAsBytes()
 }
 
 private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
@@ -62,30 +63,90 @@ private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
     }
 }
 
-internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteRangeHeader: String?) {
-    if (byteRangeHeader != null) {
+private const val BYTES_PREFIX = "bytes="
+
+private fun buildContentRange(rangeHeader: String, contentLength: Long?): String? {
+    if (!rangeHeader.startsWith(BYTES_PREFIX) || rangeHeader.contains(",")) {
+        return null
+    }
+
+    val parts = rangeHeader.substring(BYTES_PREFIX.length).trim().split('-')
+    if (parts.size != 2) {
+        return null
+    }
+
+    val startStr = parts[0].trim()
+    val endStr = parts[1].trim()
+
+    val start = startStr.toLongOrNull()
+    if (start == null || start < 0) {
+        return null
+    }
+
+    val end = if (endStr.isNotEmpty()) {
+        endStr.toLongOrNull()
+    } else if (contentLength != null && contentLength > 0) {
+        start + contentLength - 1
+    } else {
+        null
+    }
+
+    return if (end != null && end >= start) "bytes $start-$end/*" else null
+}
+
+internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstreamContentRange: String? = null) {
+    val contentType = ContentType.Application.OctetStream
+
+    if (upstreamContentRange != null) {
         respond(
             object : OutgoingContent.ByteArrayContent() {
-                override val contentType = ContentType.parse("video/mp2t")
+                override val contentType = contentType
                 override val contentLength = bytes.size.toLong()
                 override val status = HttpStatusCode.PartialContent
+                override val headers = Headers.build {
+                    append(HttpHeaders.AcceptRanges, "bytes")
+                    append(HttpHeaders.ContentRange, upstreamContentRange)
+                }
                 override fun bytes(): ByteArray = bytes
             }
         )
     } else {
-        respondBytes(bytes, ContentType.Application.OctetStream)
+        respondBytes(bytes, contentType)
     }
+}
+
+internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload) {
+    val rangeHeader = request.headers[HttpHeaders.Range]
+    val contentType = ContentType.Application.OctetStream
+
+    val contentRange = rangeHeader?.let { buildContentRange(it, payload.contentLength) }
+
+    respond(
+        object : OutgoingContent.ReadChannelContent() {
+            override val contentType = contentType
+            override val contentLength = payload.contentLength
+            override val status = if (contentRange != null) HttpStatusCode.PartialContent else HttpStatusCode.OK
+            override val headers = Headers.build {
+                append(HttpHeaders.AcceptRanges, "bytes")
+                if (contentRange != null) {
+                    append(HttpHeaders.ContentRange, contentRange)
+                }
+            }
+            override fun readFrom(): ByteReadChannel = payload.channel
+        }
+    )
 }
 
 internal suspend fun ApplicationCall.respondFallback(
     httpClient: HttpClient,
     segmentUrl: String,
-    errorDispatcher: RuntimeErrorDispatcher,
-    byteRangeHeader: String?
+    errorDispatcher: RuntimeErrorDispatcher
 ) {
     try {
-        val bytes = httpClient.fetchSegment(this, segmentUrl)
-        respondVideoSegment(bytes, byteRangeHeader)
+        val response = httpClient.fetchSegmentResponse(this, segmentUrl)
+        val bytes = response.bodyAsBytes()
+        val contentRange = response.headers[HttpHeaders.ContentRange]
+        respondVideoSegment(bytes, contentRange)
     } catch (e: ResponseException) {
         val status = e.response.status
 
