@@ -123,7 +123,7 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         }
 
         val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-        val channel = ByteChannel()
+        val channel = ByteChannel(autoFlush = true)
 
         logger.i { "Receiving segment stream for $segmentId (Size: ${contentLength ?: "Unknown"} bytes)" }
         segmentService.completeRequest(segmentId, SegmentPayload(channel, contentLength))

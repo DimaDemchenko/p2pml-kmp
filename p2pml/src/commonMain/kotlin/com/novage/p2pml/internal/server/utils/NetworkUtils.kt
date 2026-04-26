@@ -63,35 +63,44 @@ private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
     }
 }
 
+private const val BYTES_PREFIX = "bytes="
+
 private fun buildContentRange(rangeHeader: String, contentLength: Long?): String? {
-    val prefix = "bytes="
-
-    if (!rangeHeader.startsWith(prefix)) return null
-
-    val range = rangeHeader.substring(prefix.length).trim()
-    val parts = range.split('-')
-
-    if (parts.isEmpty()) return null
-    
-    val startStr = parts[0]
-    val endStr = parts.getOrNull(1)
-    
-    val start = startStr.toLongOrNull()
-    if (start != null) {
-        val end = endStr?.takeIf { it.isNotEmpty() }?.toLongOrNull() ?: (contentLength?.let { start + it - 1 })
-        if (end != null) {
-            return "bytes $start-$end/*"
-        }
+    if (!rangeHeader.startsWith(BYTES_PREFIX) || rangeHeader.contains(",")) {
+        return null
     }
-    return null
+
+    val parts = rangeHeader.substring(BYTES_PREFIX.length).trim().split('-')
+    if (parts.size != 2) {
+        return null
+    }
+
+    val startStr = parts[0].trim()
+    val endStr = parts[1].trim()
+
+    val start = startStr.toLongOrNull()
+    if (start == null || start < 0) {
+        return null
+    }
+
+    val end = if (endStr.isNotEmpty()) {
+        endStr.toLongOrNull()
+    } else if (contentLength != null && contentLength > 0) {
+        start + contentLength - 1
+    } else {
+        null
+    }
+
+    return if (end != null && end >= start) "bytes $start-$end/*" else null
 }
 
 internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstreamContentRange: String? = null) {
     val rangeHeader = request.headers[HttpHeaders.Range]
     val contentType = ContentType.Application.OctetStream
     
-    if (rangeHeader != null) {
-        val contentRange = upstreamContentRange ?: buildContentRange(rangeHeader, bytes.size.toLong())
+    val contentRange = upstreamContentRange ?: rangeHeader?.let { buildContentRange(it, bytes.size.toLong()) }
+    
+    if (contentRange != null) {
         respond(
             object : OutgoingContent.ByteArrayContent() {
                 override val contentType = contentType
@@ -99,7 +108,7 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstr
                 override val status = HttpStatusCode.PartialContent
                 override val headers = Headers.build {
                     append(HttpHeaders.AcceptRanges, "bytes")
-                    if (contentRange != null) append(HttpHeaders.ContentRange, contentRange)
+                    append(HttpHeaders.ContentRange, contentRange)
                 }
                 override fun bytes(): ByteArray = bytes
             }
@@ -113,16 +122,17 @@ internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentP
     val rangeHeader = request.headers[HttpHeaders.Range]
     val contentType = ContentType.Application.OctetStream
 
+    val contentRange = rangeHeader?.let { buildContentRange(it, payload.contentLength) }
+
     respond(
         object : OutgoingContent.ReadChannelContent() {
             override val contentType = contentType
             override val contentLength = payload.contentLength
-            override val status = if (rangeHeader != null) HttpStatusCode.PartialContent else HttpStatusCode.OK
+            override val status = if (contentRange != null) HttpStatusCode.PartialContent else HttpStatusCode.OK
             override val headers = Headers.build {
                 append(HttpHeaders.AcceptRanges, "bytes")
-                if (rangeHeader != null) {
-                    val contentRange = buildContentRange(rangeHeader, payload.contentLength)
-                    if (contentRange != null) append(HttpHeaders.ContentRange, contentRange)
+                if (contentRange != null) {
+                    append(HttpHeaders.ContentRange, contentRange)
                 }
             }
             override fun readFrom(): ByteReadChannel = payload.channel
