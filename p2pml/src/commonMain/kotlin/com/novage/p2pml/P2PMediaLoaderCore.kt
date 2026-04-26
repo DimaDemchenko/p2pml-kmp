@@ -149,7 +149,10 @@ internal class P2PMediaLoaderCore(
             )
         }
         return activeSession?.getManifestUrl(manifestUrl.encodeURLParameter())
-            ?: throw P2PMediaLoaderException(P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR, "Session is null")
+            ?: throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
+                "Internal invariant violation: activeSession is null while status is ${status.value}"
+            )
     }
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
