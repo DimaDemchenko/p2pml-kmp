@@ -97,9 +97,9 @@ private fun buildContentRange(rangeHeader: String, contentLength: Long?): String
 internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstreamContentRange: String? = null) {
     val rangeHeader = request.headers[HttpHeaders.Range]
     val contentType = ContentType.Application.OctetStream
-    
+
     val contentRange = upstreamContentRange ?: rangeHeader?.let { buildContentRange(it, bytes.size.toLong()) }
-    
+
     if (contentRange != null) {
         respond(
             object : OutgoingContent.ByteArrayContent() {
