@@ -144,7 +144,10 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         }.onFailure { e ->
             call.receiveChannel().cancel(e)
             channel.cancel(e)
-            throw e
+            
+            logger.i { "Upload of $segmentId aborted mid-stream. Returning Accepted." }
+            runCatching { call.respond(HttpStatusCode.Accepted) }
+            return@post
         }
         call.respond(HttpStatusCode.OK)
     }
