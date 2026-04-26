@@ -18,6 +18,9 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
 
 internal class ServerModule(
@@ -44,8 +47,15 @@ internal class ServerModule(
     private val segmentService = SegmentService(engineManager, sequenceStateTracker)
 
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
+    
+    private val serverMutex = Mutex()
+    private var isDestroyed = false
 
-    suspend fun start(): Int {
+    suspend fun start(): Int = serverMutex.withLock {
+        if (isDestroyed) {
+            throw CancellationException("ServerModule was destroyed before it could start.")
+        }
+
         if (server != null) {
             val port = server?.engine?.resolvedConnectors()?.firstOrNull()?.port
                 ?: throw P2PMediaLoaderException(
@@ -81,7 +91,8 @@ internal class ServerModule(
         }
     }
 
-    suspend fun destroy() {
+    suspend fun destroy() = serverMutex.withLock {
+        isDestroyed = true
         logger.i { "Destroying P2P Server module..." }
 
         segmentService.reset()
