@@ -4,18 +4,14 @@ import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.toJsExpression
-import com.novage.p2pml.internal.engine.P2PEngine
-import com.novage.p2pml.internal.engine.P2PEngineManager
-import com.novage.p2pml.internal.server.ServerModule
-import com.novage.p2pml.internal.server.config.LocalUrlFactory
+import com.novage.p2pml.internal.session.P2PSession
+import com.novage.p2pml.internal.session.P2PSessionFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -27,7 +23,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
@@ -37,8 +32,6 @@ internal class P2PMediaLoaderCore(
     private val customEngineUrl: String? = null
 ) {
     companion object {
-        private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
-
         fun enableLogging() {
             LogConfig.isEnabled = true
         }
@@ -48,25 +41,23 @@ internal class P2PMediaLoaderCore(
     }
 
     private val logger = CoreLogger("P2PMediaLoaderCore")
-    private val urlFactory = LocalUrlFactory()
-    internal var engineManager: P2PEngine? = null
+    private val errorDispatcher = RuntimeErrorDispatcher()
+    private val sessionFactory = P2PSessionFactory(
+        coreConfig = coreConfig,
+        errorDispatcher = errorDispatcher,
+        customEngineUrl = customEngineUrl
+    )
     private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    private var serverModule: ServerModule? = null
-    private var playbackProvider: PlaybackProvider? = null
+    private var activeSession: P2PSession? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
-
-    val events: P2PEventRegistry =
-        P2PEventRegistry(coreScope, { engineManager }, { status.value == LoaderStatus.ACTIVE })
-
-    private val errorDispatcher = RuntimeErrorDispatcher()
-
-    val fatalErrors = errorDispatcher.errors
-
     private var pendingDynamicConfig: DynamicCoreConfig? = null
 
-    @Suppress("ThrowsCount")
+    val fatalErrors = errorDispatcher.errors
+    val events: P2PEventRegistry =
+        P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
+
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     internal suspend fun start(
         provider: PlaybackProvider,
@@ -80,98 +71,63 @@ internal class P2PMediaLoaderCore(
             }
 
             logger.d { "Initializing P2PMediaLoaderCore..." }
-            this@P2PMediaLoaderCore.playbackProvider = provider
-
             monitorRuntimeErrors()
 
-            try {
-                performInitialization(provider, webViewFactory)
-            } catch (e: P2PMediaLoaderException) {
-                logger.e { "Initialization failed: ${e.message}" }
-                release()
-                throw e
-            } catch (e: TimeoutCancellationException) {
-                logger.e { "Initialization timed out waiting for WebView." }
-                release()
-                throw P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                    "WebView initialization timed out",
-                    e
-                )
-            } catch (e: CancellationException) {
-                logger.d { "Initialization cancelled by coroutine scope." }
-                release()
-                throw e
-            } catch (e: IllegalStateException) {
-                logger.e { "Initialization failed due to invalid state: ${e.message}" }
-                release()
-                throw P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                    e.message ?: "Invalid state",
-                    e
-                )
-            } catch (e: IllegalArgumentException) {
-                logger.e { "Initialization failed due to invalid argument: ${e.message}" }
-                release()
-                throw P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-                    e.message ?: "Invalid argument",
-                    e
-                )
+            runCatching {
+                performSessionInitialization(provider, webViewFactory)
+            }.onFailure { e ->
+                val mappedException = if (e !is Exception) e else handleInitializationException(e)
+                throw mappedException
             }
         }
     }
 
-    private suspend fun performInitialization(
+    private suspend fun performSessionInitialization(
         provider: PlaybackProvider,
         webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
     ) {
-        val webViewLoadedDeferred = CompletableDeferred<Unit>()
-        val webView = webViewFactory(
-            { webViewLoadedDeferred.complete(Unit) },
-            { errorType, message ->
-                val error = P2PMediaLoaderException(errorType, message)
-                webViewLoadedDeferred.completeExceptionally(error)
-                errorDispatcher.tryEmit(errorType, message)
-            }
+        val session = sessionFactory.createSession(
+            provider = provider,
+            webViewFactory = webViewFactory
         )
 
-        val engine = P2PEngineManager(webView)
-        this@P2PMediaLoaderCore.engineManager = engine
-
-        val module = ServerModule(
-            playbackProvider = provider,
-            engineManager = engine,
-            urlFactory = urlFactory,
-            enableCors = customEngineUrl != null,
-            errorDispatcher = errorDispatcher
-        )
-        this@P2PMediaLoaderCore.serverModule = module
-
-        val port = withContext(Dispatchers.IO) { module.start() }
-        urlFactory.setPort(port)
-
-        val engineFileUrl = customEngineUrl ?: urlFactory.buildStaticPageUrl()
-        logger.d { "Loading P2P Engine from: $engineFileUrl" }
-        engine.loadUrl(engineFileUrl)
-
-        withTimeout(WEBVIEW_LOAD_TIMEOUT_MS) {
-            webViewLoadedDeferred.await()
-        }
-
-        logger.i { "WebView loaded. Initializing Core JS Engine." }
-        engine.initCoreEngine(
-            coreConfig = coreConfig.toJsExpression(),
-            uploadUrl = urlFactory.buildUploadUrl()
-        )
-
+        this@P2PMediaLoaderCore.activeSession = session
         status.value = LoaderStatus.ACTIVE
         events.syncEarlySubscriptions()
 
         pendingDynamicConfig?.let {
             logger.i { "Applying cached pending dynamic config..." }
-            engine.applyDynamicConfig(it.toJsExpression())
+            session.applyDynamicConfig(it)
             pendingDynamicConfig = null
+        }
+    }
+
+    private fun handleInitializationException(e: Exception): Exception {
+        release()
+        return when (e) {
+            is TimeoutCancellationException -> {
+                logger.e { "Initialization timed out waiting for WebView." }
+                P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, "WebView timeout", e)
+            }
+
+            is CancellationException -> {
+                logger.d { "Initialization cancelled by coroutine scope." }
+                e
+            }
+
+            is P2PMediaLoaderException -> {
+                logger.e { "Initialization failed: ${e.message}" }
+                e
+            }
+
+            else -> {
+                logger.e { "Initialization failed due to system error: ${e.message}" }
+                P2PMediaLoaderException(
+                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                    e.message ?: "System error",
+                    e
+                )
+            }
         }
     }
 
@@ -192,14 +148,15 @@ internal class P2PMediaLoaderCore(
                 "P2PMediaLoader is not ready. Current state: ${status.value}"
             )
         }
-        return urlFactory.buildManifestUrl(manifestUrl.encodeURLParameter())
+        return activeSession?.getManifestUrl(manifestUrl.encodeURLParameter())
+            ?: throw P2PMediaLoaderException(P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR, "Session is null")
     }
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
         when (status.value) {
             LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> pendingDynamicConfig = dynamicCoreConfig
 
-            LoaderStatus.ACTIVE -> engineManager?.applyDynamicConfig(dynamicCoreConfig.toJsExpression())
+            LoaderStatus.ACTIVE -> activeSession?.applyDynamicConfig(dynamicCoreConfig)
 
             LoaderStatus.RELEASING, LoaderStatus.RELEASED -> logger.w {
                 "Ignored dynamic config. Core state: ${status.value}."
@@ -216,41 +173,28 @@ internal class P2PMediaLoaderCore(
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
-        val engineToDestroy = engineManager
-        engineManager = null
-        val providerToReset = playbackProvider
-        playbackProvider = null
-        val serverToDestroy = serverModule
-        serverModule = null
-
+        val sessionToDestroy = activeSession
+        activeSession = null
         pendingDynamicConfig = null
-        urlFactory.setPort(-1)
 
         coreScope.cancel()
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                safeTeardown("server") { serverToDestroy?.destroy() }
-                safeTeardown("engine") { engineToDestroy?.destroy() }
-                safeTeardown("provider") { providerToReset?.resetData() }
+                sessionToDestroy?.destroy()
+            } catch (e: CancellationException) {
+                logger.d { "Teardown cancelled." }
+                throw e
+            } catch (e: IOException) {
+                logger.e { "IO Error during session teardown: ${e.message}" }
+            } catch (e: IllegalStateException) {
+                logger.e { "State Error during session teardown: ${e.message}" }
+            } catch (e: IllegalArgumentException) {
+                logger.e { "Arg Error during session teardown: ${e.message}" }
             } finally {
                 status.value = LoaderStatus.RELEASED
                 logger.d { "Release complete." }
             }
-        }
-    }
-
-    private suspend fun safeTeardown(name: String, action: suspend () -> Unit) {
-        try {
-            action()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: IOException) {
-            logger.e { "IO Error during $name teardown: ${e.message}" }
-        } catch (e: IllegalStateException) {
-            logger.e { "State Error during $name teardown: ${e.message}" }
-        } catch (e: IllegalArgumentException) {
-            logger.e { "Arg Error during $name teardown: ${e.message}" }
         }
     }
 }
