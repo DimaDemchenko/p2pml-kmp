@@ -6,9 +6,10 @@ import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
 import com.novage.p2pml.internal.server.exceptions.SegmentProcessingException
 import com.novage.p2pml.internal.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.internal.server.exceptions.TooManyRetriesException
+import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.server.utils.respondFallback
-import com.novage.p2pml.internal.server.utils.respondVideoSegment
+import com.novage.p2pml.internal.server.utils.respondVideoSegmentStream
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
@@ -20,8 +21,10 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import io.ktor.utils.io.toByteArray
+import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 
@@ -38,6 +41,7 @@ internal fun Route.registerSegmentRoutes(
     segmentUploadRoute(segmentService)
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
@@ -63,19 +67,19 @@ private fun Route.segmentDownloadRoute(
             return@get
         }
 
-        var deferred: CompletableDeferred<ByteArray>? = null
+        var deferred: CompletableDeferred<SegmentPayload>? = null
 
         try {
             deferred = segmentService.createOrReplaceRequest(segmentUrl)
 
             logger.d { "Waiting for segment data from p2p engine for: $segmentUrl" }
 
-            val bytes = withTimeout(P2P_ENGINE_TIMEOUT_MS) {
+            val payload = withTimeout(P2P_ENGINE_TIMEOUT_MS) {
                 deferred.await()
             }
 
-            logger.d { "Serving ${bytes.size} bytes to Player for: $segmentUrl" }
-            call.respondVideoSegment(bytes, byteRange)
+            logger.d { "Serving stream to Player for: $segmentUrl" }
+            call.respondVideoSegmentStream(payload, byteRange)
         } catch (_: TimeoutCancellationException) {
             logger.w { "P2P Engine timed out providing segment. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl, errorDispatcher, byteRange)
@@ -96,6 +100,9 @@ private fun Route.segmentDownloadRoute(
                 logger.d { "Cleaning up active request." }
                 segmentService.cancelRequest(segmentUrl, deferred)
             }
+            if (deferred?.isCompleted == true) {
+                runCatching { deferred.getCompleted().channel.cancel(null) }
+            }
         }
     }
 }
@@ -108,33 +115,37 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         val error = call.request.queryParameters["error"]
 
         if (error != null) {
-            val deferredSegment = segmentService.getPendingRequest(segmentId) ?: run {
-                logger.w { "Received error for unknown segment ID: $segmentId" }
-                call.respond(HttpStatusCode.NotFound)
-                return@post
-            }
-
-            if (error.contains("aborted")) {
-                logger.i { "Segment upload aborted: $segmentId" }
-                deferredSegment.completeExceptionally(
-                    SegmentAbortedException("Segment aborted - $segmentId")
-                )
+            if (segmentService.failRequest(segmentId, error)) {
+                call.respond(HttpStatusCode.OK)
             } else {
-                logger.w { "Error processing segment: $segmentId - $error" }
-                deferredSegment.completeExceptionally(
-                    SegmentProcessingException("Error processing segment - $segmentId - $error")
-                )
+                call.respond(HttpStatusCode.NotFound)
             }
-
-            segmentService.removeRequest(segmentId)
-
-            call.respond(HttpStatusCode.OK)
             return@post
         }
 
-        val segmentBytes = call.receiveChannel().toByteArray()
-        logger.i { "Received segment bytes for $segmentId (Size: ${segmentBytes.size} bytes)" }
-        segmentService.completeRequest(segmentId, segmentBytes)
+        val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
+        val channel = ByteChannel()
+
+        logger.i { "Receiving segment stream for $segmentId (Size: ${contentLength ?: "Unknown"} bytes)" }
+        segmentService.completeRequest(segmentId, SegmentPayload(channel, contentLength))
+
+        if (channel.isClosedForWrite) {
+            logger.i {
+                "Segment $segmentId was abandoned by the player. " +
+                    "Aborting incoming JS upload to save resources."
+            }
+            call.receiveChannel().cancel(null)
+            call.respond(HttpStatusCode.Accepted)
+            return@post
+        }
+
+        runCatching {
+            call.receiveChannel().copyAndClose(channel)
+        }.onFailure { e ->
+            call.receiveChannel().cancel(e)
+            channel.cancel(e)
+            throw e
+        }
         call.respond(HttpStatusCode.OK)
     }
 }

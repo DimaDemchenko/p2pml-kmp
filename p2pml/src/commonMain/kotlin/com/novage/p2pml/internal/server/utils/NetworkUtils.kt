@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.server.utils
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
@@ -17,6 +18,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.io.IOException
 
 private val EXCLUDED_PROXY_HEADERS =
@@ -75,6 +77,17 @@ internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, byteR
     } else {
         respondBytes(bytes, ContentType.Application.OctetStream)
     }
+}
+
+internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload, byteRangeHeader: String?) {
+    respond(
+        object : OutgoingContent.ReadChannelContent() {
+            override val contentType = ContentType.parse("video/mp2t")
+            override val contentLength = payload.contentLength
+            override val status = if (byteRangeHeader != null) HttpStatusCode.PartialContent else HttpStatusCode.OK
+            override fun readFrom(): ByteReadChannel = payload.channel
+        }
+    )
 }
 
 internal suspend fun ApplicationCall.respondFallback(
