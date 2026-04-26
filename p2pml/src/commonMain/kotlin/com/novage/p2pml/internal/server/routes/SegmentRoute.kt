@@ -129,20 +129,22 @@ private fun Route.segmentUploadRoute(segmentService: SegmentService) {
         logger.i { "Receiving segment stream for $segmentId (Size: ${contentLength ?: "Unknown"} bytes)" }
         segmentService.completeRequest(segmentId, SegmentPayload(channel, contentLength))
 
+        val incomingChannel = call.receiveChannel()
+
         if (channel.isClosedForWrite) {
             logger.i {
                 "Segment $segmentId was abandoned by the player. " +
                     "Aborting incoming JS upload to save resources."
             }
-            call.receiveChannel().cancel(null)
+            incomingChannel.cancel(null)
             call.respond(HttpStatusCode.Accepted)
             return@post
         }
 
         runCatching {
-            call.receiveChannel().copyAndClose(channel)
+            incomingChannel.copyAndClose(channel)
         }.onFailure { e ->
-            call.receiveChannel().cancel(e)
+            incomingChannel.cancel(e)
             channel.cancel(e)
             
             logger.i { "Upload of $segmentId aborted mid-stream. Returning Accepted." }
