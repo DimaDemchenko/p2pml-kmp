@@ -22,6 +22,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -64,7 +65,7 @@ internal class P2PMediaLoaderCore(
         provider: PlaybackProvider,
         webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
     ) {
-        withContext(Dispatchers.Main) {
+        withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
                 val message = "Initialization skipped: Core is already in state ${status.value}"
                 logger.w { message }
@@ -99,7 +100,7 @@ internal class P2PMediaLoaderCore(
             this@P2PMediaLoaderCore.activeSession = null
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
 
-            withContext(NonCancellable) {
+            withContext(NonCancellable + Dispatchers.IO) {
                 runCatching { session.destroy() }.onFailure { e ->
                     logger.e(e) { "Error destroying orphaned session: ${e.message}" }
                 }
@@ -186,10 +187,11 @@ internal class P2PMediaLoaderCore(
     }
 
     fun release() {
-        while (true) {
-            val current = status.value
-            if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) return
-            if (status.compareAndSet(current, LoaderStatus.RELEASING)) break
+        status.update { current ->
+            if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) {
+                return
+            }
+            LoaderStatus.RELEASING
         }
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
