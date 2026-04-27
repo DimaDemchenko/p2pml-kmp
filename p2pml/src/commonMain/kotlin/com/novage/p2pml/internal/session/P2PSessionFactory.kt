@@ -46,18 +46,18 @@ internal class P2PSessionFactory(
             val urlFactory = LocalUrlFactory()
             val webViewLoadedDeferred = CompletableDeferred<Unit>()
 
-            val webView = withContext(Dispatchers.Main) {
-                webViewFactory(
+            val engine = withContext(Dispatchers.Main) {
+                val webView = webViewFactory(
                     { webViewLoadedDeferred.complete(Unit) },
                     { errorType, message ->
                         errorDispatcher.tryEmit(errorType, message)
                         webViewLoadedDeferred.completeExceptionally(P2PMediaLoaderException(errorType, message))
                     }
                 )
+                val engineManager = P2PEngineManager(webView)
+                cleanupTasks.add { engineManager.destroy() }
+                engineManager
             }
-
-            val engine = P2PEngineManager(webView)
-            cleanupTasks.add { engine.destroy() }
 
             val client = createHttpClient()
             cleanupTasks.add { client.close() }
