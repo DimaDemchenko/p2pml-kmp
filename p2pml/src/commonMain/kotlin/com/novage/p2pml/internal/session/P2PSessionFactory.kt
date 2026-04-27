@@ -46,16 +46,18 @@ internal class P2PSessionFactory(
             val urlFactory = LocalUrlFactory()
             val webViewLoadedDeferred = CompletableDeferred<Unit>()
 
-            val webView = webViewFactory(
-                { webViewLoadedDeferred.complete(Unit) },
-                { errorType, message ->
-                    errorDispatcher.tryEmit(errorType, message)
-                    webViewLoadedDeferred.completeExceptionally(P2PMediaLoaderException(errorType, message))
-                }
-            )
-
-            val engine = P2PEngineManager(webView)
-            cleanupTasks.add { engine.destroy() }
+            val engine = withContext(Dispatchers.Main) {
+                val webView = webViewFactory(
+                    { webViewLoadedDeferred.complete(Unit) },
+                    { errorType, message ->
+                        errorDispatcher.tryEmit(errorType, message)
+                        webViewLoadedDeferred.completeExceptionally(P2PMediaLoaderException(errorType, message))
+                    }
+                )
+                val engineManager = P2PEngineManager(webView)
+                cleanupTasks.add { engineManager.destroy() }
+                engineManager
+            }
 
             val client = createHttpClient()
             cleanupTasks.add { client.close() }
@@ -100,17 +102,7 @@ internal class P2PSessionFactory(
                 teardownAction = performFullTeardown
             )
         }.onFailure { e ->
-            if (e !is Exception) throw e
-
-            if (e is TimeoutCancellationException) {
-                logger.e { "Session boot timed out waiting for WebView." }
-            } else if (e !is CancellationException) {
-                logger.e { "Session boot failed: ${e.message}" }
-            }
-
-            cleanupSafely(cleanupTasks.reversed())
-
-            throw e
+            handleInitializationFailure(e, cleanupTasks)
         }.getOrThrow()
     }
 
@@ -142,5 +134,19 @@ internal class P2PSessionFactory(
                 logger.w { "Failed to clean up resource: $it" }
             }
         }
+    }
+
+    private suspend fun handleInitializationFailure(e: Throwable, cleanupTasks: List<suspend () -> Unit>) {
+        if (e !is Exception) throw e
+
+        if (e is TimeoutCancellationException) {
+            logger.e { "Session boot timed out waiting for WebView." }
+        } else if (e !is CancellationException) {
+            logger.e { "Session boot failed: ${e.message}" }
+        }
+
+        cleanupSafely(cleanupTasks.reversed())
+
+        throw e
     }
 }
