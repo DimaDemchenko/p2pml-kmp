@@ -102,17 +102,7 @@ internal class P2PSessionFactory(
                 teardownAction = performFullTeardown
             )
         }.onFailure { e ->
-            if (e !is Exception) throw e
-
-            if (e is TimeoutCancellationException) {
-                logger.e { "Session boot timed out waiting for WebView." }
-            } else if (e !is CancellationException) {
-                logger.e { "Session boot failed: ${e.message}" }
-            }
-
-            cleanupSafely(cleanupTasks.reversed())
-
-            throw e
+            handleInitializationFailure(e, cleanupTasks)
         }.getOrThrow()
     }
 
@@ -144,5 +134,19 @@ internal class P2PSessionFactory(
                 logger.w { "Failed to clean up resource: $it" }
             }
         }
+    }
+
+    private suspend fun handleInitializationFailure(e: Throwable, cleanupTasks: List<suspend () -> Unit>) {
+        if (e !is Exception) throw e
+
+        if (e is TimeoutCancellationException) {
+            logger.e { "Session boot timed out waiting for WebView." }
+        } else if (e !is CancellationException) {
+            logger.e { "Session boot failed: ${e.message}" }
+        }
+
+        cleanupSafely(cleanupTasks.reversed())
+
+        throw e
     }
 }
