@@ -21,7 +21,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     val events get() = core.events
     val fatalErrors get() = core.fatalErrors
 
-    fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
     fun release() = core.release()
 

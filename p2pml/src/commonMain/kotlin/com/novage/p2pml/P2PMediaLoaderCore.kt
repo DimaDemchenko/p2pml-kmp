@@ -154,14 +154,14 @@ internal class P2PMediaLoaderCore(
     }
 
     @Throws(P2PMediaLoaderException::class)
-    fun getManifestUrl(manifestUrl: String): String {
+    fun createPlaybackUrl(manifestUrl: String): String {
         if (status.value != LoaderStatus.ACTIVE) {
             throw P2PMediaLoaderException(
                 P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
                 "P2PMediaLoader is not ready. Current state: ${status.value}"
             )
         }
-        return activeSession?.getManifestUrl(manifestUrl.encodeURLParameter())
+        return activeSession?.createPlaybackUrl(manifestUrl.encodeURLParameter())
             ?: throw P2PMediaLoaderException(
                 P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
                 "Internal invariant violation: activeSession is null while status is ${status.value}"

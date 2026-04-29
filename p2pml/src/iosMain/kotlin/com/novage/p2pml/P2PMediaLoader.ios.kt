@@ -15,7 +15,7 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     val fatalErrors get() = core.fatalErrors
 
     @Throws(P2PMediaLoaderException::class)
-    fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 

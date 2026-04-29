@@ -73,7 +73,7 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         null
     }
 
-    fun getManifestUrl(manifestUrl: String): String = loader.getManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String): String = loader.createPlaybackUrl(manifestUrl)
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
 
