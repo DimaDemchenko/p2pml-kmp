@@ -44,7 +44,7 @@ class PlayerViewModel: ObservableObject {
         Task { [weak self] in
             guard let self = self else { return }
             do {
-                try await loader.start(getPlaybackInfo: { [weak self] in
+                try await loader.initialize(getPlaybackInfo: { [weak self] in
                     guard let validPlayer = self?.player else {
                         return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
                     }

@@ -61,7 +61,7 @@ internal class P2PMediaLoaderCore(
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
-    internal suspend fun start(
+    internal suspend fun initialize(
         provider: PlaybackProvider,
         webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
     ) {

@@ -138,7 +138,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         p2pLoader = loader
 
         try {
-            loader.start(exoPlayer)
+            loader.initialize(exoPlayer)
 
             val activeLoader = p2pLoader ?: return
             val p2pUrl = activeLoader.createPlaybackUrl(manifestUrl)
