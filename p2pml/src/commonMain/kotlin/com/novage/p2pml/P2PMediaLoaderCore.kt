@@ -203,20 +203,22 @@ internal class P2PMediaLoaderCore(
         coreScope.cancel()
 
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                sessionToDestroy?.destroy()
-            } catch (e: CancellationException) {
-                logger.d { "Teardown cancelled." }
-                throw e
-            } catch (e: IOException) {
-                logger.e { "IO Error during session teardown: ${e.message}" }
-            } catch (e: IllegalStateException) {
-                logger.e { "State Error during session teardown: ${e.message}" }
-            } catch (e: IllegalArgumentException) {
-                logger.e { "Arg Error during session teardown: ${e.message}" }
-            } finally {
-                status.value = LoaderStatus.RELEASED
-                logger.d { "Release complete." }
+            withContext(NonCancellable) {
+                try {
+                    sessionToDestroy?.destroy()
+                } catch (e: CancellationException) {
+                    logger.d { "Teardown cancelled." }
+                    throw e
+                } catch (e: IOException) {
+                    logger.e { "IO Error during session teardown: ${e.message}" }
+                } catch (e: IllegalStateException) {
+                    logger.e { "State Error during session teardown: ${e.message}" }
+                } catch (e: IllegalArgumentException) {
+                    logger.e { "Arg Error during session teardown: ${e.message}" }
+                } finally {
+                    status.value = LoaderStatus.RELEASED
+                    logger.d { "Release complete." }
+                }
             }
         }
     }
