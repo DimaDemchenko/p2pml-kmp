@@ -87,14 +87,14 @@ private class IosHeadlessWebView(
     }
 
     override suspend fun loadUrlAndWait(url: String) = suspendCancellableCoroutine<Unit> { continuation ->
-        this.loadUrlContinuation = continuation
-        this.onPageReadyCallback = {
-            if (continuation.isActive) continuation.resume(Unit)
-            this.loadUrlContinuation = null
-            this.onPageReadyCallback = null
-        }
-
         runOnMainThread {
+            this.loadUrlContinuation = continuation
+            this.onPageReadyCallback = {
+                if (continuation.isActive) continuation.resume(Unit)
+                this.loadUrlContinuation = null
+                this.onPageReadyCallback = null
+            }
+
             val view = webView
             if (view == null) {
                 continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
