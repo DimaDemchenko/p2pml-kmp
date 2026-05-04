@@ -72,10 +72,21 @@ private class IosHeadlessWebView(
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
 
         val delegate = NavigationDelegate(onFatalError) { exception ->
-            loadUrlContinuation?.takeIf { it.isActive }?.resumeWithException(exception)
-            loadUrlContinuation = null
-            onPageReadyCallback = null
+            val cont = loadUrlContinuation
+            if (cont != null && cont.isActive) {
+                cont.resumeWithException(exception)
+                loadUrlContinuation = null
+                onPageReadyCallback = null
+            } else {
+                onFatalError(
+                    P2PMediaLoaderException(
+                        P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
+                        exception.message ?: "Unknown error"
+                    )
+                )
+            }
         }
+        
         this.navigationDelegate = delegate
         wkWebView.navigationDelegate = delegate
 
