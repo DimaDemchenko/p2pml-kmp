@@ -36,10 +36,7 @@ internal class P2PSessionFactory(
 
     private val logger = CoreLogger("P2PSessionFactory")
 
-    suspend fun createSession(
-        provider: PlaybackProvider,
-        webViewFactory: () -> HeadlessWebView
-    ): P2PSession {
+    suspend fun createSession(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView): P2PSession {
         val cleanupTasks = mutableListOf<suspend () -> Unit>()
 
         return runCatching {

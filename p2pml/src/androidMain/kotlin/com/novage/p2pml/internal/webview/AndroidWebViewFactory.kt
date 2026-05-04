@@ -1,12 +1,5 @@
 package com.novage.p2pml.internal.webview
 
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CancellationException
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import com.novage.p2pml.P2PMediaLoaderException
-
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
@@ -17,18 +10,20 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
-    override fun createHeadlessWebView(
-        events: P2PEventRegistry
-    ): HeadlessWebView = AndroidHeadlessWebView(context, events)
+    override fun createHeadlessWebView(events: P2PEventRegistry): HeadlessWebView =
+        AndroidHeadlessWebView(context, events)
 }
 
-private class AndroidHeadlessWebView(
-    context: Context,
-    private val events: P2PEventRegistry
-) : HeadlessWebView {
+private class AndroidHeadlessWebView(context: Context, private val events: P2PEventRegistry) : HeadlessWebView {
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
 

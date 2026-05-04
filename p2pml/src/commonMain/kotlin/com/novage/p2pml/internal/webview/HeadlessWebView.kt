@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.webview
 
 internal interface HeadlessWebView {
-    fun loadUrl(url: String)
+    suspend fun loadUrlAndWait(url: String)
 
     fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?)
 

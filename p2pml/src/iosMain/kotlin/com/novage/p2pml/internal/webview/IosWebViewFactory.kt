@@ -1,16 +1,15 @@
 package com.novage.p2pml.internal.webview
 
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CancellationException
+import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.events.P2PEventRegistry
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import com.novage.p2pml.P2PMediaLoaderException
-
-import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.api.events.P2PEventRegistry
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSError
 import platform.Foundation.NSThread
@@ -27,14 +26,10 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 internal class IosWebViewFactory : WebViewFactory {
-    override fun createHeadlessWebView(
-        events: P2PEventRegistry
-    ): HeadlessWebView = IosHeadlessWebView(events)
+    override fun createHeadlessWebView(events: P2PEventRegistry): HeadlessWebView = IosHeadlessWebView(events)
 }
 
-private class IosHeadlessWebView(
-    private val events: P2PEventRegistry
-) : HeadlessWebView {
+private class IosHeadlessWebView(private val events: P2PEventRegistry) : HeadlessWebView {
     private var webView: WKWebView? = null
 
     private var navigationDelegate: NavigationDelegate? = null

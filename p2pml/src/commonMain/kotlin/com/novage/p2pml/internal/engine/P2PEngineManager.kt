@@ -6,9 +6,9 @@ import com.novage.p2pml.internal.webview.HeadlessWebView
 internal class P2PEngineManager(private val webView: HeadlessWebView) : P2PEngine {
     private val logger = CoreLogger("P2PEngineManager")
 
-    override fun loadUrl(url: String) {
+    override suspend fun loadUrlAndWait(url: String) {
         logger.d { "Loading Web Engine URL: $url" }
-        webView.loadUrl(url)
+        webView.loadUrlAndWait(url)
     }
 
     override fun destroy() {
