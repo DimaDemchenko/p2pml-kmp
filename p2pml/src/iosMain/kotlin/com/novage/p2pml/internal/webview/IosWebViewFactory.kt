@@ -71,7 +71,7 @@ private class IosHeadlessWebView(
         val frame = CGRectZero.readValue()
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
 
-        val delegate = NavigationDelegate(onFatalError) { exception ->
+        val delegate = NavigationDelegate { exception ->
             val cont = loadUrlContinuation
             if (cont != null && cont.isActive) {
                 cont.resumeWithException(exception)
@@ -169,10 +169,8 @@ private class IosHeadlessWebView(
     }
 }
 
-private class NavigationDelegate(
-    private val onFatalError: (P2PMediaLoaderException) -> Unit,
-    private val onError: (P2PMediaLoaderException) -> Unit
-) : NSObject(),
+private class NavigationDelegate(private val onError: (P2PMediaLoaderException) -> Unit) :
+    NSObject(),
     WKNavigationDelegateProtocol {
 
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
@@ -182,6 +180,6 @@ private class NavigationDelegate(
 
     override fun webViewWebContentProcessDidTerminate(webView: WKWebView) {
         val msg = "WKWebView Web Content Process Terminated"
-        onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+        onError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
     }
 }

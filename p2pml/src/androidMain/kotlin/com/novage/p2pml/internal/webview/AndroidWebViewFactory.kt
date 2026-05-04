@@ -41,16 +41,7 @@ private class AndroidHeadlessWebView(
         webViewClient = object : WebViewClient() {
             override fun onReceivedError(v: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request == null || !request.isForMainFrame) return
-                val msg = "WebView Error: ${error?.errorCode} ${error?.description}"
-
-                val cont = loadUrlContinuation
-                if (cont != null && cont.isActive) {
-                    cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
-                    loadUrlContinuation = null
-                    onPageReadyCallback = null
-                } else {
-                    onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
-                }
+                handleError("WebView Error: ${error?.errorCode} ${error?.description}")
             }
 
             override fun onReceivedHttpError(
@@ -59,21 +50,11 @@ private class AndroidHeadlessWebView(
                 errorResponse: WebResourceResponse?
             ) {
                 if (request == null || !request.isForMainFrame) return
-                val msg = "WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}"
-
-                val cont = loadUrlContinuation
-                if (cont != null && cont.isActive) {
-                    cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
-                    loadUrlContinuation = null
-                    onPageReadyCallback = null
-                } else {
-                    onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
-                }
+                handleError("WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}")
             }
 
             override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
-                val msg = "WebView Renderer Crashed. Did crash: ${detail?.didCrash()}"
-                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+                handleError("WebView Renderer Crashed. Did crash: ${detail?.didCrash()}")
                 return true
             }
         }
@@ -144,6 +125,17 @@ private class AndroidHeadlessWebView(
             action()
         } else {
             mainHandler.post(action)
+        }
+    }
+
+    private fun handleError(msg: String) {
+        val cont = loadUrlContinuation
+        if (cont != null && cont.isActive) {
+            cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+            loadUrlContinuation = null
+            onPageReadyCallback = null
+        } else {
+            onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
         }
     }
 }
