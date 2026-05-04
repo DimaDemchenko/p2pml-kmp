@@ -105,6 +105,11 @@ private class IosHeadlessWebView(
                 return@runOnMainThread
             }
 
+            if (this.loadUrlContinuation != null) {
+                continuation.resumeWithException(IllegalStateException("A load is already in progress"))
+                return@runOnMainThread
+            }
+
             val nsUrl = NSURL.URLWithString(url)
             if (nsUrl == null) {
                 continuation.resumeWithException(IllegalArgumentException("Invalid URL: $url"))

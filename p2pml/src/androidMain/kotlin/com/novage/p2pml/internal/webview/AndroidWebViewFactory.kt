@@ -95,6 +95,11 @@ private class AndroidHeadlessWebView(
                 return@runOnUiThread
             }
 
+            if (this.loadUrlContinuation != null) {
+                continuation.resumeWithException(IllegalStateException("A load is already in progress"))
+                return@runOnUiThread
+            }
+
             this.loadUrlContinuation = continuation
             this.onPageReadyCallback = {
                 if (continuation.isActive) continuation.resume(Unit)
