@@ -55,6 +55,7 @@ private class AndroidHeadlessWebView(
 
             override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
                 handleError("WebView Renderer Crashed. Did crash: ${detail?.didCrash()}")
+
                 webView?.destroy()
                 webView = null
                 return true

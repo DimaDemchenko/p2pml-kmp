@@ -177,6 +177,11 @@ private class NavigationDelegate(private val onError: (String) -> Unit) :
         onError(msg)
     }
 
+    override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
+        val msg = "WebView Navigation Error: ${withError.code} ${withError.localizedDescription}"
+        onError(msg)
+    }
+
     override fun webViewWebContentProcessDidTerminate(webView: WKWebView) {
         val msg = "WKWebView Web Content Process Terminated"
         onError(msg)
