@@ -73,8 +73,10 @@ private class IosHeadlessWebView(
 
         val delegate = NavigationDelegate { msg ->
             val cont = loadUrlContinuation
-            if (cont != null && cont.isActive) {
-                cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+            if (cont != null) {
+                if (cont.isActive) {
+                    cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+                }
                 loadUrlContinuation = null
                 onPageReadyCallback = null
             } else {
