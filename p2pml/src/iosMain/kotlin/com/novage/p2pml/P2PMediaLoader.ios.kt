@@ -30,12 +30,8 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     suspend fun initialize(getPlaybackInfo: () -> PlaybackInfo) {
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
 
-        core.initialize(provider) { onLoaded, onError ->
-            IosWebViewFactory().createHeadlessWebView(
-                events = core.events,
-                onWebViewLoaded = onLoaded,
-                onWebViewError = onError
-            )
+        core.initialize(provider) {
+            IosWebViewFactory().createHeadlessWebView(events = core.events)
         }
     }
 }

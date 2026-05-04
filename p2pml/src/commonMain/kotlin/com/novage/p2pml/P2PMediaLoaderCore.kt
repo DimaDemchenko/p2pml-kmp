@@ -63,7 +63,7 @@ internal class P2PMediaLoaderCore(
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     internal suspend fun initialize(
         provider: PlaybackProvider,
-        webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
+        webViewFactory: () -> HeadlessWebView
     ) {
         withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
@@ -87,7 +87,7 @@ internal class P2PMediaLoaderCore(
 
     private suspend fun performSessionInitialization(
         provider: PlaybackProvider,
-        webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
+        webViewFactory: () -> HeadlessWebView
     ) {
         val session = sessionFactory.createSession(
             provider = provider,

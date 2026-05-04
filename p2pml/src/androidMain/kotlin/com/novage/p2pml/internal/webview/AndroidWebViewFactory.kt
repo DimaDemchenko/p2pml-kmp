@@ -1,5 +1,12 @@
 package com.novage.p2pml.internal.webview
 
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import com.novage.p2pml.P2PMediaLoaderException
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
@@ -14,60 +21,75 @@ import com.novage.p2pml.api.events.P2PEventRegistry
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
-        events: P2PEventRegistry,
-        onWebViewLoaded: () -> Unit,
-        onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
-    ): HeadlessWebView = AndroidHeadlessWebView(context, events, onWebViewLoaded, onWebViewError)
+        events: P2PEventRegistry
+    ): HeadlessWebView = AndroidHeadlessWebView(context, events)
 }
 
 private class AndroidHeadlessWebView(
     context: Context,
-    events: P2PEventRegistry,
-    private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
+    private val events: P2PEventRegistry
 ) : HeadlessWebView {
+    private var loadUrlContinuation: CancellableContinuation<Unit>? = null
+    private var onPageReadyCallback: (() -> Unit)? = null
+
     @SuppressLint("SetJavaScriptEnabled")
     private var webView: WebView? = WebView(context).apply {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
         webViewClient = object : WebViewClient() {
-            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+            override fun onReceivedError(v: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request == null || !request.isForMainFrame) return
-
-                onWebViewError(
-                    P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
-                    "WebView Error: ${error?.errorCode} ${error?.description}"
+                val msg = "WebView Error: ${error?.errorCode} ${error?.description}"
+                loadUrlContinuation?.takeIf { it.isActive }?.resumeWithException(
+                    P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg)
                 )
             }
 
             override fun onReceivedHttpError(
-                view: WebView?,
+                v: WebView?,
                 request: WebResourceRequest?,
                 errorResponse: WebResourceResponse?
             ) {
                 if (request == null || !request.isForMainFrame) return
-
-                onWebViewError(
-                    P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
-                    "WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}"
+                val msg = "WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}"
+                loadUrlContinuation?.takeIf { it.isActive }?.resumeWithException(
+                    P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg)
                 )
             }
         }
 
         val dispatcher = AndroidWebViewEventDispatcher(
             events = events,
-            onPageReady = onWebViewLoaded
+            onPageReady = { onPageReadyCallback?.invoke() }
         )
-
         addJavascriptInterface(dispatcher, "P2PMLAndroid")
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    override fun loadUrl(url: String) {
+    override suspend fun loadUrlAndWait(url: String) = suspendCancellableCoroutine<Unit> { continuation ->
+        this.loadUrlContinuation = continuation
+        this.onPageReadyCallback = {
+            if (continuation.isActive) continuation.resume(Unit)
+            this.loadUrlContinuation = null
+            this.onPageReadyCallback = null
+        }
+
         runOnUiThread {
-            webView?.loadUrl(url)
+            val view = webView
+            if (view == null) {
+                continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
+                return@runOnUiThread
+            }
+
+            continuation.invokeOnCancellation {
+                runOnUiThread {
+                    view.stopLoading()
+                }
+            }
+
+            view.loadUrl(url)
         }
     }
 
@@ -81,6 +103,10 @@ private class AndroidHeadlessWebView(
 
     override fun destroy() {
         runOnUiThread {
+            loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
+            loadUrlContinuation = null
+            onPageReadyCallback = null
+
             webView?.stopLoading()
             webView?.destroy()
             webView = null
