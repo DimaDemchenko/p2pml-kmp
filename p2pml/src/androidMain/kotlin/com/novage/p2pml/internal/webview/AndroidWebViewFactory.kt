@@ -70,6 +70,8 @@ private class AndroidHeadlessWebView(
 
     override suspend fun loadUrlAndWait(url: String) = suspendCancellableCoroutine<Unit> { continuation ->
         runOnUiThread {
+            if (!continuation.isActive) return@runOnUiThread
+
             val view = webView
             if (view == null) {
                 continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
