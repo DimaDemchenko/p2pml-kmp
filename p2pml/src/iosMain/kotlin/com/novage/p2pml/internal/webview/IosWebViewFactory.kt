@@ -71,19 +71,14 @@ private class IosHeadlessWebView(
         val frame = CGRectZero.readValue()
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
 
-        val delegate = NavigationDelegate { exception ->
+        val delegate = NavigationDelegate { msg ->
             val cont = loadUrlContinuation
             if (cont != null && cont.isActive) {
-                cont.resumeWithException(exception)
+                cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
                 loadUrlContinuation = null
                 onPageReadyCallback = null
             } else {
-                onFatalError(
-                    P2PMediaLoaderException(
-                        P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
-                        exception.message ?: "Unknown error"
-                    )
-                )
+                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
             }
         }
 
@@ -171,17 +166,17 @@ private class IosHeadlessWebView(
     }
 }
 
-private class NavigationDelegate(private val onError: (P2PMediaLoaderException) -> Unit) :
+private class NavigationDelegate(private val onError: (String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
 
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
         val msg = "WebView Error: ${withError.code} ${withError.localizedDescription}"
-        onError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+        onError(msg)
     }
 
     override fun webViewWebContentProcessDidTerminate(webView: WKWebView) {
         val msg = "WKWebView Web Content Process Terminated"
-        onError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+        onError(msg)
     }
 }
