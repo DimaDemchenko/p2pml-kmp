@@ -38,8 +38,8 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws CancellationException if the coroutine is cancelled
      */
     suspend fun initialize(getPlaybackInfo: () -> PlaybackInfo) {
-        core.initialize(DefaultPlaybackProvider(getPlaybackInfo)) {
-            AndroidWebViewFactory(context).createHeadlessWebView(events = core.events)
+        core.initialize(DefaultPlaybackProvider(getPlaybackInfo)) { onFatalError ->
+            AndroidWebViewFactory(context).createHeadlessWebView(core.events, onFatalError)
         }
     }
 
@@ -51,8 +51,8 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws CancellationException if the coroutine is cancelled
      */
     suspend fun initialize(exoPlayer: ExoPlayer) {
-        core.initialize(ExoPlayerPlaybackProvider(exoPlayer)) {
-            AndroidWebViewFactory(context).createHeadlessWebView(events = core.events)
+        core.initialize(ExoPlayerPlaybackProvider(exoPlayer)) { onFatalError ->
+            AndroidWebViewFactory(context).createHeadlessWebView(core.events, onFatalError)
         }
     }
 }

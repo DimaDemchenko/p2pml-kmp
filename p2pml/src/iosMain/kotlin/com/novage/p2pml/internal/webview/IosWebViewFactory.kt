@@ -26,10 +26,16 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 internal class IosWebViewFactory : WebViewFactory {
-    override fun createHeadlessWebView(events: P2PEventRegistry): HeadlessWebView = IosHeadlessWebView(events)
+    override fun createHeadlessWebView(
+        events: P2PEventRegistry,
+        onFatalError: (P2PMediaLoaderException) -> Unit
+    ): HeadlessWebView = IosHeadlessWebView(events, onFatalError)
 }
 
-private class IosHeadlessWebView(private val events: P2PEventRegistry) : HeadlessWebView {
+private class IosHeadlessWebView(
+    private val events: P2PEventRegistry,
+    private val onFatalError: (P2PMediaLoaderException) -> Unit
+) : HeadlessWebView {
     private var webView: WKWebView? = null
 
     private var navigationDelegate: NavigationDelegate? = null
@@ -65,8 +71,10 @@ private class IosHeadlessWebView(private val events: P2PEventRegistry) : Headles
         val frame = CGRectZero.readValue()
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
 
-        val delegate = NavigationDelegate { exception ->
+        val delegate = NavigationDelegate(onFatalError) { exception ->
             loadUrlContinuation?.takeIf { it.isActive }?.resumeWithException(exception)
+            loadUrlContinuation = null
+            onPageReadyCallback = null
         }
         this.navigationDelegate = delegate
         wkWebView.navigationDelegate = delegate
@@ -102,6 +110,8 @@ private class IosHeadlessWebView(private val events: P2PEventRegistry) : Headles
             continuation.invokeOnCancellation {
                 runOnMainThread {
                     view.stopLoading()
+                    loadUrlContinuation = null
+                    onPageReadyCallback = null
                 }
             }
 
@@ -143,12 +153,19 @@ private class IosHeadlessWebView(private val events: P2PEventRegistry) : Headles
     }
 }
 
-private class NavigationDelegate(private val onError: (P2PMediaLoaderException) -> Unit) :
-    NSObject(),
+private class NavigationDelegate(
+    private val onFatalError: (P2PMediaLoaderException) -> Unit,
+    private val onError: (P2PMediaLoaderException) -> Unit
+) : NSObject(),
     WKNavigationDelegateProtocol {
 
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
         val msg = "WebView Error: ${withError.code} ${withError.localizedDescription}"
         onError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+    }
+
+    override fun webViewWebContentProcessDidTerminate(webView: WKWebView) {
+        val msg = "WKWebView Web Content Process Terminated"
+        onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
     }
 }

@@ -36,14 +36,19 @@ internal class P2PSessionFactory(
 
     private val logger = CoreLogger("P2PSessionFactory")
 
-    suspend fun createSession(provider: PlaybackProvider, webViewFactory: () -> HeadlessWebView): P2PSession {
+    suspend fun createSession(
+        provider: PlaybackProvider,
+        webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
+    ): P2PSession {
         val cleanupTasks = mutableListOf<suspend () -> Unit>()
 
         return runCatching {
             val urlFactory = LocalUrlFactory()
 
             val engine = withContext(Dispatchers.Main) {
-                val webView = webViewFactory()
+                val webView = webViewFactory { exception ->
+                    errorDispatcher.tryEmit(exception.type, exception.message)
+                }
                 val engineManager = P2PEngineManager(webView)
                 cleanupTasks.add { engineManager.destroy() }
                 engineManager

@@ -19,11 +19,17 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
-    override fun createHeadlessWebView(events: P2PEventRegistry): HeadlessWebView =
-        AndroidHeadlessWebView(context, events)
+    override fun createHeadlessWebView(
+        events: P2PEventRegistry,
+        onFatalError: (P2PMediaLoaderException) -> Unit
+    ): HeadlessWebView = AndroidHeadlessWebView(context, events, onFatalError)
 }
 
-private class AndroidHeadlessWebView(context: Context, private val events: P2PEventRegistry) : HeadlessWebView {
+private class AndroidHeadlessWebView(
+    context: Context,
+    private val events: P2PEventRegistry,
+    private val onFatalError: (P2PMediaLoaderException) -> Unit
+) : HeadlessWebView {
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
 
@@ -36,9 +42,15 @@ private class AndroidHeadlessWebView(context: Context, private val events: P2PEv
             override fun onReceivedError(v: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request == null || !request.isForMainFrame) return
                 val msg = "WebView Error: ${error?.errorCode} ${error?.description}"
-                loadUrlContinuation?.takeIf { it.isActive }?.resumeWithException(
-                    P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg)
-                )
+
+                val cont = loadUrlContinuation
+                if (cont != null && cont.isActive) {
+                    cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+                    loadUrlContinuation = null
+                    onPageReadyCallback = null
+                } else {
+                    onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+                }
             }
 
             override fun onReceivedHttpError(
@@ -48,9 +60,21 @@ private class AndroidHeadlessWebView(context: Context, private val events: P2PEv
             ) {
                 if (request == null || !request.isForMainFrame) return
                 val msg = "WebView HTTP Error: ${errorResponse?.statusCode} ${errorResponse?.reasonPhrase}"
-                loadUrlContinuation?.takeIf { it.isActive }?.resumeWithException(
-                    P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg)
-                )
+
+                val cont = loadUrlContinuation
+                if (cont != null && cont.isActive) {
+                    cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+                    loadUrlContinuation = null
+                    onPageReadyCallback = null
+                } else {
+                    onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+                }
+            }
+
+            override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
+                val msg = "WebView Renderer Crashed. Did crash: ${detail?.didCrash()}"
+                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+                return true
             }
         }
 
@@ -81,6 +105,8 @@ private class AndroidHeadlessWebView(context: Context, private val events: P2PEv
             continuation.invokeOnCancellation {
                 runOnUiThread {
                     view.stopLoading()
+                    loadUrlContinuation = null
+                    onPageReadyCallback = null
                 }
             }
 
