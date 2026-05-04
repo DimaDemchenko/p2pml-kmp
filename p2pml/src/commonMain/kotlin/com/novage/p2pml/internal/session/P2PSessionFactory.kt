@@ -47,7 +47,7 @@ internal class P2PSessionFactory(
 
             val engine = withContext(Dispatchers.Main) {
                 val webView = webViewFactory { exception ->
-                    errorDispatcher.tryEmit(exception.type, exception.message)
+                    errorDispatcher.tryEmit(exception.type, exception.message ?: "Unknown error")
                 }
                 val engineManager = P2PEngineManager(webView)
                 cleanupTasks.add { engineManager.destroy() }

@@ -86,7 +86,7 @@ private class IosHeadlessWebView(
                 )
             }
         }
-        
+
         this.navigationDelegate = delegate
         wkWebView.navigationDelegate = delegate
 
