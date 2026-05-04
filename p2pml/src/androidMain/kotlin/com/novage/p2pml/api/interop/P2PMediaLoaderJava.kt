@@ -63,17 +63,17 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
-    fun start(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void?> = scope.future {
-        loader.start(getPlaybackInfo)
+    fun initialize(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void?> = scope.future {
+        loader.initialize(getPlaybackInfo)
         null
     }
 
-    fun start(exoPlayer: ExoPlayer): CompletableFuture<Void?> = scope.future {
-        loader.start(exoPlayer)
+    fun initialize(exoPlayer: ExoPlayer): CompletableFuture<Void?> = scope.future {
+        loader.initialize(exoPlayer)
         null
     }
 
-    fun getManifestUrl(manifestUrl: String): String = loader.getManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String): String = loader.createPlaybackUrl(manifestUrl)
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
 

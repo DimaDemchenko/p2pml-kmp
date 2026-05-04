@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.engine
 
 internal interface P2PEngine {
-    fun loadUrl(url: String)
+    suspend fun loadUrlAndWait(url: String)
     fun initCoreEngine(coreConfig: String, uploadUrl: String)
     fun destroy()
 

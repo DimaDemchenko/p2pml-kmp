@@ -61,9 +61,9 @@ internal class P2PMediaLoaderCore(
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
-    internal suspend fun start(
+    internal suspend fun initialize(
         provider: PlaybackProvider,
-        webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
+        webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
     ) {
         withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
@@ -87,7 +87,7 @@ internal class P2PMediaLoaderCore(
 
     private suspend fun performSessionInitialization(
         provider: PlaybackProvider,
-        webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
+        webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
     ) {
         val session = sessionFactory.createSession(
             provider = provider,
@@ -154,14 +154,14 @@ internal class P2PMediaLoaderCore(
     }
 
     @Throws(P2PMediaLoaderException::class)
-    fun getManifestUrl(manifestUrl: String): String {
+    fun createPlaybackUrl(manifestUrl: String): String {
         if (status.value != LoaderStatus.ACTIVE) {
             throw P2PMediaLoaderException(
                 P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
                 "P2PMediaLoader is not ready. Current state: ${status.value}"
             )
         }
-        return activeSession?.getManifestUrl(manifestUrl.encodeURLParameter())
+        return activeSession?.createPlaybackUrl(manifestUrl.encodeURLParameter())
             ?: throw P2PMediaLoaderException(
                 P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
                 "Internal invariant violation: activeSession is null while status is ${status.value}"
@@ -203,20 +203,22 @@ internal class P2PMediaLoaderCore(
         coreScope.cancel()
 
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                sessionToDestroy?.destroy()
-            } catch (e: CancellationException) {
-                logger.d { "Teardown cancelled." }
-                throw e
-            } catch (e: IOException) {
-                logger.e { "IO Error during session teardown: ${e.message}" }
-            } catch (e: IllegalStateException) {
-                logger.e { "State Error during session teardown: ${e.message}" }
-            } catch (e: IllegalArgumentException) {
-                logger.e { "Arg Error during session teardown: ${e.message}" }
-            } finally {
-                status.value = LoaderStatus.RELEASED
-                logger.d { "Release complete." }
+            withContext(NonCancellable) {
+                try {
+                    sessionToDestroy?.destroy()
+                } catch (e: CancellationException) {
+                    logger.d { "Teardown cancelled." }
+                    throw e
+                } catch (e: IOException) {
+                    logger.e { "IO Error during session teardown: ${e.message}" }
+                } catch (e: IllegalStateException) {
+                    logger.e { "State Error during session teardown: ${e.message}" }
+                } catch (e: IllegalArgumentException) {
+                    logger.e { "Arg Error during session teardown: ${e.message}" }
+                } finally {
+                    status.value = LoaderStatus.RELEASED
+                    logger.d { "Release complete." }
+                }
             }
         }
     }

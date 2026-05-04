@@ -1,9 +1,15 @@
 package com.novage.p2pml.internal.webview
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSError
 import platform.Foundation.NSThread
@@ -22,19 +28,20 @@ import platform.darwin.dispatch_get_main_queue
 internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
         events: P2PEventRegistry,
-        onWebViewLoaded: () -> Unit,
-        onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
-    ): HeadlessWebView = IosHeadlessWebView(events, onWebViewLoaded, onWebViewError)
+        onFatalError: (P2PMediaLoaderException) -> Unit
+    ): HeadlessWebView = IosHeadlessWebView(events, onFatalError)
 }
 
 private class IosHeadlessWebView(
     private val events: P2PEventRegistry,
-    private val onWebViewLoaded: () -> Unit,
-    private val onWebViewError: (P2PMediaLoaderErrorType, String) -> Unit
+    private val onFatalError: (P2PMediaLoaderException) -> Unit
 ) : HeadlessWebView {
     private var webView: WKWebView? = null
 
     private var navigationDelegate: NavigationDelegate? = null
+
+    private var loadUrlContinuation: CancellableContinuation<Unit>? = null
+    private var onPageReadyCallback: (() -> Unit)? = null
 
     init {
         runOnMainThread { initWebView() }
@@ -52,17 +59,31 @@ private class IosHeadlessWebView(
     private fun initWebView() {
         val configuration = WKWebViewConfiguration()
 
-        val scriptMessageHandler = IosWebViewEventDispatcher(events) { onWebViewLoaded() }
-        configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
-
         val preferences = WKPreferences()
         preferences.setValue(true, forKey = "developerExtrasEnabled")
         configuration.preferences = preferences
 
+        val scriptMessageHandler = IosWebViewEventDispatcher(events) {
+            onPageReadyCallback?.invoke()
+        }
+        configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
+
         val frame = CGRectZero.readValue()
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
 
-        val delegate = NavigationDelegate(onWebViewError)
+        val delegate = NavigationDelegate { msg ->
+            val cont = loadUrlContinuation
+            if (cont != null) {
+                if (cont.isActive) {
+                    cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+                }
+                loadUrlContinuation = null
+                onPageReadyCallback = null
+            } else {
+                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+            }
+        }
+
         this.navigationDelegate = delegate
         wkWebView.navigationDelegate = delegate
 
@@ -73,11 +94,42 @@ private class IosHeadlessWebView(
         this.webView = wkWebView
     }
 
-    override fun loadUrl(url: String) {
+    override suspend fun loadUrlAndWait(url: String) = suspendCancellableCoroutine<Unit> { continuation ->
         runOnMainThread {
-            val view = webView ?: return@runOnMainThread
+            if (!continuation.isActive) return@runOnMainThread
 
-            val nsUrl = NSURL.URLWithString(url) ?: return@runOnMainThread
+            val view = webView
+            if (view == null) {
+                continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
+                return@runOnMainThread
+            }
+
+            if (this.loadUrlContinuation != null) {
+                continuation.resumeWithException(IllegalStateException("A load is already in progress"))
+                return@runOnMainThread
+            }
+
+            val nsUrl = NSURL.URLWithString(url)
+            if (nsUrl == null) {
+                continuation.resumeWithException(IllegalArgumentException("Invalid URL: $url"))
+                return@runOnMainThread
+            }
+
+            this.loadUrlContinuation = continuation
+            this.onPageReadyCallback = {
+                if (continuation.isActive) continuation.resume(Unit)
+                this.loadUrlContinuation = null
+                this.onPageReadyCallback = null
+            }
+
+            continuation.invokeOnCancellation {
+                runOnMainThread {
+                    view.stopLoading()
+                    loadUrlContinuation = null
+                    onPageReadyCallback = null
+                }
+            }
+
             val request = NSURLRequest.requestWithURL(nsUrl)
             view.loadRequest(request)
         }
@@ -99,6 +151,10 @@ private class IosHeadlessWebView(
 
     override fun destroy() {
         runOnMainThread {
+            loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
+            loadUrlContinuation = null
+            onPageReadyCallback = null
+
             val view = webView ?: return@runOnMainThread
 
             view.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
@@ -112,14 +168,22 @@ private class IosHeadlessWebView(
     }
 }
 
-private class NavigationDelegate(private val onError: (P2PMediaLoaderErrorType, String) -> Unit) :
+private class NavigationDelegate(private val onError: (String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
 
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
-        onError(
-            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
-            "WebView Error: ${withError.code} ${withError.localizedDescription}"
-        )
+        val msg = "WebView Error: ${withError.code} ${withError.localizedDescription}"
+        onError(msg)
+    }
+
+    override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
+        val msg = "WebView Navigation Error: ${withError.code} ${withError.localizedDescription}"
+        onError(msg)
+    }
+
+    override fun webViewWebContentProcessDidTerminate(webView: WKWebView) {
+        val msg = "WKWebView Web Content Process Terminated"
+        onError(msg)
     }
 }

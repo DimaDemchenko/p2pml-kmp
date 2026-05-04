@@ -15,7 +15,7 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     val fatalErrors get() = core.fatalErrors
 
     @Throws(P2PMediaLoaderException::class)
-    fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
@@ -27,15 +27,11 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     }
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
-    suspend fun start(getPlaybackInfo: () -> PlaybackInfo) {
+    suspend fun initialize(getPlaybackInfo: () -> PlaybackInfo) {
         val provider = DefaultPlaybackProvider(getPlaybackInfo)
 
-        core.start(provider) { onLoaded, onError ->
-            IosWebViewFactory().createHeadlessWebView(
-                events = core.events,
-                onWebViewLoaded = onLoaded,
-                onWebViewError = onError
-            )
+        core.initialize(provider) { onFatalError ->
+            IosWebViewFactory().createHeadlessWebView(core.events, onFatalError)
         }
     }
 }

@@ -17,7 +17,6 @@ import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
@@ -38,22 +37,17 @@ internal class P2PSessionFactory(
 
     suspend fun createSession(
         provider: PlaybackProvider,
-        webViewFactory: (onLoaded: () -> Unit, onError: (P2PMediaLoaderErrorType, String) -> Unit) -> HeadlessWebView
+        webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
     ): P2PSession {
         val cleanupTasks = mutableListOf<suspend () -> Unit>()
 
         return runCatching {
             val urlFactory = LocalUrlFactory()
-            val webViewLoadedDeferred = CompletableDeferred<Unit>()
 
             val engine = withContext(Dispatchers.Main) {
-                val webView = webViewFactory(
-                    { webViewLoadedDeferred.complete(Unit) },
-                    { errorType, message ->
-                        errorDispatcher.tryEmit(errorType, message)
-                        webViewLoadedDeferred.completeExceptionally(P2PMediaLoaderException(errorType, message))
-                    }
-                )
+                val webView = webViewFactory { exception ->
+                    errorDispatcher.tryEmit(exception.type, exception.message ?: "Unknown error")
+                }
                 val engineManager = P2PEngineManager(webView)
                 cleanupTasks.add { engineManager.destroy() }
                 engineManager
@@ -94,7 +88,7 @@ internal class P2PSessionFactory(
                 cleanupSafely(cleanupTasks.reversed())
             }
 
-            startServerAndEngine(engine, serverModule, urlFactory, webViewLoadedDeferred)
+            startServerAndEngine(engine, serverModule, urlFactory)
 
             P2PSession(
                 engineManager = engine,
@@ -109,17 +103,14 @@ internal class P2PSessionFactory(
     private suspend fun startServerAndEngine(
         engine: P2PEngineManager,
         serverModule: ServerModule,
-        urlFactory: LocalUrlFactory,
-        webViewLoadedDeferred: CompletableDeferred<Unit>
+        urlFactory: LocalUrlFactory
     ) {
         val port = withContext(Dispatchers.IO) { serverModule.start() }
         urlFactory.setPort(port)
 
         val engineFileUrl = customEngineUrl ?: urlFactory.buildStaticPageUrl()
-        engine.loadUrl(engineFileUrl)
-
         withTimeout(WEBVIEW_LOAD_TIMEOUT_MS) {
-            webViewLoadedDeferred.await()
+            engine.loadUrlAndWait(engineFileUrl)
         }
 
         engine.initCoreEngine(

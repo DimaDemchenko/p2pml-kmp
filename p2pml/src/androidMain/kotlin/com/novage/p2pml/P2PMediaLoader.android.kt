@@ -21,7 +21,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     val events get() = core.events
     val fatalErrors get() = core.fatalErrors
 
-    fun getManifestUrl(manifestUrl: String) = core.getManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
     fun release() = core.release()
 
@@ -37,13 +37,9 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
-    suspend fun start(getPlaybackInfo: () -> PlaybackInfo) {
-        core.start(DefaultPlaybackProvider(getPlaybackInfo)) { onLoaded, onError ->
-            AndroidWebViewFactory(context).createHeadlessWebView(
-                events = core.events,
-                onWebViewLoaded = onLoaded,
-                onWebViewError = onError
-            )
+    suspend fun initialize(getPlaybackInfo: () -> PlaybackInfo) {
+        core.initialize(DefaultPlaybackProvider(getPlaybackInfo)) { onFatalError ->
+            AndroidWebViewFactory(context).createHeadlessWebView(core.events, onFatalError)
         }
     }
 
@@ -54,13 +50,9 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
-    suspend fun start(exoPlayer: ExoPlayer) {
-        core.start(ExoPlayerPlaybackProvider(exoPlayer)) { onLoaded, onError ->
-            AndroidWebViewFactory(context).createHeadlessWebView(
-                events = core.events,
-                onWebViewLoaded = onLoaded,
-                onWebViewError = onError
-            )
+    suspend fun initialize(exoPlayer: ExoPlayer) {
+        core.initialize(ExoPlayerPlaybackProvider(exoPlayer)) { onFatalError ->
+            AndroidWebViewFactory(context).createHeadlessWebView(core.events, onFatalError)
         }
     }
 }

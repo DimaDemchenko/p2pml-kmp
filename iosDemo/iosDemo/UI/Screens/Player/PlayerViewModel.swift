@@ -44,7 +44,7 @@ class PlayerViewModel: ObservableObject {
         Task { [weak self] in
             guard let self = self else { return }
             do {
-                try await loader.start(getPlaybackInfo: { [weak self] in
+                try await loader.initialize(getPlaybackInfo: { [weak self] in
                     guard let validPlayer = self?.player else {
                         return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
                     }
@@ -55,7 +55,7 @@ class PlayerViewModel: ObservableObject {
                     )
                 })
 
-                let p2pUrl = self.p2pLoader?.getManifestUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                let p2pUrl = self.p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
                 self.startPlayback(url: p2pUrl)
                 self.uiState.isP2PActive = true
             } catch let error as P2PMediaLoaderException {

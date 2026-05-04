@@ -10,7 +10,7 @@ internal class P2PSession(
     private val urlFactory: LocalUrlFactory,
     private val teardownAction: suspend () -> Unit
 ) {
-    fun getManifestUrl(manifestUrl: String): String = urlFactory.buildManifestUrl(manifestUrl)
+    fun createPlaybackUrl(manifestUrl: String): String = urlFactory.buildManifestUrl(manifestUrl)
 
     fun applyDynamicConfig(config: DynamicCoreConfig) {
         engineManager.applyDynamicConfig(config.toJsExpression())
