@@ -13,6 +13,15 @@ plugins {
     id("co.touchlab.skie") version "0.10.10"
 }
 
+skie {
+    features {
+        group {
+            co.touchlab.skie.configuration.SealedInterop.Enabled(false)
+            co.touchlab.skie.configuration.DefaultArgumentInterop.Enabled(false)
+        }
+    }
+}
+
 val generatedSourceDir = layout.buildDirectory.dir("generated/p2p/kotlin")
 val assetsSourceDir = layout.projectDirectory.dir("src/assets")
 

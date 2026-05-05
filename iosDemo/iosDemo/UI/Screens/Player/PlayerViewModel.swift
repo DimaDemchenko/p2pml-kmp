@@ -55,7 +55,7 @@ class PlayerViewModel: ObservableObject {
                     )
                 })
 
-                let p2pUrl = self.p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                let p2pUrl = try self.p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
                 self.startPlayback(url: p2pUrl)
                 self.uiState.isP2PActive = true
             } catch let error as P2PMediaLoaderException {
