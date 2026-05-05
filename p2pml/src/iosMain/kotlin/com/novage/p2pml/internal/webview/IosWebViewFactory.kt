@@ -6,6 +6,7 @@ import com.novage.p2pml.api.events.P2PEventRegistry
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.readValue
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
@@ -172,11 +173,13 @@ private class NavigationDelegate(private val onError: (String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
 
+    @ObjCSignatureOverride
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
         val msg = "WebView Error: ${withError.code} ${withError.localizedDescription}"
         onError(msg)
     }
 
+    @ObjCSignatureOverride
     override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
         val msg = "WebView Navigation Error: ${withError.code} ${withError.localizedDescription}"
         onError(msg)
