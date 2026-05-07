@@ -200,9 +200,9 @@ internal class P2PMediaLoaderCore(
         activeSession = null
         pendingDynamicConfig = null
 
-        coreScope.cancel()
+        coreScope.coroutineContext.cancelChildren()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        coreScope.launch(Dispatchers.IO) {
             withContext(NonCancellable) {
                 try {
                     sessionToDestroy?.destroy()
@@ -218,6 +218,8 @@ internal class P2PMediaLoaderCore(
                 } finally {
                     status.value = LoaderStatus.RELEASED
                     logger.d { "Release complete." }
+
+                    coreScope.cancel()
                 }
             }
         }
