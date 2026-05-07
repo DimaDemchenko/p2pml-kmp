@@ -19,6 +19,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -200,9 +201,9 @@ internal class P2PMediaLoaderCore(
         activeSession = null
         pendingDynamicConfig = null
 
-        coreScope.cancel()
+        coreScope.coroutineContext.cancelChildren()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        coreScope.launch(Dispatchers.IO) {
             withContext(NonCancellable) {
                 try {
                     sessionToDestroy?.destroy()
@@ -218,6 +219,8 @@ internal class P2PMediaLoaderCore(
                 } finally {
                     status.value = LoaderStatus.RELEASED
                     logger.d { "Release complete." }
+
+                    coreScope.cancel()
                 }
             }
         }
