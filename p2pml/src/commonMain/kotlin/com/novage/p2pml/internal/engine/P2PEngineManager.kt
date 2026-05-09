@@ -12,7 +12,10 @@ import kotlinx.serialization.json.Json
 
 internal class P2PEngineManager(
     private val webView: HeadlessWebView,
-    private val json: Json = Json { encodeDefaults = true }
+    private val json: Json = Json {
+        encodeDefaults = false
+        explicitNulls = false
+    }
 ) : P2PEngine {
     private val logger = CoreLogger("P2PEngineManager")
 
