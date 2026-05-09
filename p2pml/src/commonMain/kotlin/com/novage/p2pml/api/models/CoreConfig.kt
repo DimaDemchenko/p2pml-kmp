@@ -2,7 +2,6 @@ package com.novage.p2pml.api.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.json.Json
 
 @Serializable
 data class IceServer(val urls: List<String>, val username: String? = null, val credential: String? = null)
