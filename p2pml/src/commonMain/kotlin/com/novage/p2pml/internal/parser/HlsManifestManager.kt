@@ -5,6 +5,8 @@ import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsPlaylistParser
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
