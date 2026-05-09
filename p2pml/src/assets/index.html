@@ -142,19 +142,17 @@
           }
         }
 
-        parseAllStreams(jsonData) {
+        parseAllStreams(streams) {
           if (!this.core) return;
 
-          const streams = JSON.parse(jsonData);
           for (const stream of streams) {
             this.core.addStreamIfNoneExists(stream);
           }
         }
 
-        parseStream(jsonData) {
+        parseStream(playlist) {
           if (!this.core) return;
 
-          const playlist = JSON.parse(jsonData);
           const { streamRuntimeId, addSegments, removeSegmentsIds, isLive } =
             playlist;
 
@@ -171,11 +169,10 @@
           this.core.setManifestResponseUrl(manifestUrl);
         }
 
-        updatePlaybackInfo(playbackInfoJson) {
+        updatePlaybackInfo(playbackInfo) {
           if (!this.core) return;
 
-          const { currentPlayPosition, currentPlaybackSpeed } =
-            JSON.parse(playbackInfoJson);
+          const { currentPlayPosition, currentPlaybackSpeed } = playbackInfo;
           this.core.updatePlayback(currentPlayPosition, currentPlaybackSpeed);
         }
 

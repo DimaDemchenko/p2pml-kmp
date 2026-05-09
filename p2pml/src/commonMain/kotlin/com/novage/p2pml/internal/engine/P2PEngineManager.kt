@@ -10,6 +10,11 @@ import com.novage.p2pml.internal.webview.HeadlessWebView
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private fun String.escapeForJs(): String = this.replace("\\", "\\\\")
+    .replace("'", "\\'")
+    .replace("\n", "\\n")
+    .replace("\r", "\\r")
+
 internal class P2PEngineManager(
     private val webView: HeadlessWebView,
     private val json: Json = Json { encodeDefaults = true }
@@ -33,26 +38,26 @@ internal class P2PEngineManager(
 
     override fun requestSegmentBytes(segmentUrl: String) {
         logger.d { "Requesting segment via P2P Engine: $segmentUrl" }
-        evaluate("window.p2p.processSegmentRequest('$segmentUrl');")
+        evaluate("window.p2p.processSegmentRequest('${segmentUrl.escapeForJs()}');")
     }
 
     override fun sendStream(stream: UpdateStreamParams) {
         val streamJson = json.encodeToString(stream)
-        evaluate("window.p2p.parseStream('$streamJson');")
+        evaluate("window.p2p.parseStream($streamJson);")
     }
 
     override fun sendAllStreams(streams: List<Stream>) {
         val streamsJson = json.encodeToString(streams)
-        evaluate("window.p2p.parseAllStreams('$streamsJson');")
+        evaluate("window.p2p.parseAllStreams($streamsJson);")
     }
 
     override fun unsubscribeFromP2PEvent(eventName: String) {
-        evaluate("window.p2p.unsubscribeFromEvent('$eventName');")
+        evaluate("window.p2p.unsubscribeFromEvent('${eventName.escapeForJs()}');")
     }
 
     override fun setManifestUrl(manifestUrl: String) {
         logger.d { "Setting manifest URL in P2P Engine: $manifestUrl" }
-        evaluate("window.p2p.setManifestUrl('$manifestUrl');")
+        evaluate("window.p2p.setManifestUrl('${manifestUrl.escapeForJs()}');")
     }
 
     override fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
@@ -61,7 +66,7 @@ internal class P2PEngineManager(
     }
 
     override fun subscribeToP2PEvent(eventName: String) {
-        evaluate("window.p2p.subscribeToEvent('$eventName');")
+        evaluate("window.p2p.subscribeToEvent('${eventName.escapeForJs()}');")
     }
 
     private fun evaluate(script: String) {
@@ -70,6 +75,6 @@ internal class P2PEngineManager(
 
     override fun updatePlaybackInfo(info: PlaybackInfo) {
         val jsonString = json.encodeToString(info)
-        evaluate("window.p2p.updatePlaybackInfo('$jsonString');")
+        evaluate("window.p2p.updatePlaybackInfo($jsonString);")
     }
 }
