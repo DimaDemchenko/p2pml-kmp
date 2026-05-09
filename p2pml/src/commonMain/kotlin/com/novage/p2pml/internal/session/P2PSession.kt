@@ -1,7 +1,6 @@
 package com.novage.p2pml.internal.session
 
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.toJsExpression
 import com.novage.p2pml.internal.engine.P2PEngineManager
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 
@@ -13,7 +12,7 @@ internal class P2PSession(
     fun createPlaybackUrl(manifestUrl: String): String = urlFactory.buildManifestUrl(manifestUrl)
 
     fun applyDynamicConfig(config: DynamicCoreConfig) {
-        engineManager.applyDynamicConfig(config.toJsExpression())
+        engineManager.applyDynamicConfig(config)
     }
 
     suspend fun destroy() {

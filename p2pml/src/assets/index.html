@@ -34,7 +34,7 @@
               peerId,
             );
           } else if (this.platform === "ios") {
-            this.postToIos("onChunkDownloaded", {
+            window.webkit.messageHandlers.p2pml_onChunkDownloaded.postMessage({
               bytesLength,
               downloadSource,
               peerId,
@@ -46,26 +46,19 @@
           if (this.platform === "android") {
             window.P2PMLAndroid.onChunkUploaded(bytesLength, peerId);
           } else if (this.platform === "ios") {
-            this.postToIos("onChunkUploaded", {
+            window.webkit.messageHandlers.p2pml_onChunkUploaded.postMessage({
               bytesLength,
               peerId,
             });
           }
         }
 
-        postToIos(type, payload) {
-          window.webkit.messageHandlers.p2pml.postMessage({
-            type,
-            payload,
-          });
-        }
-
         sendMessage(type, payload = {}) {
+          const message = JSON.stringify({ type, payload });
           if (this.platform === "android") {
-            const message = JSON.stringify({ type, payload });
             window.P2PMLAndroid.postMessage(message);
           } else if (this.platform === "ios") {
-            this.postToIos(type, payload);
+            window.webkit.messageHandlers.p2pml.postMessage(message);
           } else {
             console.warn(`[Bridge] Platform unknown. Message lost: ${type}`);
           }
@@ -149,19 +142,17 @@
           }
         }
 
-        parseAllStreams(jsonData) {
+        parseAllStreams(streams) {
           if (!this.core) return;
 
-          const streams = JSON.parse(jsonData);
           for (const stream of streams) {
             this.core.addStreamIfNoneExists(stream);
           }
         }
 
-        parseStream(jsonData) {
+        parseStream(playlist) {
           if (!this.core) return;
 
-          const playlist = JSON.parse(jsonData);
           const { streamRuntimeId, addSegments, removeSegmentsIds, isLive } =
             playlist;
 
@@ -178,11 +169,10 @@
           this.core.setManifestResponseUrl(manifestUrl);
         }
 
-        updatePlaybackInfo(playbackInfoJson) {
+        updatePlaybackInfo(playbackInfo) {
           if (!this.core) return;
 
-          const { currentPlayPosition, currentPlaybackSpeed } =
-            JSON.parse(playbackInfoJson);
+          const { currentPlayPosition, currentPlaybackSpeed } = playbackInfo;
           this.core.updatePlayback(currentPlayPosition, currentPlaybackSpeed);
         }
 

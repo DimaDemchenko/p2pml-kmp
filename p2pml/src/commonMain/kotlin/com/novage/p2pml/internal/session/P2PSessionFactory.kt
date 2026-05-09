@@ -1,10 +1,8 @@
 package com.novage.p2pml.internal.session
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
-import com.novage.p2pml.api.models.toJsExpression
 import com.novage.p2pml.internal.engine.P2PEngineManager
 import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestManager
@@ -114,7 +112,7 @@ internal class P2PSessionFactory(
         }
 
         engine.initCoreEngine(
-            coreConfig = coreConfig.toJsExpression(),
+            coreConfig = coreConfig,
             uploadUrl = urlFactory.buildUploadUrl()
         )
     }

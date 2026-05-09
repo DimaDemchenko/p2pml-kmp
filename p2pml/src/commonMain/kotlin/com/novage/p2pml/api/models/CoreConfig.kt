@@ -2,7 +2,6 @@ package com.novage.p2pml.api.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.json.Json
 
 @Serializable
 data class IceServer(val urls: List<String>, val username: String? = null, val credential: String? = null)
@@ -316,76 +315,4 @@ class DynamicCoreConfigBuilder {
         httpErrorRetries, p2pErrorRetries, isP2PDisabled, isP2PUploadDisabled, validateP2PSegmentJs,
         httpRequestSetupJs, mainStream, secondaryStream
     )
-}
-
-private val p2pConfigJson = Json {
-    encodeDefaults = false
-    explicitNulls = false
-    ignoreUnknownKeys = true
-}
-
-internal fun CoreConfig.toJsExpression(): String {
-    val configJson = p2pConfigJson.encodeToString(this)
-    return buildString {
-        appendLine("(function() {")
-        appendLine("  var config = $configJson;")
-        customSegmentStorageFactoryJs?.let { appendLine("  config.customSegmentStorageFactory = $it;") }
-
-        fun appendStreamFunctions(path: String, validateP2P: String?, validateHTTP: String?, setupHTTP: String?) {
-            if (validateP2P == null && validateHTTP == null && setupHTTP == null) return
-            if (path != "config") appendLine("  $path = $path || {};")
-            validateP2P?.let { appendLine("  $path.validateP2PSegment = $it;") }
-            validateHTTP?.let { appendLine("  $path.validateHTTPSegment = $it;") }
-            setupHTTP?.let { appendLine("  $path.httpRequestSetup = $it;") }
-        }
-
-        appendStreamFunctions("config", validateP2PSegmentJs, validateHTTPSegmentJs, httpRequestSetupJs)
-        mainStream?.let {
-            appendStreamFunctions(
-                "config.mainStream",
-                it.validateP2PSegmentJs,
-                it.validateHTTPSegmentJs,
-                it.httpRequestSetupJs
-            )
-        }
-        secondaryStream?.let {
-            appendStreamFunctions(
-                "config.secondaryStream",
-                it.validateP2PSegmentJs,
-                it.validateHTTPSegmentJs,
-                it.httpRequestSetupJs
-            )
-        }
-
-        appendLine("  return config;")
-        append("})()")
-    }
-}
-
-internal fun DynamicCoreConfig.toJsExpression(): String {
-    val configJson = p2pConfigJson.encodeToString(this)
-    return buildString {
-        appendLine("(function() {")
-        appendLine("  var config = $configJson;")
-        customSegmentStorageFactoryJs?.let { appendLine("  config.customSegmentStorageFactory = $it;") }
-
-        fun appendDynamicStreamFunctions(path: String, validateP2P: String?, setupHTTP: String?) {
-            if (validateP2P == null && setupHTTP == null) return
-            if (path != "config") appendLine("  $path = $path || {};")
-            validateP2P?.let { appendLine("  $path.validateP2PSegment = $it;") }
-            setupHTTP?.let { appendLine("  $path.httpRequestSetup = $it;") }
-        }
-
-        appendDynamicStreamFunctions("config", validateP2PSegmentJs, httpRequestSetupJs)
-
-        mainStream?.let {
-            appendDynamicStreamFunctions("config.mainStream", it.validateP2PSegmentJs, it.httpRequestSetupJs)
-        }
-        secondaryStream?.let {
-            appendDynamicStreamFunctions("config.secondaryStream", it.validateP2PSegmentJs, it.httpRequestSetupJs)
-        }
-
-        appendLine("  return config;")
-        append("})()")
-    }
 }
