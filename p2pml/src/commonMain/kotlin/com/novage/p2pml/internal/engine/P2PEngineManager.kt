@@ -33,7 +33,7 @@ internal class P2PEngineManager(
 
     override fun initCoreEngine(coreConfig: CoreConfig, uploadUrl: String) {
         logger.i { "Initializing JS Core Engine" }
-        evaluate("window.p2p.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, '$uploadUrl');")
+        evaluate("window.p2p.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, '${uploadUrl.escapeForJs()}');")
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {
