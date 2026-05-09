@@ -10,11 +10,6 @@ import com.novage.p2pml.internal.webview.HeadlessWebView
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private fun String.escapeForJs(): String = this.replace("\\", "\\\\")
-    .replace("'", "\\'")
-    .replace("\n", "\\n")
-    .replace("\r", "\\r")
-
 internal class P2PEngineManager(
     private val webView: HeadlessWebView,
     private val json: Json = Json { encodeDefaults = true }
@@ -33,12 +28,15 @@ internal class P2PEngineManager(
 
     override fun initCoreEngine(coreConfig: CoreConfig, uploadUrl: String) {
         logger.i { "Initializing JS Core Engine" }
-        evaluate("window.p2p.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, '${uploadUrl.escapeForJs()}');")
+        evaluate(
+            "window.p2p.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, " +
+                "${json.encodeToString(uploadUrl)});"
+        )
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {
         logger.d { "Requesting segment via P2P Engine: $segmentUrl" }
-        evaluate("window.p2p.processSegmentRequest('${segmentUrl.escapeForJs()}');")
+        evaluate("window.p2p.processSegmentRequest(${json.encodeToString(segmentUrl)});")
     }
 
     override fun sendStream(stream: UpdateStreamParams) {
@@ -52,12 +50,12 @@ internal class P2PEngineManager(
     }
 
     override fun unsubscribeFromP2PEvent(eventName: String) {
-        evaluate("window.p2p.unsubscribeFromEvent('${eventName.escapeForJs()}');")
+        evaluate("window.p2p.unsubscribeFromEvent(${json.encodeToString(eventName)});")
     }
 
     override fun setManifestUrl(manifestUrl: String) {
         logger.d { "Setting manifest URL in P2P Engine: $manifestUrl" }
-        evaluate("window.p2p.setManifestUrl('${manifestUrl.escapeForJs()}');")
+        evaluate("window.p2p.setManifestUrl(${json.encodeToString(manifestUrl)});")
     }
 
     override fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
@@ -66,7 +64,7 @@ internal class P2PEngineManager(
     }
 
     override fun subscribeToP2PEvent(eventName: String) {
-        evaluate("window.p2p.subscribeToEvent('${eventName.escapeForJs()}');")
+        evaluate("window.p2p.subscribeToEvent(${json.encodeToString(eventName)});")
     }
 
     private fun evaluate(script: String) {
