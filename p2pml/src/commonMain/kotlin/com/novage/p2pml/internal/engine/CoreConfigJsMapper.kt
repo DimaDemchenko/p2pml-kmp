@@ -27,7 +27,12 @@ internal object CoreConfigJsMapper {
                 setupHTTP?.let { appendLine("  $path.httpRequestSetup = $it;") }
             }
 
-            appendStreamFunctions("config", config.validateP2PSegmentJs, config.validateHTTPSegmentJs, config.httpRequestSetupJs)
+            appendStreamFunctions(
+                "config",
+                config.validateP2PSegmentJs,
+                config.validateHTTPSegmentJs,
+                config.httpRequestSetupJs
+            )
             config.mainStream?.let {
                 appendStreamFunctions(
                     "config.mainStream",

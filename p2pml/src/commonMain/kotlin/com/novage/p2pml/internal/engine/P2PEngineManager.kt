@@ -9,7 +9,6 @@ import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.webview.HeadlessWebView
 import kotlinx.serialization.encodeToString
 
-
 internal class P2PEngineManager(
     private val webView: HeadlessWebView,
     private val json: Json = Json { encodeDefaults = true }

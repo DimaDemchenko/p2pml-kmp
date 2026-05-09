@@ -67,7 +67,7 @@ private class IosHeadlessWebView(
         val scriptMessageHandler = IosWebViewEventDispatcher(events) {
             onPageReadyCallback?.invoke()
         }
-        
+
         IosBridgeChannels.all.forEach { channel ->
             configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, channel)
         }
@@ -164,7 +164,7 @@ private class IosHeadlessWebView(
             IosBridgeChannels.all.forEach { channel ->
                 view.configuration.userContentController.removeScriptMessageHandlerForName(channel)
             }
-            
+
             view.stopLoading()
             view.removeFromSuperview()
             view.navigationDelegate = null
