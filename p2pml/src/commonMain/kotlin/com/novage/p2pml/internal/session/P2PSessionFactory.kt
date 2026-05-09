@@ -114,7 +114,7 @@ internal class P2PSessionFactory(
         }
 
         engine.initCoreEngine(
-            coreConfig = coreConfig.toJsExpression(),
+            coreConfig = coreConfig,
             uploadUrl = urlFactory.buildUploadUrl()
         )
     }

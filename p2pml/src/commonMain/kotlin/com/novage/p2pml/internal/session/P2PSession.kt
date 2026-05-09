@@ -13,7 +13,7 @@ internal class P2PSession(
     fun createPlaybackUrl(manifestUrl: String): String = urlFactory.buildManifestUrl(manifestUrl)
 
     fun applyDynamicConfig(config: DynamicCoreConfig) {
-        engineManager.applyDynamicConfig(config.toJsExpression())
+        engineManager.applyDynamicConfig(config)
     }
 
     suspend fun destroy() {

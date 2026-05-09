@@ -67,7 +67,10 @@ private class IosHeadlessWebView(
         val scriptMessageHandler = IosWebViewEventDispatcher(events) {
             onPageReadyCallback?.invoke()
         }
-        configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, "p2pml")
+        
+        IosBridgeChannels.all.forEach { channel ->
+            configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, channel)
+        }
 
         val frame = CGRectZero.readValue()
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
@@ -158,7 +161,10 @@ private class IosHeadlessWebView(
 
             val view = webView ?: return@runOnMainThread
 
-            view.configuration.userContentController.removeScriptMessageHandlerForName("p2pml")
+            IosBridgeChannels.all.forEach { channel ->
+                view.configuration.userContentController.removeScriptMessageHandlerForName(channel)
+            }
+            
             view.stopLoading()
             view.removeFromSuperview()
             view.navigationDelegate = null

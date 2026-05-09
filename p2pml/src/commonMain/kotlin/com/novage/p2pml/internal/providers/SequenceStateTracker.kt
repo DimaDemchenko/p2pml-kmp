@@ -19,8 +19,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 
 internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
@@ -155,9 +153,7 @@ internal class SequenceStateTracker(
 
     private fun updateEnginePlaybackInfoSafely(info: PlaybackInfo) {
         try {
-            p2pEngine.updatePlaybackInfo(Json.encodeToString(info))
-        } catch (e: SerializationException) {
-            logger.e { "Serialization error updating P2P engine: ${e.message}" }
+            p2pEngine.updatePlaybackInfo(info)
         } catch (e: IllegalStateException) {
             logger.e { "Fatal state error updating P2P engine: ${e.message}" }
             errorDispatcher.tryEmit(

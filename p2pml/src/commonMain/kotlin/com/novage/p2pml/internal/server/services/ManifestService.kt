@@ -41,18 +41,18 @@ internal class ManifestService(
     }
 
     private suspend fun syncWithEngine(manifestUrl: String, needsInitialSetup: Boolean) {
-        val updateStreamJson = parser.getUpdateStreamParamsJson(manifestUrl)
+        val updateStreamParams = parser.getUpdateStreamParams(manifestUrl)
 
         if (needsInitialSetup) {
             logger.d { "Performing initial P2P Engine setup for master manifest." }
-            val streamsJson = parser.getStreamsJson()
+            val streams = parser.getStreams()
 
             engineManager.setManifestUrl(manifestUrl)
-            engineManager.sendAllStreams(streamsJson)
-            updateStreamJson?.let { engineManager.sendStream(it) }
+            engineManager.sendAllStreams(streams)
+            updateStreamParams?.let { engineManager.sendStream(it) }
         } else {
-            updateStreamJson?.let { json ->
-                engineManager.sendStream(json)
+            updateStreamParams?.let { params ->
+                engineManager.sendStream(params)
             } ?: error("No stream parameters found for URL: $manifestUrl")
         }
     }

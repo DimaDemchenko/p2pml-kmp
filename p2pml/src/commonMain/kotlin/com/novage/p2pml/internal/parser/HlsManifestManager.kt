@@ -9,8 +9,6 @@ import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
-
 internal class HlsManifestManager(playbackProvider: PlaybackProvider, urlFactory: LocalUrlFactory) {
     private val logger = CoreLogger("HlsManifestManager")
     private val parser = HlsPlaylistParser()
@@ -48,12 +46,12 @@ internal class HlsManifestManager(playbackProvider: PlaybackProvider, urlFactory
         tracker.getSegmentWithManifestByUrl(runtimeId)
     }
 
-    suspend fun getUpdateStreamParamsJson(variantUrl: String): String? = mutex.withLock {
-        tracker.getUpdateStreamParams(variantUrl)?.let { Json.encodeToString(it) }
+    suspend fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = mutex.withLock {
+        tracker.getUpdateStreamParams(variantUrl)
     }
 
-    suspend fun getStreamsJson(): String = mutex.withLock {
-        Json.encodeToString(tracker.getStreams())
+    suspend fun getStreams(): List<Stream> = mutex.withLock {
+        tracker.getStreams()
     }
 
     suspend fun reset() = mutex.withLock {
