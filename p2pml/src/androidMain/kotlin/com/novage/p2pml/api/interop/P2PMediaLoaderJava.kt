@@ -63,8 +63,8 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
-    fun initialize(getPlaybackInfo: () -> PlaybackInfo): CompletableFuture<Void?> = scope.future {
-        loader.initialize(getPlaybackInfo)
+    fun initialize(provider: JavaPlaybackProvider): CompletableFuture<Void?> = scope.future {
+        loader.initialize(provider)
         null
     }
 

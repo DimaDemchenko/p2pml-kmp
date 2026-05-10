@@ -5,7 +5,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
 import kotlinx.coroutines.CancellationException
@@ -39,6 +38,19 @@ class P2PMediaLoader @JvmOverloads constructor(
      */
     suspend fun initialize(exoPlayer: ExoPlayer) {
         core.initialize(ExoPlayerPlaybackProvider(exoPlayer)) { onFatalError ->
+            AndroidWebViewFactory(context).createHeadlessWebView(core.events, onFatalError)
+        }
+    }
+
+    /**
+     * Initializes and starts P2P media streaming components with a custom playback provider.
+     *
+     * @param provider Custom Playback Provider
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
+     */
+    suspend fun initialize(provider: PlaybackProvider) {
+        core.initialize(provider) { onFatalError ->
             AndroidWebViewFactory(context).createHeadlessWebView(core.events, onFatalError)
         }
     }
