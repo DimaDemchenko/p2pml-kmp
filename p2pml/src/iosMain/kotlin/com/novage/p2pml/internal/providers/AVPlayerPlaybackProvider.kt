@@ -12,6 +12,7 @@ import platform.AVFoundation.rate
 import platform.AVFoundation.removeTimeObserver
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMakeWithSeconds
+import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 @OptIn(ExperimentalForeignApi::class)
@@ -44,7 +45,9 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
 
     override fun release() {
         timeObserverToken?.let { token ->
-            player.removeTimeObserver(token)
+            dispatch_async(dispatch_get_main_queue()) {
+                player.removeTimeObserver(token)
+            }
             timeObserverToken = null
         }
     }

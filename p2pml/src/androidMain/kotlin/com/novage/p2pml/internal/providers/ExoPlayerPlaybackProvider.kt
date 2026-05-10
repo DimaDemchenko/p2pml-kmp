@@ -1,5 +1,7 @@
 package com.novage.p2pml.internal.providers
 
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -44,25 +46,25 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     private val providerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressTrackerJob: Job? = null
 
-    init {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) startTrackingProgress() else stopTrackingProgress()
-            }
-
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int
-            ) {
-                emitCurrentState()
-            }
-
-            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-                emitCurrentState()
-            }
+    private val listener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) startTrackingProgress() else stopTrackingProgress()
         }
 
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            emitCurrentState()
+        }
+
+        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+            emitCurrentState()
+        }
+    }
+
+    init {
         providerScope.launch {
             exoPlayer.addListener(listener)
             if (exoPlayer.isPlaying) startTrackingProgress()
@@ -117,8 +119,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     private fun updateExistingSegmentRelativeTime(segmentId: Long, durationSec: Double) {
         val prevSegment = currentSegments[segmentId - 1]
-        val currentSegment =
-            currentSegments[segmentId] ?: return
+        val currentSegment = currentSegments[segmentId] ?: return
 
         val relativeStartTime = prevSegment?.endTime ?: 0.0
         val relativeEndTime = relativeStartTime + durationSec
@@ -165,12 +166,18 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         return@withLock nowInSeconds
     }
 
-    override suspend fun clearState() = mutex.withLock {
-        currentSegments.clear()
-        currentSnapshot = null
+    override suspend fun clearState() {
+        mutex.withLock {
+            currentSnapshot = null
+            currentSegments.clear()
+        }
     }
 
     override fun release() {
         providerScope.cancel()
+
+        Handler(Looper.getMainLooper()).post {
+            exoPlayer.removeListener(listener)
+        }
     }
 }

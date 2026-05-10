@@ -7,7 +7,6 @@ import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
-import com.novage.p2pml.internal.utils.suspendRunCatching
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
