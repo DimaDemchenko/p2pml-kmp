@@ -61,7 +61,7 @@ internal class P2PMediaLoaderCore(
     val events: P2PEventRegistry =
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
-    @Throws(P2PMediaLoaderException::class, CancellationException::class)
+    @Throws(P2PMediaLoaderException::class)
     internal suspend fun initialize(
         provider: PlaybackProvider,
         webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
@@ -169,6 +169,7 @@ internal class P2PMediaLoaderCore(
             )
     }
 
+    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
         when (status.value) {
             LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> pendingDynamicConfig = dynamicCoreConfig

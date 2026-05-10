@@ -72,8 +72,10 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         null
     }
 
+    @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String): String = loader.createPlaybackUrl(manifestUrl)
 
+    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() {
