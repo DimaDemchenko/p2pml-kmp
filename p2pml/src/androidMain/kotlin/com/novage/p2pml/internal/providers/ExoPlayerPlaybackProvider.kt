@@ -29,6 +29,9 @@ private data class PlaybackSegment(
     val externalId: Long
 )
 
+// Lightweight container for Main thread reads (avoids coroutine allocations)
+private data class RawUpdate(val position: Double, val speed: Float)
+
 private const val MILLISECONDS_IN_SECOND = 1000.0
 private const val UPDATE_INTERVAL_MS = 1000L
 
@@ -40,6 +43,10 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     private val nowInSeconds: Double
         get() = System.currentTimeMillis() / MILLISECONDS_IN_SECOND
 
+    // Intermediate conflated stream for raw UI reads
+    private val rawUpdatesStream = MutableStateFlow(RawUpdate(0.0, 1.0f))
+
+    // Public processed stream
     private val _playbackUpdates = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
     override val playbackUpdates: StateFlow<PlaybackInfo> = _playbackUpdates
 
@@ -65,9 +72,44 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     }
 
     init {
+        // 1. Start the single permanent background processor
+        startBackgroundMappingProcessor()
+
+        // 2. Register native UI listeners
         providerScope.launch {
             exoPlayer.addListener(listener)
             if (exoPlayer.isPlaying) startTrackingProgress()
+        }
+    }
+
+    /**
+     * Spawns exactly ONE permanent coroutine to process updates sequentially.
+     * Eliminates continuous coroutine allocations and overlapping state races.
+     */
+    private fun startBackgroundMappingProcessor() {
+        providerScope.launch(Dispatchers.Default) {
+            rawUpdatesStream.collect { raw ->
+                val absolutePosition = mutex.withLock {
+                    val snapshot = currentSnapshot
+                    if (snapshot == null || snapshot.hasEndTag) {
+                        return@withLock raw.position
+                    }
+
+                    val currentPlayback = raw.position.coerceAtLeast(0.0)
+                    val currentSegment = currentSegments.values.find {
+                        currentPlayback >= it.startTime && currentPlayback <= it.endTime
+                    }
+
+                    if (currentSegment == null) {
+                        return@withLock 0.0
+                    }
+
+                    val segmentPlayTime = currentPlayback - currentSegment.startTime
+                    currentSegment.absoluteStartTime + segmentPlayTime
+                }
+
+                _playbackUpdates.value = PlaybackInfo(absolutePosition, raw.speed)
+            }
         }
     }
 
@@ -87,30 +129,10 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     }
 
     private fun emitCurrentState() {
+        // Blazing fast Main UI thread read. ZERO coroutines spawned!
         val rawPosition = exoPlayer.currentPosition / MILLISECONDS_IN_SECOND
         val speed = exoPlayer.playbackParameters.speed
-
-        providerScope.launch(Dispatchers.Default) {
-            val absolutePosition = mutex.withLock {
-                val snapshot = currentSnapshot
-                if (snapshot == null || snapshot.hasEndTag) {
-                    return@withLock rawPosition
-                }
-
-                val currentPlayback = rawPosition.coerceAtLeast(0.0)
-                val currentSegment = currentSegments.values.find {
-                    currentPlayback >= it.startTime && currentPlayback <= it.endTime
-                }
-
-                if (currentSegment == null) {
-                    return@withLock 0.0
-                }
-
-                val segmentPlayTime = currentPlayback - currentSegment.startTime
-                currentSegment.absoluteStartTime + segmentPlayTime
-            }
-            _playbackUpdates.value = PlaybackInfo(absolutePosition, speed)
-        }
+        rawUpdatesStream.value = RawUpdate(rawPosition, speed)
     }
 
     private fun removeObsoleteSegments(removeUntilId: Long) {
@@ -148,14 +170,12 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double = mutex.withLock {
         currentSnapshot = snapshot
-
         val newMediaSequence = snapshot.mediaSequence
 
         removeObsoleteSegments(newMediaSequence)
 
         snapshot.segmentDurationsSec.forEachIndexed { index, duration ->
             val segmentIndex = newMediaSequence + index
-
             if (currentSegments.contains(segmentIndex)) {
                 updateExistingSegmentRelativeTime(segmentIndex, duration)
             } else {
@@ -174,6 +194,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     }
 
     override fun release() {
+        // Instantly kills the poller AND the background mapping processor
         providerScope.cancel()
 
         Handler(Looper.getMainLooper()).post {
