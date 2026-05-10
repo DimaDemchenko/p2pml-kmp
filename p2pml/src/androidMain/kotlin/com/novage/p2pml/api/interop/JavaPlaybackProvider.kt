@@ -25,9 +25,8 @@ abstract class JavaPlaybackProvider : PlaybackProvider {
         _playbackUpdates.value = info
     }
 
-    final override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double {
-        return getAbsolutePlaybackPositionAsync(snapshot).await()
-    }
+    final override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double =
+        getAbsolutePlaybackPositionAsync(snapshot).await()
 
     final override suspend fun clearState() {
         clearStateAsync().await()
@@ -46,8 +45,4 @@ abstract class JavaPlaybackProvider : PlaybackProvider {
      */
     abstract fun clearStateAsync(): CompletableFuture<Void?>
 
-    /**
-     * Completely tears down native observers and background threads on session death.
-     */
-    override fun release() {}
 }

@@ -21,7 +21,7 @@ class P2PMediaLoader @JvmOverloads constructor(
 
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
-    
+
     fun release() = core.release()
 
     companion object {

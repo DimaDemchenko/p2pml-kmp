@@ -3,7 +3,6 @@ package com.novage.p2pml
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.providers.AVPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
 import kotlinx.coroutines.CancellationException

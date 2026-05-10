@@ -106,11 +106,8 @@ internal class SequenceStateTracker(
         }
 
         if (needsForcedUpdate) {
-            suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
-                .onSuccess { info ->
-                    updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
-                }
-                .onFailure { e -> logger.e(e) { "Failed to fetch native info for forced seek update: ${e.message}" } }
+            val info = playbackProvider.playbackUpdates.value
+            updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
         }
     }
 
@@ -123,7 +120,10 @@ internal class SequenceStateTracker(
             delay(SUSPENSION_TIMEOUT_MS)
             mutex.withLock {
                 if (isSuspended) {
-                    logger.w { "Seek suspension timeout ($SUSPENSION_TIMEOUT_MS ms) elapsed. Resuming standard tracking." }
+                    logger.w {
+                        "Seek suspension timeout ($SUSPENSION_TIMEOUT_MS ms) elapsed. " +
+                            "Resuming standard tracking."
+                    }
                     resumeStandardTrackingLocked()
                 }
             }

@@ -1,5 +1,7 @@
 package com.novage.p2pml.internal.providers
 
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
@@ -16,8 +18,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import androidx.media3.common.Player
-import androidx.media3.common.PlaybackParameters
 
 private data class PlaybackSegment(
     var startTime: Double,
@@ -28,6 +28,7 @@ private data class PlaybackSegment(
 )
 
 private const val MILLISECONDS_IN_SECOND = 1000.0
+private const val UPDATE_INTERVAL_MS = 1000L
 
 internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : PlaybackProvider {
     private var currentSnapshot: PlaylistSnapshot? = null
@@ -73,7 +74,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         progressTrackerJob = providerScope.launch {
             while (isActive) {
                 emitCurrentState()
-                delay(1000)
+                delay(UPDATE_INTERVAL_MS)
             }
         }
     }

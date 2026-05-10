@@ -35,9 +35,8 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
         }
     }
 
-    override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double {
-        return _playbackUpdates.value.currentPlayPosition
-    }
+    override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double =
+        _playbackUpdates.value.currentPlayPosition
 
     override suspend fun clearState() {
         // Intentionally empty

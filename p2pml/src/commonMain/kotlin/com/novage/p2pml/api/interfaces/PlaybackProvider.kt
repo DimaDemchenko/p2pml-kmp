@@ -10,6 +10,6 @@ interface PlaybackProvider {
     suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double
 
     suspend fun clearState()
-    
+
     fun release() {}
 }
