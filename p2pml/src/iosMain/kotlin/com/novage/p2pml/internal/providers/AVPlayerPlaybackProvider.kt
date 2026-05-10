@@ -30,9 +30,10 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
             interval,
             dispatch_get_main_queue()
         ) { time ->
-            val position = CMTimeGetSeconds(time)
+            val rawPosition = CMTimeGetSeconds(time)
+            if (rawPosition.isNaN() || rawPosition.isInfinite()) return@addPeriodicTimeObserverForInterval
             val speed = player.rate
-            _playbackUpdates.value = PlaybackInfo(position, speed)
+            _playbackUpdates.value = PlaybackInfo(rawPosition, speed)
         }
     }
 
