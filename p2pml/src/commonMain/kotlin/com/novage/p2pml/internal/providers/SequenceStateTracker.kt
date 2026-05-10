@@ -15,7 +15,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -43,35 +42,29 @@ internal class SequenceStateTracker(
     private data class TrackState(val lastId: Long, val lastStartTime: Double)
 
     companion object {
-        private const val PLAYBACK_UPDATE_INTERVAL_MS = 1000L
         private const val SUSPENSION_TIMEOUT_MS = 8000L
         private const val DEFAULT_CATCH_UP_THRESHOLD_SEC = 5.0
     }
 
     fun start() {
         if (pollingJob?.isActive == true) return
-        logger.d { "Starting playback sequence poller." }
+        logger.d { "Starting event-driven playback sequence observer." }
 
         pollingJob = scope.launch {
-            while (isActive) {
-                pollPlaybackInfo()
-                delay(PLAYBACK_UPDATE_INTERVAL_MS)
+            playbackProvider.playbackUpdates.collect { actualInfo ->
+                processPlaybackUpdate(actualInfo)
             }
         }
     }
 
-    private suspend fun pollPlaybackInfo() {
-        val actualInfo = suspendRunCatching { playbackProvider.getPlaybackPositionAndSpeed() }
-            .onFailure { e -> logger.e(e) { "Failed to poll native playback info: ${e.message}" } }
-            .getOrNull() ?: return
-
+    private suspend fun processPlaybackUpdate(actualInfo: PlaybackInfo) {
         val effectiveInfo = mutex.withLock {
             val forcedPos = forcedPlaybackPosition ?: return@withLock actualInfo
             val diff = abs(actualInfo.currentPlayPosition - forcedPos)
 
             if (diff <= catchUpThresholdSec) {
                 logger.i { "Native player caught up to seek target ($forcedPos). Resuming standard tracking." }
-                resumePollingLocked()
+                resumeStandardTrackingLocked()
                 actualInfo
             } else {
                 actualInfo.copy(currentPlayPosition = forcedPos)
@@ -130,21 +123,21 @@ internal class SequenceStateTracker(
             delay(SUSPENSION_TIMEOUT_MS)
             mutex.withLock {
                 if (isSuspended) {
-                    logger.w { "Seek suspension timeout ($SUSPENSION_TIMEOUT_MS ms) elapsed. Resuming polling." }
-                    resumePollingLocked()
+                    logger.w { "Seek suspension timeout ($SUSPENSION_TIMEOUT_MS ms) elapsed. Resuming standard tracking." }
+                    resumeStandardTrackingLocked()
                 }
             }
         }
     }
 
-    private fun resumePollingLocked() {
+    private fun resumeStandardTrackingLocked() {
         forcedPlaybackPosition = null
         suspensionJob?.cancel()
     }
 
     suspend fun reset() = mutex.withLock {
         trackStates.clear()
-        resumePollingLocked()
+        resumeStandardTrackingLocked()
     }
 
     fun destroy() {
