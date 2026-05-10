@@ -44,5 +44,4 @@ abstract class JavaPlaybackProvider : PlaybackProvider {
      * @return A CompletableFuture signaling completion.
      */
     abstract fun clearStateAsync(): CompletableFuture<Void?>
-
 }
