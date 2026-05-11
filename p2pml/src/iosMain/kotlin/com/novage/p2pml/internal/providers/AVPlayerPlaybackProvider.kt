@@ -15,6 +15,8 @@ import platform.CoreMedia.CMTimeMakeWithSeconds
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
+private const val UPDATE_INTERVAL_SEC = 1.0
+
 @OptIn(ExperimentalForeignApi::class)
 internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : PlaybackProvider {
 
@@ -24,7 +26,7 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
     private var timeObserverToken: Any? = null
 
     init {
-        val interval = CMTimeMakeWithSeconds(1.0, 1)
+        val interval = CMTimeMakeWithSeconds(UPDATE_INTERVAL_SEC, 1)
 
         timeObserverToken = player.addPeriodicTimeObserverForInterval(
             interval,
