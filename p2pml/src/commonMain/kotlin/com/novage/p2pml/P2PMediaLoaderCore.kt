@@ -169,6 +169,7 @@ internal class P2PMediaLoaderCore(
             )
     }
 
+    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
         when (status.value) {
             LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> pendingDynamicConfig = dynamicCoreConfig

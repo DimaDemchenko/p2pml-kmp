@@ -236,7 +236,11 @@ class PlayerViewModel: ObservableObject {
             .isP2PDisabled(value: !enabled)
             .build()
 
-        loader.applyDynamicConfig(dynamicCoreConfig: config)
+        do {
+            try loader.applyDynamicConfig(dynamicCoreConfig: config)
+        } catch {
+            print("Failed to apply dynamic config: \(error)")
+        }
     }
 
     func releaseResources() {

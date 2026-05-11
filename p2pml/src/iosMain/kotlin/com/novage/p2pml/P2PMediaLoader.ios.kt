@@ -18,6 +18,7 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
+    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() = core.release()
