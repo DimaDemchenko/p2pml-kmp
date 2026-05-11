@@ -2,6 +2,7 @@ package com.novage.p2pml.api.interop
 
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.P2PMediaLoader
+import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.models.DynamicCoreConfig
 import java.lang.AutoCloseable
 import java.util.concurrent.CompletableFuture
