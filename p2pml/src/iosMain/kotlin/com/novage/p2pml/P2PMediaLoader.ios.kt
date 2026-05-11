@@ -1,11 +1,12 @@
 package com.novage.p2pml
 
+import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.api.models.PlaybackInfo
-import com.novage.p2pml.internal.providers.DefaultPlaybackProvider
+import com.novage.p2pml.internal.providers.AVPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
 import kotlinx.coroutines.CancellationException
+import platform.AVFoundation.AVPlayer
 
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
@@ -27,9 +28,16 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     }
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
-    suspend fun initialize(getPlaybackInfo: () -> PlaybackInfo) {
-        val provider = DefaultPlaybackProvider(getPlaybackInfo)
+    suspend fun initialize(player: AVPlayer) {
+        val provider = AVPlayerPlaybackProvider(player)
 
+        core.initialize(provider) { onFatalError ->
+            IosWebViewFactory().createHeadlessWebView(core.events, onFatalError)
+        }
+    }
+
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
+    suspend fun initialize(provider: PlaybackProvider) {
         core.initialize(provider) { onFatalError ->
             IosWebViewFactory().createHeadlessWebView(core.events, onFatalError)
         }

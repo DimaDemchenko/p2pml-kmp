@@ -40,20 +40,15 @@ class PlayerViewModel: ObservableObject {
 
         setupP2PEvents(loader)
         self.p2pLoader = loader
+        
+        let newPlayer = AVPlayer()
+        newPlayer.automaticallyWaitsToMinimizeStalling = true
+        self.player = newPlayer
 
         Task { [weak self] in
             guard let self = self else { return }
             do {
-                try await loader.initialize(getPlaybackInfo: { [weak self] in
-                    guard let validPlayer = self?.player else {
-                        return PlaybackInfo(currentPlayPosition: 0.0, currentPlaybackSpeed: 0.0)
-                    }
-                    let currentSeconds = CMTimeGetSeconds(validPlayer.currentTime())
-                    return PlaybackInfo(
-                        currentPlayPosition: currentSeconds.isNaN ? 0.0 : currentSeconds,
-                        currentPlaybackSpeed: Float(validPlayer.rate)
-                    )
-                })
+                try await loader.initialize(player: newPlayer)
 
                 let p2pUrl = try self.p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
                 self.startPlayback(url: p2pUrl)
@@ -85,12 +80,8 @@ class PlayerViewModel: ObservableObject {
         let playerItem = AVPlayerItem(url: urlObj)
         playerItem.preferredForwardBufferDuration = 45.0
         
-        // Lock the maximum resolution to 1080p (FHD)
-        //playerItem.preferredMaximumResolution = CGSize(width: 1920, height: 1080)
-        
-        let newPlayer = AVPlayer(playerItem: playerItem)
-        newPlayer.automaticallyWaitsToMinimizeStalling = true
-        self.player = newPlayer
+        // Replace the item on the existing player created during initialization
+        self.player?.replaceCurrentItem(with: playerItem)
 
         playerItemObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
@@ -103,7 +94,7 @@ class PlayerViewModel: ObservableObject {
             }
         }
 
-        if shouldAutoPlay { newPlayer.play() }
+        if shouldAutoPlay { self.player?.play() }
     }
 
     private func populateAvailableTracks(for playerItem: AVPlayerItem) {

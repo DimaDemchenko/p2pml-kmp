@@ -62,7 +62,7 @@ internal class P2PSessionFactory(
 
             val manifestService = ManifestService(hlsManifestManager, engine) {
                 logger.d { "Resetting playback and parser state via ManifestService" }
-                provider.resetData()
+                provider.clearState()
                 hlsManifestManager.reset()
                 sequenceStateTracker.reset()
             }
@@ -79,7 +79,8 @@ internal class P2PSessionFactory(
                 enableCors = customEngineUrl != null,
                 errorDispatcher = errorDispatcher
             )
-            cleanupTasks.add { provider.resetData() }
+            cleanupTasks.add { provider.release() }
+            cleanupTasks.add { provider.clearState() }
             cleanupTasks.add { serverModule.destroy() }
 
             val performFullTeardown: suspend () -> Unit = {
