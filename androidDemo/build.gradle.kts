@@ -14,12 +14,12 @@ kotlin {
 
 android {
     namespace = "com.novage.p2pml.demo"
-    compileSdk = 36
+    compileSdk = libs.versions.android.compile.sdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.novage.p2pml.demo"
-        minSdk = 24
-        targetSdk = 36
+        minSdk = libs.versions.android.min.sdk.get().toInt()
+        targetSdk = libs.versions.android.target.sdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
