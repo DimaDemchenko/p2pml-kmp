@@ -70,6 +70,7 @@ internal object HlsConstants {
     val REGEX_CODECS: Regex = Regex("CODECS=\"(.+?)\"")
     val REGEX_RESOLUTION: Regex = Regex("RESOLUTION=(\\d+x\\d+)")
     val REGEX_FRAME_RATE: Regex = Regex("FRAME-RATE=([\\d\\.]+)\\b")
+    val REGEX_VIDEO_RANGE: Regex = Regex("""VIDEO-RANGE="?([^,\s"]+)"?""")
     val REGEX_TARGET_DURATION: Regex = Regex("$TAG_TARGET_DURATION:(\\d+)\\b")
     val REGEX_ATTR_DURATION: Regex = Regex("DURATION=([\\d\\.]+)\\b")
     val REGEX_PART_TARGET_DURATION: Regex = Regex("PART-TARGET=([\\d\\.]+)\\b")

@@ -6,9 +6,11 @@ import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsSegment
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.Rendition
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.utils.CoreLogger
+import com.novage.p2pml.internal.utils.extractVideoCodec
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
@@ -56,20 +58,39 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         currentMasterManifestUrl = manifestUrl
 
         hlsPlaylist.variants.forEach { variant ->
-            if (!variant.isIFrame) addStreamIfAbsent(variant.url.absolute, MAIN_STREAM)
+            if (!variant.isIFrame) {
+                streams.getOrPut(variant.url.absolute) {
+                    Stream(
+                        runtimeId = variant.url.absolute,
+                        type = MAIN_STREAM,
+                        bitrate = variant.bandwidth ?: variant.averageBandwidth,
+                        codecs = extractVideoCodec(variant.codecs),
+                        width = variant.width,
+                        height = variant.height,
+                        frameRate = variant.frameRate,
+                        videoRange = variant.videoRange
+                    )
+                }
+            }
         }
-        hlsPlaylist.videos.forEach { rendition ->
-            rendition.url?.let { addStreamIfAbsent(it.absolute, MAIN_STREAM) }
-        }
-        hlsPlaylist.audios.forEach { rendition ->
-            rendition.url?.let { addStreamIfAbsent(it.absolute, SECONDARY_STREAM) }
-        }
+        addRenditionStreams(hlsPlaylist.videos, MAIN_STREAM)
+        addRenditionStreams(hlsPlaylist.audios, SECONDARY_STREAM)
     }
 
-    private fun addStreamIfAbsent(absoluteStreamUrl: String, streamType: String) {
-        if (!streams.containsKey(absoluteStreamUrl)) {
-            val nextIndex = streams.values.count { it.type == streamType }
-            streams[absoluteStreamUrl] = Stream(runtimeId = absoluteStreamUrl, type = streamType, index = nextIndex)
+    private fun addRenditionStreams(renditions: List<Rendition>, streamType: String) {
+        renditions.forEach { rendition ->
+            rendition.url?.let { url ->
+                streams.getOrPut(url.absolute) {
+                    Stream(
+                        runtimeId = url.absolute,
+                        type = streamType,
+                        bitrate = 0,
+                        language = rendition.language,
+                        channels = rendition.channels,
+                        name = rendition.name
+                    )
+                }
+            }
         }
     }
 
@@ -109,7 +130,9 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
             isLive = isStreamLive
         )
 
-        addStreamIfAbsent(manifestUrl, mediaType)
+        streams.getOrPut(manifestUrl) {
+            Stream(runtimeId = manifestUrl, type = mediaType, bitrate = 0)
+        }
 
         logger.d { "Segments updated. Added: ${segmentsToAdd.size}, Removed: ${segmentsToRemove.size}" }
     }
