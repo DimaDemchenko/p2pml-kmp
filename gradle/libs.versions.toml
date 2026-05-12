@@ -1,6 +1,6 @@
 [versions]
 # Platforms and Tools
-agp = "9.1.0"
+agp = "9.2.1"
 kotlin = "2.3.10"
 
 # Android SDKs
@@ -20,7 +20,7 @@ androidx-lifecycle = "2.10.0"
 compose-bom = "2026.03.00"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"
-ktor = "3.4.1"
+ktor = "3.4.3"
 material3 = "1.4.0"
 media3 = "1.9.2"
 slf4j = "2.0.17"
