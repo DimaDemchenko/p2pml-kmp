@@ -36,10 +36,23 @@ internal data class Variant(
     val audioGroupId: String? = null,
     val subtitleGroupId: String? = null,
     val captionGroupId: String? = null,
-    val isIFrame: Boolean = false
+    val isIFrame: Boolean = false,
+    val bandwidth: Int? = null,
+    val averageBandwidth: Int? = null,
+    val codecs: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val frameRate: String? = null,
+    val videoRange: String? = null
 )
 
-internal data class Rendition(val url: ParsedUrl?, val groupId: String, val name: String)
+internal data class Rendition(
+    val url: ParsedUrl?,
+    val groupId: String,
+    val name: String,
+    val language: String? = null,
+    val channels: String? = null
+)
 
 internal data class InitializationSegment(val url: ParsedUrl)
 
@@ -71,7 +84,19 @@ internal data class UpdateStreamParams(
 )
 
 @Serializable
-internal data class Stream(val runtimeId: String, val type: String, val index: Int)
+internal data class Stream(
+    val runtimeId: String,
+    val type: String,
+    val bitrate: Int? = null,
+    val codecs: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val frameRate: String? = null,
+    val videoRange: String? = null,
+    val language: String? = null,
+    val channels: String? = null,
+    val name: String? = null
+)
 
 internal interface HlsUrlRewriter {
     fun rewriteVariantUrl(url: ParsedUrl, isIFrame: Boolean): String

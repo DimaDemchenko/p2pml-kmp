@@ -3,18 +3,26 @@ package com.novage.p2pml.internal.parser.hlsPlaylistParser
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.MICROS_PER_SECOND
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.PLAYLIST_HEADER
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_AUDIO
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_AVERAGE_BANDWIDTH
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_BANDWIDTH
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_BYTERANGE
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_CHANNELS
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_CLOSED_CAPTIONS
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_CODECS
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_FRAME_RATE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_GROUP_ID
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_LANGUAGE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_MEDIA_DURATION
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_MEDIA_SEQUENCE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_NAME
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_RESOLUTION
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_SUBTITLES
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_TYPE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_URI
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_VALUE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_VARIABLE_REFERENCE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_VIDEO
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.REGEX_VIDEO_RANGE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_BYTERANGE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_DEFINE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_DISCONTINUITY
@@ -380,13 +388,22 @@ internal class HlsPlaylistParser {
                 .toParsedUrl(context.baseUri, context.vars)
         }
 
+        val resolution = parseOptionalStringAttr(line, REGEX_RESOLUTION, context.vars)
+
         return Variant(
             url = parsedUrl,
             videoGroupId = parseOptionalStringAttr(line, REGEX_VIDEO, context.vars),
             audioGroupId = parseOptionalStringAttr(line, REGEX_AUDIO, context.vars),
             subtitleGroupId = parseOptionalStringAttr(line, REGEX_SUBTITLES, context.vars),
             captionGroupId = parseOptionalStringAttr(line, REGEX_CLOSED_CAPTIONS, context.vars),
-            isIFrame = isIFrame
+            isIFrame = isIFrame,
+            bandwidth = parseOptionalStringAttr(line, REGEX_BANDWIDTH, context.vars)?.toIntOrNull(),
+            averageBandwidth = parseOptionalStringAttr(line, REGEX_AVERAGE_BANDWIDTH, context.vars)?.toIntOrNull(),
+            codecs = parseOptionalStringAttr(line, REGEX_CODECS, context.vars),
+            width = resolution?.substringBefore("x")?.toIntOrNull(),
+            height = resolution?.substringAfter("x")?.toIntOrNull(),
+            frameRate = parseOptionalStringAttr(line, REGEX_FRAME_RATE, context.vars),
+            videoRange = parseOptionalStringAttr(line, REGEX_VIDEO_RANGE, context.vars)
         )
     }
 
@@ -400,7 +417,9 @@ internal class HlsPlaylistParser {
             Rendition(
                 url = parsedUrl,
                 groupId = parseStringAttr(line, REGEX_GROUP_ID, vars),
-                name = parseStringAttr(line, REGEX_NAME, vars)
+                name = parseStringAttr(line, REGEX_NAME, vars),
+                language = parseOptionalStringAttr(line, REGEX_LANGUAGE, vars),
+                channels = parseOptionalStringAttr(line, REGEX_CHANNELS, vars)
             )
         )
     }

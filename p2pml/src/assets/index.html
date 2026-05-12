@@ -13,7 +13,7 @@
     </script>
 
     <script type="module">
-      import { Core } from "p2p-media-loader-core";
+      import { Core, generateStreamShortId } from "p2p-media-loader-core";
 
       class NativeBridge {
         constructor() {
@@ -146,7 +146,13 @@
           if (!this.core) return;
 
           for (const stream of streams) {
-            this.core.addStreamIfNoneExists(stream);
+            const { runtimeId, type, ...streamProps } = stream;
+            const index = generateStreamShortId({
+              ...streamProps,
+              bitrate: streamProps.bitrate || 0,
+            });
+
+            this.core.addStreamIfNoneExists({ runtimeId, type, index });
           }
         }
 
