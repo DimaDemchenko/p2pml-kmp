@@ -9,7 +9,7 @@ import com.novage.p2pml.internal.session.P2PSessionFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
-import com.novage.p2pml.internal.webview.HeadlessWebView
+import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -62,10 +62,7 @@ internal class P2PMediaLoaderCore(
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
-    internal suspend fun initialize(
-        provider: PlaybackProvider,
-        webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
-    ) {
+    internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
                 val message = "Initialization skipped: Core is already in state ${status.value}"
@@ -86,13 +83,11 @@ internal class P2PMediaLoaderCore(
         }
     }
 
-    private suspend fun performSessionInitialization(
-        provider: PlaybackProvider,
-        webViewFactory: (onFatalError: (P2PMediaLoaderException) -> Unit) -> HeadlessWebView
-    ) {
+    private suspend fun performSessionInitialization(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         val session = sessionFactory.createSession(
             provider = provider,
-            webViewFactory = webViewFactory
+            webViewFactory = webViewFactory,
+            events = events
         )
 
         this@P2PMediaLoaderCore.activeSession = session
