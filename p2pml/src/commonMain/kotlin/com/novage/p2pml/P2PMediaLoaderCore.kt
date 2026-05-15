@@ -62,10 +62,7 @@ internal class P2PMediaLoaderCore(
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
-    internal suspend fun initialize(
-        provider: PlaybackProvider,
-        webViewFactory: WebViewFactory
-    ) {
+    internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
                 val message = "Initialization skipped: Core is already in state ${status.value}"
@@ -86,10 +83,7 @@ internal class P2PMediaLoaderCore(
         }
     }
 
-    private suspend fun performSessionInitialization(
-        provider: PlaybackProvider,
-        webViewFactory: WebViewFactory
-    ) {
+    private suspend fun performSessionInitialization(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         val session = sessionFactory.createSession(
             provider = provider,
             webViewFactory = webViewFactory,

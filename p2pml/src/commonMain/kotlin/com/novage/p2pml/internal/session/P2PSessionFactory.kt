@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.session
 
 import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.internal.engine.P2PEngineManager
@@ -13,7 +14,6 @@ import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
-import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.internal.webview.WebViewFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
