@@ -23,6 +23,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -187,9 +188,12 @@ internal class P2PMediaLoaderCore(
     }
 
     fun release() {
-        val current = status.value
-        if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) return
-        if (!status.compareAndSet(current, LoaderStatus.RELEASING)) return
+        status.update { current ->
+            if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) {
+                return
+            }
+            LoaderStatus.RELEASING
+        }
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
