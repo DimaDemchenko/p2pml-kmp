@@ -9,6 +9,12 @@ import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
 import kotlinx.coroutines.CancellationException
 
+/**
+ * Entry point for P2P-accelerated media streaming on Android.
+ *
+ * This class is **single-use**: after [release] is called, this instance cannot be re-initialized.
+ * Create a new [P2PMediaLoader] instance if you need to restart P2P streaming.
+ */
 class P2PMediaLoader @JvmOverloads constructor(
     private val context: Context,
     coreConfig: CoreConfig = CoreConfig(),

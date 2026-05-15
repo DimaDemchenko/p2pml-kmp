@@ -8,6 +8,12 @@ import com.novage.p2pml.internal.webview.IosWebViewFactory
 import kotlinx.coroutines.CancellationException
 import platform.AVFoundation.AVPlayer
 
+/**
+ * Entry point for P2P-accelerated media streaming on iOS.
+ *
+ * This class is **single-use**: after [release] is called, this instance cannot be re-initialized.
+ * Create a new [P2PMediaLoader] instance if you need to restart P2P streaming.
+ */
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)

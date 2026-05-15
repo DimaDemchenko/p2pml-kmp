@@ -15,6 +15,7 @@ import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.WebViewFactory
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -26,7 +27,8 @@ import kotlinx.coroutines.withTimeout
 internal class P2PSessionFactory(
     private val coreConfig: CoreConfig,
     private val errorDispatcher: RuntimeErrorDispatcher,
-    private val customEngineUrl: String?
+    private val customEngineUrl: String?,
+    private val httpClientFactory: () -> HttpClient = ::createHttpClient
 ) {
     companion object {
         private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
@@ -53,7 +55,7 @@ internal class P2PSessionFactory(
                 engineManager
             }
 
-            val client = createHttpClient()
+            val client = httpClientFactory()
             cleanupTasks.add { client.close() }
 
             val hlsManifestManager = HlsManifestManager(provider, urlFactory)

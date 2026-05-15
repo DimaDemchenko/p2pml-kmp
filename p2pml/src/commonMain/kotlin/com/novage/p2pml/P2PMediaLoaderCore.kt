@@ -23,13 +23,16 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
+/**
+ * Core orchestrator for P2P media streaming. Single-use: once [release] is called,
+ * the internal [CoroutineScope] is cancelled permanently and this instance must be discarded.
+ */
 internal class P2PMediaLoaderCore(
     private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
@@ -184,12 +187,9 @@ internal class P2PMediaLoaderCore(
     }
 
     fun release() {
-        status.update { current ->
-            if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) {
-                return
-            }
-            LoaderStatus.RELEASING
-        }
+        val current = status.value
+        if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) return
+        if (!status.compareAndSet(current, LoaderStatus.RELEASING)) return
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
