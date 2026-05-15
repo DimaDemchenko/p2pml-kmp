@@ -30,6 +30,10 @@ import kotlinx.io.IOException
 
 private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
+/**
+ * Core orchestrator for P2P media streaming. Single-use: once [release] is called,
+ * the internal [CoroutineScope] is cancelled permanently and this instance must be discarded.
+ */
 internal class P2PMediaLoaderCore(
     private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
