@@ -113,7 +113,6 @@ kotlin {
             dependencies {
                 implementation(kotlin("stdlib"))
                 implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.datetime)
                 implementation(libs.ktor.utils)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.server.core)
