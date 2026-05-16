@@ -31,6 +31,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     private var progressTrackerJob: Job? = null
 
     private val window = Timeline.Window()
+    private var syntheticWindowStartTimeMs: Long = C.TIME_UNSET
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -81,8 +82,19 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
         if (!timeline.isEmpty) {
             timeline.getWindow(exoPlayer.currentMediaItemIndex, window)
+
             if (window.windowStartTimeMs != C.TIME_UNSET) {
-                absolutePositionSec = (window.windowStartTimeMs + relativePositionMs) / MILLISECONDS_IN_SECOND
+                absolutePositionSec =
+                    (window.windowStartTimeMs + relativePositionMs) / MILLISECONDS_IN_SECOND
+                syntheticWindowStartTimeMs = C.TIME_UNSET
+            } else if (window.isLive) {
+                if (syntheticWindowStartTimeMs == C.TIME_UNSET) {
+                    syntheticWindowStartTimeMs = System.currentTimeMillis() - relativePositionMs
+                }
+                absolutePositionSec =
+                    (syntheticWindowStartTimeMs + relativePositionMs) / MILLISECONDS_IN_SECOND
+            } else {
+                syntheticWindowStartTimeMs = C.TIME_UNSET
             }
         }
 
