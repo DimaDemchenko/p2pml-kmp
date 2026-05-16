@@ -1,6 +1,5 @@
 package com.novage.p2pml.internal.parser
 
-import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
@@ -11,10 +10,10 @@ import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-internal class HlsManifestManager(playbackProvider: PlaybackProvider, urlFactory: LocalUrlFactory) {
+internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
     private val logger = CoreLogger("HlsManifestManager")
     private val parser = HlsPlaylistParser()
-    private val tracker = HlsStreamStateTracker(playbackProvider)
+    private val tracker = HlsStreamStateTracker()
     private val rewriter = LocalHlsUrlRewriter(urlFactory)
     private val mutex = Mutex()
 

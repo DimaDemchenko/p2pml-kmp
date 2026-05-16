@@ -2,7 +2,6 @@ package com.novage.p2pml.internal.providers
 
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
-import com.novage.p2pml.api.models.PlaylistSnapshot
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,13 +36,6 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
             val speed = player.rate
             _playbackUpdates.value = PlaybackInfo(rawPosition, speed)
         }
-    }
-
-    override suspend fun getAbsolutePlaybackPosition(snapshot: PlaylistSnapshot): Double =
-        _playbackUpdates.value.currentPlayPosition
-
-    override suspend fun clearState() {
-        // Intentionally empty
     }
 
     override fun release() {

@@ -1,7 +1,5 @@
 package com.novage.p2pml.internal.parser
 
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.PlaylistSnapshot
 import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
@@ -11,6 +9,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.extractVideoCodec
+import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -19,7 +18,7 @@ private const val SECONDARY_STREAM = "secondary"
 private const val MICROSECONDS_IN_SECOND = 1_000_000.0
 private val LIVE_VARIANT_TTL = 60.seconds
 
-internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvider) {
+internal class HlsStreamStateTracker {
     private val logger = CoreLogger("HlsStreamStateTracker")
 
     private var currentMasterManifestUrl: String? = null
@@ -87,7 +86,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         }
     }
 
-    suspend fun postProcessMediaPlaylist(manifestUrl: String, mediaPlaylist: HlsMediaPlaylist) {
+    fun postProcessMediaPlaylist(manifestUrl: String, mediaPlaylist: HlsMediaPlaylist) {
         val mediaType = trackedStreams[manifestUrl]?.stream?.type ?: MAIN_STREAM
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
@@ -95,7 +94,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
         val segmentsToAdd = mutableListOf<Segment>()
 
-        val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist)
+        val initialStartTime = calculateInitialStartTime(isStreamLive)
 
         val context = getOrCreateContext(manifestUrl) {
             Stream(runtimeId = manifestUrl, type = mediaType, bitrate = 0)
@@ -205,16 +204,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         }
     }
 
-    private suspend fun calculateInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
-        if (!isLive) return 0.0
-
-        val snapshot = PlaylistSnapshot(
-            mediaSequence = mediaPlaylist.mediaSequence,
-            hasEndTag = mediaPlaylist.hasEndTag,
-            segmentDurationsSec = mediaPlaylist.hlsSegments.map { it.durationUs / MICROSECONDS_IN_SECOND }
-        )
-        return playbackProvider.getAbsolutePlaybackPosition(snapshot)
-    }
+    private fun calculateInitialStartTime(isLive: Boolean): Double = if (isLive) getCurrentEpochSeconds() else 0.0
 
     private inline fun getOrCreateContext(manifestUrl: String, streamFactory: () -> Stream): TrackedStreamContext =
         trackedStreams.getOrPut(manifestUrl) {
