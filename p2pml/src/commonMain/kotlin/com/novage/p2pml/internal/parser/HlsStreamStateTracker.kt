@@ -91,10 +91,7 @@ internal class HlsStreamStateTracker {
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
 
-        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
-        val segmentsToAdd = mutableListOf<Segment>()
-
-        val initialStartTime = calculateInitialStartTime(isStreamLive)
+        val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist.hlsSegments)
 
         val context = getOrCreateContext(manifestUrl) {
             Stream(runtimeId = manifestUrl, type = mediaType, bitrate = 0)
@@ -107,6 +104,7 @@ internal class HlsStreamStateTracker {
         }
 
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
+        val segmentsToAdd = mutableListOf<Segment>()
 
         mediaPlaylist.hlsSegments.forEach { segment ->
             context.currentSegmentRuntimeIds.add(segment.runtimeUrl)
@@ -114,6 +112,8 @@ internal class HlsStreamStateTracker {
                 createAndStoreSegment(manifestUrl, context.segments, segmentIndex++, initialStartTime, segment)
             newSegment?.let { segmentsToAdd.add(it) }
         }
+
+        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
 
         context.updateParams = UpdateStreamParams(
             streamRuntimeId = manifestUrl,
@@ -204,7 +204,11 @@ internal class HlsStreamStateTracker {
         }
     }
 
-    private fun calculateInitialStartTime(isLive: Boolean): Double = if (isLive) getCurrentEpochSeconds() else 0.0
+    private fun calculateInitialStartTime(isLive: Boolean, segments: List<HlsSegment>): Double {
+        if (!isLive) return 0.0
+        val totalDurationSec = segments.sumOf { it.durationUs / MICROSECONDS_IN_SECOND }
+        return getCurrentEpochSeconds() - totalDurationSec
+    }
 
     private inline fun getOrCreateContext(manifestUrl: String, streamFactory: () -> Stream): TrackedStreamContext =
         trackedStreams.getOrPut(manifestUrl) {
