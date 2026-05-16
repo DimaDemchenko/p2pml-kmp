@@ -15,8 +15,11 @@ import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 internal class ServerModule(
@@ -80,7 +83,7 @@ internal class ServerModule(
         stopServer()
     }
 
-    private fun handleStartupError(message: String, e: Exception): Nothing {
+    private suspend fun handleStartupError(message: String, e: Exception): Nothing {
         logger.e { "Failed to start Ktor server. Forcing aggressive shutdown." }
         stopServer()
 
@@ -91,8 +94,10 @@ internal class ServerModule(
         )
     }
 
-    private fun stopServer() {
-        server?.stop(gracePeriodMillis = 0, timeoutMillis = 100)
+    private suspend fun stopServer() {
+        withContext(Dispatchers.IO) {
+            server?.stop(gracePeriodMillis = 0, timeoutMillis = 100)
+        }
         server = null
     }
 }
