@@ -65,7 +65,7 @@ internal class P2PMediaLoaderCore(
     val events: P2PEventRegistry =
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
-    @Throws(P2PMediaLoaderException::class, CancellationException::class)
+    @Throws(P2PMediaLoaderException::class)
     internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
@@ -201,27 +201,23 @@ internal class P2PMediaLoaderCore(
         activeSession = null
         pendingDynamicConfig = null
 
-        coreScope.coroutineContext.cancelChildren()
+        coreScope.cancel()
 
-        coreScope.launch(Dispatchers.IO) {
-            withContext(NonCancellable) {
-                try {
-                    sessionToDestroy?.destroy()
-                } catch (e: CancellationException) {
-                    logger.d { "Teardown cancelled." }
-                    throw e
-                } catch (e: IOException) {
-                    logger.e { "IO Error during session teardown: ${e.message}" }
-                } catch (e: IllegalStateException) {
-                    logger.e { "State Error during session teardown: ${e.message}" }
-                } catch (e: IllegalArgumentException) {
-                    logger.e { "Arg Error during session teardown: ${e.message}" }
-                } finally {
-                    status.value = LoaderStatus.RELEASED
-                    logger.d { "Release complete." }
-
-                    coreScope.cancel()
-                }
+        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            try {
+                sessionToDestroy?.destroy()
+            } catch (e: CancellationException) {
+                logger.d { "Teardown cancelled." }
+                throw e
+            } catch (e: IOException) {
+                logger.e { "IO Error during session teardown: ${e.message}" }
+            } catch (e: IllegalStateException) {
+                logger.e { "State Error during session teardown: ${e.message}" }
+            } catch (e: IllegalArgumentException) {
+                logger.e { "Arg Error during session teardown: ${e.message}" }
+            } finally {
+                status.value = LoaderStatus.RELEASED
+                logger.d { "Release complete." }
             }
         }
     }
