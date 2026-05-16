@@ -45,6 +45,7 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(exoPlayer: ExoPlayer) {
         core.initialize(ExoPlayerPlaybackProvider(exoPlayer), AndroidWebViewFactory(context))
     }
@@ -56,6 +57,7 @@ class P2PMediaLoader @JvmOverloads constructor(
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {
         core.initialize(provider, AndroidWebViewFactory(context))
     }
