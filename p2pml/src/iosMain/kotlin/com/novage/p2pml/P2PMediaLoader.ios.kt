@@ -34,13 +34,13 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 
-    @Throws(P2PMediaLoaderException::class)
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(player: AVPlayer) {
         val provider = AVPlayerPlaybackProvider(player)
         core.initialize(provider, IosWebViewFactory())
     }
 
-    @Throws(P2PMediaLoaderException::class)
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {
         core.initialize(provider, IosWebViewFactory())
     }

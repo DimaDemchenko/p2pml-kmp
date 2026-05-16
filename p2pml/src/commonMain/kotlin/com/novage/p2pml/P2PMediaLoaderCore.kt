@@ -65,7 +65,7 @@ internal class P2PMediaLoaderCore(
     val events: P2PEventRegistry =
         P2PEventRegistry(coreScope, { activeSession?.engineManager }, { status.value == LoaderStatus.ACTIVE })
 
-    @Throws(P2PMediaLoaderException::class)
+    @Throws(P2PMediaLoaderException::class, CancellationException::class)
     internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         withContext(Dispatchers.Default) {
             if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
