@@ -61,6 +61,7 @@ internal data class HlsSegment(
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
+    val programDateTimeUs: Long?,
     val initializationSegment: InitializationSegment?,
     val encryptionKey: ParsedUrl?
 ) {
