@@ -91,9 +91,9 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
             return (window.windowStartTimeMs + relativePositionMs).toDouble()
         }
 
-        if (window.isLive && window.defaultPositionMs != C.TIME_UNSET) {
+        if (window.isLive && window.durationMs != C.TIME_UNSET) {
             if (syntheticWindowStartTimeMs == C.TIME_UNSET) {
-                syntheticWindowStartTimeMs = System.currentTimeMillis() - window.defaultPositionMs
+                syntheticWindowStartTimeMs = System.currentTimeMillis() - window.durationMs
             }
             return (syntheticWindowStartTimeMs + relativePositionMs).toDouble()
         }
