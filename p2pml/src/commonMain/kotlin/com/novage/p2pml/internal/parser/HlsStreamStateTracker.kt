@@ -12,7 +12,6 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.extractVideoCodec
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 private const val MAIN_STREAM = "main"
@@ -24,33 +23,27 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
     private val logger = CoreLogger("HlsStreamStateTracker")
 
     private var currentMasterManifestUrl: String? = null
-    private val streams = mutableMapOf<String, Stream>()
-    private val streamSegments = mutableMapOf<String, MutableMap<Long, Segment>>()
+
+    private val trackedStreams = mutableMapOf<String, TrackedStreamContext>()
+
     private val runtimeIdToSegmentMap = mutableMapOf<String, Pair<String, Segment>>()
-    private val updateStreamParams = mutableMapOf<String, UpdateStreamParams>()
 
-    private val currentSegmentRuntimeIds = mutableMapOf<String, MutableSet<String>>()
-    private val variantLastUpdated = mutableMapOf<String, TimeMark>()
-
-    fun isCurrentSegment(segmentUrl: String): Boolean = currentSegmentRuntimeIds.values.any { it.contains(segmentUrl) }
+    fun isCurrentSegment(segmentUrl: String): Boolean =
+        trackedStreams.values.any { it.currentSegmentRuntimeIds.contains(segmentUrl) }
 
     fun isManifestTracked(manifestUrl: String): Boolean =
-        currentMasterManifestUrl == manifestUrl || streams.containsKey(manifestUrl)
+        currentMasterManifestUrl == manifestUrl || trackedStreams.containsKey(manifestUrl)
 
-    fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = updateStreamParams[variantUrl]
+    fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = trackedStreams[variantUrl]?.updateParams
 
-    fun getStreams(): List<Stream> = streams.values.toList()
+    fun getStreams(): List<Stream> = trackedStreams.values.map { it.stream }
 
     fun getSegmentWithManifestByUrl(runtimeId: String): Pair<String, Segment>? = runtimeIdToSegmentMap[runtimeId]
 
     fun reset() {
         logger.i { "Resetting tracker state." }
-        streams.clear()
-        streamSegments.clear()
+        trackedStreams.clear()
         runtimeIdToSegmentMap.clear()
-        updateStreamParams.clear()
-        currentSegmentRuntimeIds.clear()
-        variantLastUpdated.clear()
         currentMasterManifestUrl = null
     }
 
@@ -59,7 +52,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
 
         hlsPlaylist.variants.forEach { variant ->
             if (!variant.isIFrame) {
-                streams.getOrPut(variant.url.absolute) {
+                getOrCreateContext(variant.url.absolute) {
                     Stream(
                         runtimeId = variant.url.absolute,
                         type = MAIN_STREAM,
@@ -80,7 +73,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
     private fun addRenditionStreams(renditions: List<Rendition>, streamType: String) {
         renditions.forEach { rendition ->
             rendition.url?.let { url ->
-                streams.getOrPut(url.absolute) {
+                getOrCreateContext(url.absolute) {
                     Stream(
                         runtimeId = url.absolute,
                         type = streamType,
@@ -95,7 +88,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
     }
 
     suspend fun postProcessMediaPlaylist(manifestUrl: String, mediaPlaylist: HlsMediaPlaylist) {
-        val mediaType = streams[manifestUrl]?.type ?: MAIN_STREAM
+        val mediaType = trackedStreams[manifestUrl]?.stream?.type ?: MAIN_STREAM
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
 
@@ -104,35 +97,31 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
 
         val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist)
 
-        val runtimeIdsSet = currentSegmentRuntimeIds.getOrPut(manifestUrl) {
-            HashSet(mediaPlaylist.hlsSegments.size)
+        val context = getOrCreateContext(manifestUrl) {
+            Stream(runtimeId = manifestUrl, type = mediaType, bitrate = 0)
         }
-        runtimeIdsSet.clear()
+
+        context.currentSegmentRuntimeIds.clear()
 
         if (isStreamLive) {
-            variantLastUpdated[manifestUrl] = TimeSource.Monotonic.markNow()
+            context.lastUpdated = TimeSource.Monotonic.markNow()
         }
 
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
 
-        val segmentsMap = streamSegments.getOrPut(manifestUrl) { mutableMapOf() }
-
         mediaPlaylist.hlsSegments.forEach { segment ->
-            runtimeIdsSet.add(segment.runtimeUrl)
-            val newSegment = createAndStoreSegment(manifestUrl, segmentsMap, segmentIndex++, initialStartTime, segment)
+            context.currentSegmentRuntimeIds.add(segment.runtimeUrl)
+            val newSegment =
+                createAndStoreSegment(manifestUrl, context.segments, segmentIndex++, initialStartTime, segment)
             newSegment?.let { segmentsToAdd.add(it) }
         }
 
-        updateStreamParams[manifestUrl] = UpdateStreamParams(
+        context.updateParams = UpdateStreamParams(
             streamRuntimeId = manifestUrl,
             addSegments = segmentsToAdd,
             removeSegmentsIds = segmentsToRemove,
             isLive = isStreamLive
         )
-
-        streams.getOrPut(manifestUrl) {
-            Stream(runtimeId = manifestUrl, type = mediaType, bitrate = 0)
-        }
 
         logger.d { "Segments updated. Added: ${segmentsToAdd.size}, Removed: ${segmentsToRemove.size}" }
     }
@@ -185,7 +174,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         removeUntilId: Long,
         obsoleteSegmentIds: MutableList<String>
     ) {
-        val segmentsMap = streamSegments[variantUrl] ?: return
+        val segmentsMap = trackedStreams[variantUrl]?.segments ?: return
 
         val iterator = segmentsMap.iterator()
         while (iterator.hasNext()) {
@@ -199,23 +188,19 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         }
     }
 
-    private fun evictAbandonedLiveVariants(variantUrl: String) {
-        val variantIterator = variantLastUpdated.iterator()
-        while (variantIterator.hasNext()) {
-            val entry = variantIterator.next()
-            val staleUrl = entry.key
-            if (staleUrl != variantUrl && entry.value.elapsedNow() > LIVE_VARIANT_TTL) {
+    private fun evictAbandonedLiveVariants(activeVariantUrl: String) {
+        val iterator = trackedStreams.entries.iterator()
+
+        while (iterator.hasNext()) {
+            val (staleUrl, context) = iterator.next()
+            if (staleUrl != activeVariantUrl && context.lastUpdated.elapsedNow() > LIVE_VARIANT_TTL) {
                 logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
 
-                streamSegments[staleUrl]?.values?.forEach {
+                context.segments.values.forEach {
                     runtimeIdToSegmentMap.remove(it.runtimeId)
                 }
 
-                currentSegmentRuntimeIds.remove(staleUrl)
-                streamSegments.remove(staleUrl)
-                updateStreamParams.remove(staleUrl)
-                streams.remove(staleUrl)
-                variantIterator.remove()
+                iterator.remove()
             }
         }
     }
@@ -230,4 +215,9 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         )
         return playbackProvider.getAbsolutePlaybackPosition(snapshot)
     }
+
+    private inline fun getOrCreateContext(manifestUrl: String, streamFactory: () -> Stream): TrackedStreamContext =
+        trackedStreams.getOrPut(manifestUrl) {
+            TrackedStreamContext(stream = streamFactory())
+        }
 }
