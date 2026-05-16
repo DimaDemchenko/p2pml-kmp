@@ -76,29 +76,30 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     private fun emitCurrentState() {
         val speed = exoPlayer.playbackParameters.speed
         val relativePositionMs = exoPlayer.currentPosition
+        val absolutePositionSec = resolveAbsolutePositionMs(relativePositionMs) / MILLISECONDS_IN_SECOND
+        _playbackUpdates.value = PlaybackInfo(absolutePositionSec, speed)
+    }
+
+    private fun resolveAbsolutePositionMs(relativePositionMs: Long): Double {
         val timeline = exoPlayer.currentTimeline
+        if (timeline.isEmpty) return relativePositionMs.toDouble()
 
-        var absolutePositionSec = relativePositionMs / MILLISECONDS_IN_SECOND
+        timeline.getWindow(exoPlayer.currentMediaItemIndex, window)
 
-        if (!timeline.isEmpty) {
-            timeline.getWindow(exoPlayer.currentMediaItemIndex, window)
-
-            if (window.windowStartTimeMs != C.TIME_UNSET) {
-                absolutePositionSec =
-                    (window.windowStartTimeMs + relativePositionMs) / MILLISECONDS_IN_SECOND
-                syntheticWindowStartTimeMs = C.TIME_UNSET
-            } else if (window.isLive) {
-                if (syntheticWindowStartTimeMs == C.TIME_UNSET) {
-                    syntheticWindowStartTimeMs = System.currentTimeMillis() - relativePositionMs
-                }
-                absolutePositionSec =
-                    (syntheticWindowStartTimeMs + relativePositionMs) / MILLISECONDS_IN_SECOND
-            } else {
-                syntheticWindowStartTimeMs = C.TIME_UNSET
-            }
+        if (window.windowStartTimeMs != C.TIME_UNSET) {
+            syntheticWindowStartTimeMs = C.TIME_UNSET
+            return (window.windowStartTimeMs + relativePositionMs).toDouble()
         }
 
-        _playbackUpdates.value = PlaybackInfo(absolutePositionSec, speed)
+        if (window.isLive && window.defaultPositionMs != C.TIME_UNSET) {
+            if (syntheticWindowStartTimeMs == C.TIME_UNSET) {
+                syntheticWindowStartTimeMs = System.currentTimeMillis() - window.defaultPositionMs
+            }
+            return (syntheticWindowStartTimeMs + relativePositionMs).toDouble()
+        }
+
+        syntheticWindowStartTimeMs = C.TIME_UNSET
+        return relativePositionMs.toDouble()
     }
 
     override fun release() {
