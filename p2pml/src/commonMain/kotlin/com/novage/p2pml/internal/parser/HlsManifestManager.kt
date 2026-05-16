@@ -10,6 +10,7 @@ import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
 internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
     private val logger = CoreLogger("HlsManifestManager")
     private val parser = HlsPlaylistParser()
