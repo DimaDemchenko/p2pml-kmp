@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.MICROS_PER_SECOND
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 private const val MILLIS_PER_SECOND = 1000L
 
