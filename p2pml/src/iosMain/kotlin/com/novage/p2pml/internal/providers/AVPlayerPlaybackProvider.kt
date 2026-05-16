@@ -10,6 +10,7 @@ import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.addPeriodicTimeObserverForInterval
 import platform.AVFoundation.currentItem
+import platform.AVFoundation.duration
 import platform.AVFoundation.rate
 import platform.AVFoundation.removeTimeObserver
 import platform.CoreMedia.CMTimeGetSeconds
@@ -68,12 +69,18 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
             return currentDate.timeIntervalSince1970
         }
 
-        if (relativePositionSec <= 0.0) return relativePositionSec
+        val durationSec = CMTimeGetSeconds(currentItem.duration)
+        val isLive = durationSec.isNaN() || durationSec.isInfinite() || durationSec <= 0.0
 
-        if (syntheticWindowStartSec == null) {
-            syntheticWindowStartSec = getCurrentEpochSeconds() - relativePositionSec
+        if (isLive) {
+            if (syntheticWindowStartSec == null) {
+                syntheticWindowStartSec = getCurrentEpochSeconds() - relativePositionSec
+            }
+            return syntheticWindowStartSec!! + relativePositionSec
         }
-        return syntheticWindowStartSec!! + relativePositionSec
+
+        syntheticWindowStartSec = null
+        return relativePositionSec
     }
 
     private fun getPlayerItemCurrentDate(item: AVPlayerItem): NSDate? {
