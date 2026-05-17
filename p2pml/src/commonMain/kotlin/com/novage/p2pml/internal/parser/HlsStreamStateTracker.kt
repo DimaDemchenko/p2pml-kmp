@@ -134,7 +134,11 @@ internal class HlsStreamStateTracker {
     ): Segment? {
         if (segmentsMap.contains(segmentId)) return null
 
-        val startTime = segmentsMap[segmentId - 1]?.endTime ?: initialStartTime
+        val startTime = if (hlsSegment.programDateTimeUs != null) {
+            hlsSegment.programDateTimeUs!! / MICROSECONDS_IN_SECOND
+        } else {
+            segmentsMap[segmentId - 1]?.endTime ?: initialStartTime
+        }
         val endTime = startTime + (hlsSegment.durationUs / MICROSECONDS_IN_SECOND)
 
         return Segment(
