@@ -17,4 +17,3 @@ internal fun skipIgnorableWhitespace(reader: Reader, skipLinebreak: Boolean, c: 
     return ch
 }
 
-internal fun splitString(value: String, delimiter: String): List<String> = value.split(delimiter)
