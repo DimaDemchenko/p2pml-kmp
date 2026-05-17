@@ -61,8 +61,6 @@ private fun resolveRelativePath(base: String, reference: String, baseIndices: In
     }
 }
 
-internal fun isAbsolute(uri: String?): Boolean = uri != null && getUriIndices(uri)[SCHEME_COLON] != -1
-
 internal fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): String {
     var off = offset
     var lim = limit
