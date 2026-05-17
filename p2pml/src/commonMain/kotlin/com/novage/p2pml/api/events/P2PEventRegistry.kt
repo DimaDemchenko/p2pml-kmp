@@ -10,7 +10,6 @@ import com.novage.p2pml.api.models.SegmentLoadDetails
 import com.novage.p2pml.api.models.SegmentStartDetails
 import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
-import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -26,7 +25,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 class P2PEventRegistry internal constructor(
     private val coreScope: CoroutineScope,
-    private val engineManagerProvider: () -> P2PEngine?,
+    private val onSubscribe: (String) -> Unit,
+    private val onUnsubscribe: (String) -> Unit,
     private val isCoreActive: () -> Boolean
 ) {
     private val logger = CoreLogger("P2PEventRegistry")
@@ -126,13 +126,12 @@ class P2PEventRegistry internal constructor(
                 .map { it > 0 }
                 .distinctUntilChanged()
                 .onEach { hasSubscribers ->
-                    val engine = engineManagerProvider() ?: return@onEach
                     if (!isCoreActive()) return@onEach
 
                     if (hasSubscribers) {
-                        engine.subscribeToP2PEvent(eventName)
+                        onSubscribe(eventName)
                     } else {
-                        engine.unsubscribeFromP2PEvent(eventName)
+                        onUnsubscribe(eventName)
                     }
                 }
                 .launchIn(coreScope)
@@ -140,12 +139,11 @@ class P2PEventRegistry internal constructor(
     }
 
     internal fun syncEarlySubscriptions() {
-        val engine = engineManagerProvider() ?: return
         if (!isCoreActive()) return
 
         flowsWithNames.forEach { (eventName, flow) ->
             if (flow.subscriptionCount.value > 0) {
-                engine.subscribeToP2PEvent(eventName)
+                onSubscribe(eventName)
             }
         }
     }
