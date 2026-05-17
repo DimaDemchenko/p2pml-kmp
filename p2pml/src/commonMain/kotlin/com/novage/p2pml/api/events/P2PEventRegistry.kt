@@ -72,7 +72,7 @@ class P2PEventRegistry internal constructor(
     internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
     internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
 
-    internal fun dispatchEventFromJsonElement(eventName: String, payload: JsonElement, json: Json) {
+    internal fun dispatchEvent(eventName: String, payload: JsonElement, json: Json) {
         when (eventName) {
             "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromJsonElement(payload))
             "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromJsonElement(payload))
@@ -85,23 +85,6 @@ class P2PEventRegistry internal constructor(
             "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromJsonElement(payload))
             "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromJsonElement(payload))
             "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromJsonElement(payload))
-            else -> logger.w { "No dispatcher found for event: $eventName" }
-        }
-    }
-
-    internal fun dispatchEventFromJsonString(eventName: String, payload: String, json: Json) {
-        when (eventName) {
-            "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromString(payload))
-            "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromString(payload))
-            "onSegmentError" -> _onSegmentError.tryEmit(json.decodeFromString(payload))
-            "onSegmentAbort" -> _onSegmentAbort.tryEmit(json.decodeFromString(payload))
-            "onPeerConnect" -> _onPeerConnect.tryEmit(json.decodeFromString(payload))
-            "onPeerClose" -> _onPeerClose.tryEmit(json.decodeFromString(payload))
-            "onPeerError" -> _onPeerError.tryEmit(json.decodeFromString(payload))
-            "onTrackerError" -> _onTrackerError.tryEmit(json.decodeFromString(payload))
-            "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromString(payload))
-            "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromString(payload))
-            "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromString(payload))
             else -> logger.w { "No dispatcher found for event: $eventName" }
         }
     }
