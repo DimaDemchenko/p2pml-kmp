@@ -3,6 +3,7 @@ package com.novage.p2pml.api.interop
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.DynamicCoreConfig
 import java.lang.AutoCloseable
 import java.util.concurrent.CompletableFuture
@@ -63,7 +64,7 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
-    fun initialize(provider: JavaPlaybackProvider): CompletableFuture<Void?> = scope.future {
+    fun initialize(provider: PlaybackProvider): CompletableFuture<Void?> = scope.future {
         loader.initialize(provider)
         null
     }

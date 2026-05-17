@@ -3,9 +3,8 @@ package com.novage.p2pml.internal.providers
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
+import kotlin.concurrent.AtomicReference
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.addPeriodicTimeObserverForInterval
@@ -26,8 +25,7 @@ private const val UPDATE_INTERVAL_SEC = 1.0
 @OptIn(ExperimentalForeignApi::class)
 internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : PlaybackProvider {
 
-    private val _playbackUpdates = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
-    override val playbackUpdates: StateFlow<PlaybackInfo> = _playbackUpdates
+    private val latestInfo = AtomicReference(PlaybackInfo(0.0, 1.0f))
 
     private var timeObserverToken: Any? = null
     private var syntheticWindowStartSec: Double? = null
@@ -51,7 +49,7 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
             val speed = player.rate
             val absolutePositionSec = resolveAbsolutePosition(player.currentItem, relativePositionSec)
 
-            _playbackUpdates.value = PlaybackInfo(absolutePositionSec, speed)
+            latestInfo.value = PlaybackInfo(absolutePositionSec, speed)
         }
     }
 
@@ -87,6 +85,8 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
         if (!item.respondsToSelector(currentDateSelector)) return null
         return item.performSelector(currentDateSelector)?.let { it as? NSDate }
     }
+
+    override fun getPlaybackInfo(): PlaybackInfo = latestInfo.value
 
     override fun release() {
         timeObserverToken?.let { token ->

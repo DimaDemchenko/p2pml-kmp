@@ -15,8 +15,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -24,8 +22,8 @@ private const val MILLISECONDS_IN_SECOND = 1000.0
 private const val UPDATE_INTERVAL_MS = 1000L
 
 internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : PlaybackProvider {
-    private val _playbackUpdates = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
-    override val playbackUpdates: StateFlow<PlaybackInfo> = _playbackUpdates
+    @Volatile
+    private var latestInfo = PlaybackInfo(0.0, 1.0f)
 
     private val providerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressTrackerJob: Job? = null
@@ -79,7 +77,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         val speed = exoPlayer.playbackParameters.speed
         val relativePositionMs = exoPlayer.currentPosition
         val absolutePositionSec = resolveAbsolutePositionMs(relativePositionMs) / MILLISECONDS_IN_SECOND
-        _playbackUpdates.value = PlaybackInfo(absolutePositionSec, speed)
+        latestInfo = PlaybackInfo(absolutePositionSec, speed)
     }
 
     private fun resolveAbsolutePositionMs(relativePositionMs: Long): Double {
@@ -108,6 +106,8 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         syntheticWindowStartTimeMs = C.TIME_UNSET
         return relativePositionMs.toDouble()
     }
+
+    override fun getPlaybackInfo(): PlaybackInfo = latestInfo
 
     override fun release() {
         providerScope.cancel()

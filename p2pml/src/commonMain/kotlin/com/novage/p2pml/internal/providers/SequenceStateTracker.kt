@@ -14,6 +14,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,6 +42,7 @@ internal class SequenceStateTracker(
     private data class TrackState(val lastId: Long, val lastStartTime: Double)
 
     companion object {
+        private const val POLL_INTERVAL_MS = 1000L
         private const val SUSPENSION_TIMEOUT_MS = 8000L
         private const val DEFAULT_CATCH_UP_THRESHOLD_SEC = 5.0
     }
@@ -50,8 +52,10 @@ internal class SequenceStateTracker(
         logger.d { "Starting event-driven playback sequence observer." }
 
         pollingJob = scope.launch {
-            playbackProvider.playbackUpdates.collect { actualInfo ->
-                processPlaybackUpdate(actualInfo)
+            while (isActive) {
+                val info = playbackProvider.getPlaybackInfo()
+                processPlaybackUpdate(info)
+                delay(POLL_INTERVAL_MS)
             }
         }
     }
@@ -105,7 +109,7 @@ internal class SequenceStateTracker(
         }
 
         if (needsForcedUpdate) {
-            val info = playbackProvider.playbackUpdates.value
+            val info = playbackProvider.getPlaybackInfo()
             updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
         }
     }
