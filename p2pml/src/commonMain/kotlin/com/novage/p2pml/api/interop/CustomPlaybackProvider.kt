@@ -29,10 +29,12 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
     abstract fun isLiveStream(): Boolean
 
     /**
-     * @return If the stream provides an `EXT-X-PROGRAM-DATE-TIME` tag (or equivalent),
-     * return its Unix Epoch time in seconds. Otherwise, return null.
+     * @return The absolute playback position as Unix Epoch seconds,
+     * if available from the player (e.g., via `EXT-X-PROGRAM-DATE-TIME`
+     * or an equivalent player API like AVPlayer's `currentDate`).
+     * Return null to use the synthetic live-window fallback.
      */
-    abstract fun getManifestEpochTimeSec(): Double?
+    abstract fun getAbsolutePositionSec(): Double?
 
     /**
      * @return A unique ID for the current video (e.g., URL or playlist ID).
@@ -56,7 +58,7 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
         val absolutePositionSec = resolveAbsolutePosition(
             relativePositionSec,
             isLive,
-            getManifestEpochTimeSec()
+            getAbsolutePositionSec()
         )
 
         return PlaybackInfo(absolutePositionSec, getPlaybackSpeed())
@@ -65,11 +67,11 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
     private fun resolveAbsolutePosition(
         relativePositionSec: Double,
         isLive: Boolean,
-        manifestEpochTimeSec: Double?
+        absolutePositionSec: Double?
     ): Double {
-        if (manifestEpochTimeSec != null) {
+        if (absolutePositionSec != null) {
             syntheticWindowStartSec = null
-            return manifestEpochTimeSec + relativePositionSec
+            return absolutePositionSec
         }
 
         if (isLive) {
