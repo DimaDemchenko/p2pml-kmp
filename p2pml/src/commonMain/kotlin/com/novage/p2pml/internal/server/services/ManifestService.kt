@@ -51,9 +51,11 @@ internal class ManifestService(
             engineManager.sendAllStreams(streams)
             updateStreamParams?.let { engineManager.sendStream(it) }
         } else {
-            updateStreamParams?.let { params ->
-                engineManager.sendStream(params)
-            } ?: error("No stream parameters found for URL: $manifestUrl")
+            if (updateStreamParams == null) {
+                logger.w { "No stream parameters found for URL: $manifestUrl. Skipping engine sync." }
+                return
+            }
+            engineManager.sendStream(updateStreamParams)
         }
     }
 

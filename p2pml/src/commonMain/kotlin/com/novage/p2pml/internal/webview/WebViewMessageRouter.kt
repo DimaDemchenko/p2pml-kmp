@@ -51,7 +51,7 @@ internal class WebViewMessageRouter(
                 return
             }
 
-            events.dispatchEventFromJsonElement(envelope.type, payload, json)
+            events.dispatchEvent(envelope.type, payload, json)
         } catch (e: SerializationException) {
             logger.e { "Failed to parse WebView JSON message: ${e.message}. Raw message: $message" }
         } catch (e: IllegalArgumentException) {

@@ -10,7 +10,6 @@ import com.novage.p2pml.api.models.SegmentLoadDetails
 import com.novage.p2pml.api.models.SegmentStartDetails
 import com.novage.p2pml.api.models.TrackerErrorDetails
 import com.novage.p2pml.api.models.TrackerWarningDetails
-import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -26,7 +25,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 class P2PEventRegistry internal constructor(
     private val coreScope: CoroutineScope,
-    private val engineManagerProvider: () -> P2PEngine?,
+    private val onSubscribe: (String) -> Unit,
+    private val onUnsubscribe: (String) -> Unit,
     private val isCoreActive: () -> Boolean
 ) {
     private val logger = CoreLogger("P2PEventRegistry")
@@ -72,7 +72,7 @@ class P2PEventRegistry internal constructor(
     internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
     internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
 
-    internal fun dispatchEventFromJsonElement(eventName: String, payload: JsonElement, json: Json) {
+    internal fun dispatchEvent(eventName: String, payload: JsonElement, json: Json) {
         when (eventName) {
             "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromJsonElement(payload))
             "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromJsonElement(payload))
@@ -85,23 +85,6 @@ class P2PEventRegistry internal constructor(
             "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromJsonElement(payload))
             "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromJsonElement(payload))
             "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromJsonElement(payload))
-            else -> logger.w { "No dispatcher found for event: $eventName" }
-        }
-    }
-
-    internal fun dispatchEventFromJsonString(eventName: String, payload: String, json: Json) {
-        when (eventName) {
-            "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromString(payload))
-            "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromString(payload))
-            "onSegmentError" -> _onSegmentError.tryEmit(json.decodeFromString(payload))
-            "onSegmentAbort" -> _onSegmentAbort.tryEmit(json.decodeFromString(payload))
-            "onPeerConnect" -> _onPeerConnect.tryEmit(json.decodeFromString(payload))
-            "onPeerClose" -> _onPeerClose.tryEmit(json.decodeFromString(payload))
-            "onPeerError" -> _onPeerError.tryEmit(json.decodeFromString(payload))
-            "onTrackerError" -> _onTrackerError.tryEmit(json.decodeFromString(payload))
-            "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromString(payload))
-            "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromString(payload))
-            "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromString(payload))
             else -> logger.w { "No dispatcher found for event: $eventName" }
         }
     }
@@ -126,13 +109,12 @@ class P2PEventRegistry internal constructor(
                 .map { it > 0 }
                 .distinctUntilChanged()
                 .onEach { hasSubscribers ->
-                    val engine = engineManagerProvider() ?: return@onEach
                     if (!isCoreActive()) return@onEach
 
                     if (hasSubscribers) {
-                        engine.subscribeToP2PEvent(eventName)
+                        onSubscribe(eventName)
                     } else {
-                        engine.unsubscribeFromP2PEvent(eventName)
+                        onUnsubscribe(eventName)
                     }
                 }
                 .launchIn(coreScope)
@@ -140,12 +122,11 @@ class P2PEventRegistry internal constructor(
     }
 
     internal fun syncEarlySubscriptions() {
-        val engine = engineManagerProvider() ?: return
         if (!isCoreActive()) return
 
         flowsWithNames.forEach { (eventName, flow) ->
             if (flow.subscriptionCount.value > 0) {
-                engine.subscribeToP2PEvent(eventName)
+                onSubscribe(eventName)
             }
         }
     }
