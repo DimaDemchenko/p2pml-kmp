@@ -44,6 +44,9 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
     /**
      * @return A unique ID for the current video (e.g., URL or playlist ID).
      * When this value changes, the provider automatically resets the internal live timeline.
+     * Returning null disables stream-change detection — the synthetic live window
+     * will not reset when switching between streams. Return a non-null value if your
+     * player handles multiple live streams.
      */
     abstract fun getCurrentVideoId(): String?
 
@@ -55,7 +58,7 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
         val isLive = isLiveStream()
         val videoId = getCurrentVideoId()
 
-        if (videoId == null || currentVideoId != videoId) {
+        if (videoId != null && currentVideoId != videoId) {
             currentVideoId = videoId
             syntheticWindowStartSec = null
         }
