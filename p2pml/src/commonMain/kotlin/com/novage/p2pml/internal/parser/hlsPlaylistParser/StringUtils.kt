@@ -16,4 +16,3 @@ internal fun skipIgnorableWhitespace(reader: Reader, skipLinebreak: Boolean, c: 
     }
     return ch
 }
-
