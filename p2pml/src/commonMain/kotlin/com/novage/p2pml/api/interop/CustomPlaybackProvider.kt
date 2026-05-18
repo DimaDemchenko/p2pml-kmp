@@ -13,6 +13,11 @@ import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
  * This class automatically handles the Absolute Epoch Time synchronization
  * required by the P2P engine for live streams. Custom developers only need to
  * implement five simple native getters — no timeline math required.
+ *
+ * **Threading:** The abstract getters are called from a background thread.
+ * If your player API requires main-thread access, cache the values in your
+ * implementation (e.g., via a periodic main-thread observer) and return the
+ * cached values from the getters.
  */
 abstract class CustomPlaybackProvider : PlaybackProvider {
 
@@ -50,7 +55,7 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
         val isLive = isLiveStream()
         val videoId = getCurrentVideoId()
 
-        if (currentVideoId != videoId) {
+        if (videoId == null || currentVideoId != videoId) {
             currentVideoId = videoId
             syntheticWindowStartSec = null
         }
