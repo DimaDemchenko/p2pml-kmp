@@ -1,7 +1,5 @@
 package com.novage.p2pml.internal.parser
 
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.PlaylistSnapshot
 import com.novage.p2pml.api.models.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
@@ -11,6 +9,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.extractVideoCodec
+import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -19,7 +18,7 @@ private const val SECONDARY_STREAM = "secondary"
 private const val MICROSECONDS_IN_SECOND = 1_000_000.0
 private val LIVE_VARIANT_TTL = 60.seconds
 
-internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvider) {
+internal class HlsStreamStateTracker {
     private val logger = CoreLogger("HlsStreamStateTracker")
 
     private var currentMasterManifestUrl: String? = null
@@ -87,15 +86,12 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         }
     }
 
-    suspend fun postProcessMediaPlaylist(manifestUrl: String, mediaPlaylist: HlsMediaPlaylist) {
+    fun postProcessMediaPlaylist(manifestUrl: String, mediaPlaylist: HlsMediaPlaylist) {
         val mediaType = trackedStreams[manifestUrl]?.stream?.type ?: MAIN_STREAM
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
 
-        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
-        val segmentsToAdd = mutableListOf<Segment>()
-
-        val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist)
+        val initialStartTime = calculateInitialStartTime(isStreamLive, mediaPlaylist.hlsSegments)
 
         val context = getOrCreateContext(manifestUrl) {
             Stream(runtimeId = manifestUrl, type = mediaType, bitrate = 0)
@@ -108,6 +104,7 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         }
 
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
+        val segmentsToAdd = mutableListOf<Segment>()
 
         mediaPlaylist.hlsSegments.forEach { segment ->
             context.currentSegmentRuntimeIds.add(segment.runtimeUrl)
@@ -115,6 +112,8 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
                 createAndStoreSegment(manifestUrl, context.segments, segmentIndex++, initialStartTime, segment)
             newSegment?.let { segmentsToAdd.add(it) }
         }
+
+        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
 
         context.updateParams = UpdateStreamParams(
             streamRuntimeId = manifestUrl,
@@ -135,7 +134,11 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
     ): Segment? {
         if (segmentsMap.contains(segmentId)) return null
 
-        val startTime = segmentsMap[segmentId - 1]?.endTime ?: initialStartTime
+        val startTime = if (hlsSegment.programDateTimeUs != null) {
+            hlsSegment.programDateTimeUs!! / MICROSECONDS_IN_SECOND
+        } else {
+            segmentsMap[segmentId - 1]?.endTime ?: initialStartTime
+        }
         val endTime = startTime + (hlsSegment.durationUs / MICROSECONDS_IN_SECOND)
 
         return Segment(
@@ -205,15 +208,18 @@ internal class HlsStreamStateTracker(private val playbackProvider: PlaybackProvi
         }
     }
 
-    private suspend fun calculateInitialStartTime(isLive: Boolean, mediaPlaylist: HlsMediaPlaylist): Double {
-        if (!isLive) return 0.0
+    private fun calculateInitialStartTime(isLive: Boolean, segments: List<HlsSegment>): Double {
+        if (!isLive || segments.isEmpty()) return 0.0
 
-        val snapshot = PlaylistSnapshot(
-            mediaSequence = mediaPlaylist.mediaSequence,
-            hasEndTag = mediaPlaylist.hasEndTag,
-            segmentDurationsSec = mediaPlaylist.hlsSegments.map { it.durationUs / MICROSECONDS_IN_SECOND }
-        )
-        return playbackProvider.getAbsolutePlaybackPosition(snapshot)
+        val anchorIndex = segments.indexOfFirst { it.programDateTimeUs != null }
+        if (anchorIndex != -1) {
+            val anchorTimeUs = segments[anchorIndex].programDateTimeUs!!
+            val precedingDurationUs = segments.subList(0, anchorIndex).sumOf { it.durationUs }
+            return (anchorTimeUs - precedingDurationUs) / MICROSECONDS_IN_SECOND
+        }
+
+        val totalDurationSec = segments.sumOf { it.durationUs / MICROSECONDS_IN_SECOND }
+        return getCurrentEpochSeconds() - totalDurationSec
     }
 
     private inline fun getOrCreateContext(manifestUrl: String, streamFactory: () -> Stream): TrackedStreamContext =

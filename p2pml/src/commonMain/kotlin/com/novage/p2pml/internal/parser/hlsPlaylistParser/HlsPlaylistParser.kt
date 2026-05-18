@@ -36,6 +36,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_MEDIA_SEQUENCE
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PART
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PRELOAD_HINT
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_PROGRAM_DATE_TIME
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_RENDITION_REPORT
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_SESSION_KEY
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TAG_STREAM_INF
@@ -69,6 +70,7 @@ internal class HlsPlaylistParser {
         var durationUs: Long = 0L,
         var offset: Long = 0L,
         var length: Long = -1L,
+        var programDateTimeUs: Long? = null,
         var initSegment: InitializationSegment? = null,
         var encryptionKey: ParsedUrl? = null
     )
@@ -143,6 +145,7 @@ internal class HlsPlaylistParser {
                 if (state.length != -1L) state.offset += state.length
                 state.durationUs = 0L
                 state.length = -1L
+                state.programDateTimeUs = null
             }
             builder.append(rewrittenLine).append("\n")
         }
@@ -185,6 +188,11 @@ internal class HlsPlaylistParser {
                     parseTimeSecondsToUs(trimmedLine, REGEX_MEDIA_DURATION)
 
             trimmedLine.startsWith(TAG_BYTERANGE) -> applyByteRange(trimmedLine, context.vars, state)
+
+            trimmedLine.startsWith(TAG_PROGRAM_DATE_TIME) -> {
+                val dateString = trimmedLine.substringAfter(":")
+                state.programDateTimeUs = parseIso8601ToUs(dateString)
+            }
 
             trimmedLine.startsWith(TAG_INIT_SEGMENT) -> rewrittenLine = processUrlTag(
                 line = originalLine,
@@ -292,6 +300,7 @@ internal class HlsPlaylistParser {
         byteRangeOffset = state.offset,
         byteRangeLength = state.length,
         durationUs = state.durationUs,
+        programDateTimeUs = state.programDateTimeUs,
         initializationSegment = state.initSegment,
         encryptionKey = state.encryptionKey
     )
