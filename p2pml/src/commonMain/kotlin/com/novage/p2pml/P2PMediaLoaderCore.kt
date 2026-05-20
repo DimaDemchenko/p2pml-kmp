@@ -11,6 +11,7 @@ import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,9 +57,11 @@ internal class P2PMediaLoaderCore(
     )
     private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
+    @Volatile
     private var activeSession: P2PSession? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
+    @Volatile
     private var pendingDynamicConfig: DynamicCoreConfig? = null
 
     val fatalErrors = errorDispatcher.errors
