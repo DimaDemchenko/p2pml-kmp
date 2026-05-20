@@ -61,6 +61,7 @@ internal class P2PMediaLoaderCore(
     private var activeSession: P2PSession? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
+
     @Volatile
     private var pendingDynamicConfig: DynamicCoreConfig? = null
 

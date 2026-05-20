@@ -12,13 +12,13 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
-import io.ktor.http.contentLength
-import io.ktor.http.contentType
 import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
+import io.ktor.http.contentLength
+import io.ktor.http.contentType
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -49,8 +49,6 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
         responseUrl = response.request.url.toString()
     )
 }
-
-
 
 private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
     requestHeaders.forEach { key, values ->
