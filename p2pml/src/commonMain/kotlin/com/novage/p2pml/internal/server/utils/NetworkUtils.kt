@@ -7,10 +7,13 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsBytes
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
+import io.ktor.http.contentLength
+import io.ktor.http.contentType
 import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
@@ -47,13 +50,7 @@ internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl
     )
 }
 
-internal suspend fun HttpClient.fetchSegmentResponse(call: ApplicationCall, segmentUrl: String): HttpResponse {
-    val cleanUrl = segmentUrl.substringBeforeLast("|")
 
-    return this.get(cleanUrl) {
-        copyProxyHeaders(call.request.headers)
-    }
-}
 
 private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
     requestHeaders.forEach { key, values ->
@@ -94,27 +91,6 @@ private fun buildContentRange(rangeHeader: String, contentLength: Long?): String
     return if (end != null && end >= start) "bytes $start-$end/*" else null
 }
 
-internal suspend fun ApplicationCall.respondVideoSegment(bytes: ByteArray, upstreamContentRange: String? = null) {
-    val contentType = ContentType.Application.OctetStream
-
-    if (upstreamContentRange != null) {
-        respond(
-            object : OutgoingContent.ByteArrayContent() {
-                override val contentType = contentType
-                override val contentLength = bytes.size.toLong()
-                override val status = HttpStatusCode.PartialContent
-                override val headers = Headers.build {
-                    append(HttpHeaders.AcceptRanges, "bytes")
-                    append(HttpHeaders.ContentRange, upstreamContentRange)
-                }
-                override fun bytes(): ByteArray = bytes
-            }
-        )
-    } else {
-        respondBytes(bytes, contentType)
-    }
-}
-
 internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload) {
     val rangeHeader = request.headers[HttpHeaders.Range]
     val contentType = ContentType.Application.OctetStream
@@ -142,11 +118,31 @@ internal suspend fun ApplicationCall.respondFallback(
     segmentUrl: String,
     errorDispatcher: RuntimeErrorDispatcher
 ) {
+    val cleanUrl = segmentUrl.substringBeforeLast("|")
     try {
-        val response = httpClient.fetchSegmentResponse(this, segmentUrl)
-        val bytes = response.bodyAsBytes()
-        val contentRange = response.headers[HttpHeaders.ContentRange]
-        respondVideoSegment(bytes, contentRange)
+        httpClient.prepareGet(cleanUrl) {
+            copyProxyHeaders(request.headers)
+        }.execute { response ->
+            val contentType = response.contentType() ?: ContentType.Application.OctetStream
+            val contentLength = response.contentLength()
+            val contentRange = response.headers[HttpHeaders.ContentRange]
+            val channel = response.bodyAsChannel()
+
+            respond(
+                object : OutgoingContent.ReadChannelContent() {
+                    override val contentType = contentType
+                    override val contentLength = contentLength
+                    override val status = response.status
+                    override val headers = Headers.build {
+                        append(HttpHeaders.AcceptRanges, "bytes")
+                        if (contentRange != null) {
+                            append(HttpHeaders.ContentRange, contentRange)
+                        }
+                    }
+                    override fun readFrom(): ByteReadChannel = channel
+                }
+            )
+        }
     } catch (e: ResponseException) {
         val status = e.response.status
 
