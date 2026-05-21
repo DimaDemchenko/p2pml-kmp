@@ -8,7 +8,6 @@ import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.prepareGet
-import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
@@ -23,6 +22,8 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.copyTo
 import kotlinx.io.IOException
 
 private val EXCLUDED_PROXY_HEADERS =
@@ -124,10 +125,9 @@ internal suspend fun ApplicationCall.respondFallback(
             val contentType = response.contentType() ?: ContentType.Application.OctetStream
             val contentLength = response.contentLength()
             val contentRange = response.headers[HttpHeaders.ContentRange]
-            val channel = response.bodyAsChannel()
 
             respond(
-                object : OutgoingContent.ReadChannelContent() {
+                object : OutgoingContent.WriteChannelContent() {
                     override val contentType = contentType
                     override val contentLength = contentLength
                     override val status = response.status
@@ -137,7 +137,9 @@ internal suspend fun ApplicationCall.respondFallback(
                             append(HttpHeaders.ContentRange, contentRange)
                         }
                     }
-                    override fun readFrom(): ByteReadChannel = channel
+                    override suspend fun writeTo(channel: ByteWriteChannel) {
+                        response.bodyAsChannel().copyTo(channel)
+                    }
                 }
             )
         }
