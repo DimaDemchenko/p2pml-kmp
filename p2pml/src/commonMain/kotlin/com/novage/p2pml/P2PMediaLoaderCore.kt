@@ -178,21 +178,14 @@ internal class P2PMediaLoaderCore(
 
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        when (status.value) {
-            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> pendingDynamicConfig = dynamicCoreConfig
-
-            LoaderStatus.ACTIVE -> {
-                val session = activeSession ?: throw P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
-                    "Internal invariant violation: activeSession is null while status is ${status.value}"
-                )
-                session.applyDynamicConfig(dynamicCoreConfig)
-            }
-
-            LoaderStatus.RELEASING, LoaderStatus.RELEASED -> logger.w {
-                "Ignored dynamic config. Core state: ${status.value}."
-            }
+        val currentStatus = status.value
+        if (currentStatus == LoaderStatus.RELEASING || currentStatus == LoaderStatus.RELEASED) {
+            logger.w { "Ignored dynamic config. Core state: $currentStatus." }
+            return
         }
+
+        pendingDynamicConfig = dynamicCoreConfig
+        activeSession?.applyDynamicConfig(dynamicCoreConfig)
     }
 
     fun release() {
