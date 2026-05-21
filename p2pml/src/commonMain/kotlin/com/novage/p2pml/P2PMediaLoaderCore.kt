@@ -179,13 +179,29 @@ internal class P2PMediaLoaderCore(
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
         val currentStatus = status.value
-        if (currentStatus == LoaderStatus.RELEASING || currentStatus == LoaderStatus.RELEASED) {
-            logger.w { "Ignored dynamic config. Core state: $currentStatus." }
-            return
-        }
+        when (currentStatus) {
+            LoaderStatus.RELEASING, LoaderStatus.RELEASED -> {
+                logger.w { "Ignored dynamic config. Core state: $currentStatus." }
+                return
+            }
 
-        pendingDynamicConfig = dynamicCoreConfig
-        activeSession?.applyDynamicConfig(dynamicCoreConfig)
+            LoaderStatus.ACTIVE -> {
+                val session = activeSession ?: throw P2PMediaLoaderException(
+                    P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
+                    "Internal invariant violation: activeSession is null while status is ACTIVE"
+                )
+                session.applyDynamicConfig(dynamicCoreConfig)
+            }
+
+            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> {
+                pendingDynamicConfig = dynamicCoreConfig
+                val session = activeSession
+                if (session != null) {
+                    session.applyDynamicConfig(dynamicCoreConfig)
+                    pendingDynamicConfig = null
+                }
+            }
+        }
     }
 
     fun release() {
@@ -208,9 +224,6 @@ internal class P2PMediaLoaderCore(
             withContext(NonCancellable) {
                 try {
                     sessionToDestroy?.destroy()
-                } catch (e: CancellationException) {
-                    logger.d { "Teardown cancelled." }
-                    throw e
                 } catch (e: IOException) {
                     logger.e { "IO Error during session teardown: ${e.message}" }
                 } catch (e: IllegalStateException) {

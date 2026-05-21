@@ -74,7 +74,7 @@ val generateAssetsTask =
                     private val JS_CHUNKS = listOf(
                         ${chunkData(coreJsB64)}
                     )
-
+ 
                     val INDEX_HTML_BYTES: ByteArray by lazy {
                         Base64.decode(HTML_CHUNKS.joinToString(""))
                     }
