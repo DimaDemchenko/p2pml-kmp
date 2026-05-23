@@ -7,7 +7,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
-import kotlin.io.encoding.Base64
 
 internal fun Route.registerWebAssets() {
     get("/${RoutePaths.STATIC}/{path...}") {
@@ -15,8 +14,8 @@ internal fun Route.registerWebAssets() {
             ?: P2PAssets.HTML_FILENAME
 
         val bytes = when (path) {
-            P2PAssets.HTML_FILENAME -> Base64.decode(P2PAssets.INDEX_HTML_BASE64)
-            P2PAssets.JS_FILENAME -> Base64.decode(P2PAssets.CORE_JS_BASE64)
+            P2PAssets.HTML_FILENAME -> P2PAssets.INDEX_HTML_BYTES
+            P2PAssets.JS_FILENAME -> P2PAssets.CORE_JS_BYTES
             else -> null
         }
 

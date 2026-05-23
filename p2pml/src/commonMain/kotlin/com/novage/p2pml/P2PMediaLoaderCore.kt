@@ -11,6 +11,7 @@ import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,8 +20,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -56,10 +57,12 @@ internal class P2PMediaLoaderCore(
     )
     private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
+    @Volatile
     private var activeSession: P2PSession? = null
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
-    private var pendingDynamicConfig: DynamicCoreConfig? = null
+
+    private val pendingDynamicConfig = MutableStateFlow<DynamicCoreConfig?>(null)
 
     val fatalErrors = errorDispatcher.errors
     val events: P2PEventRegistry = P2PEventRegistry(
@@ -100,6 +103,12 @@ internal class P2PMediaLoaderCore(
 
         this@P2PMediaLoaderCore.activeSession = session
 
+        val configToApply = pendingDynamicConfig.getAndUpdate { null }
+        if (configToApply != null) {
+            logger.i { "Applying cached pending dynamic config..." }
+            session.applyDynamicConfig(configToApply)
+        }
+
         if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
             this@P2PMediaLoaderCore.activeSession = null
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
@@ -114,12 +123,6 @@ internal class P2PMediaLoaderCore(
         }
 
         events.syncEarlySubscriptions()
-
-        pendingDynamicConfig?.let {
-            logger.i { "Applying cached pending dynamic config..." }
-            session.applyDynamicConfig(it)
-            pendingDynamicConfig = null
-        }
     }
 
     private fun handleInitializationException(e: Exception): Exception = when (e) {
@@ -174,19 +177,29 @@ internal class P2PMediaLoaderCore(
 
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        when (status.value) {
-            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> pendingDynamicConfig = dynamicCoreConfig
+        val currentStatus = status.value
+        when (currentStatus) {
+            LoaderStatus.RELEASING, LoaderStatus.RELEASED -> {
+                logger.w { "Ignored dynamic config. Core state: $currentStatus." }
+                return
+            }
 
             LoaderStatus.ACTIVE -> {
                 val session = activeSession ?: throw P2PMediaLoaderException(
                     P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
-                    "Internal invariant violation: activeSession is null while status is ${status.value}"
+                    "Internal invariant violation: activeSession is null while status is ACTIVE"
                 )
                 session.applyDynamicConfig(dynamicCoreConfig)
             }
 
-            LoaderStatus.RELEASING, LoaderStatus.RELEASED -> logger.w {
-                "Ignored dynamic config. Core state: ${status.value}."
+            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> {
+                pendingDynamicConfig.value = dynamicCoreConfig
+                val session = activeSession
+                if (session != null) {
+                    if (pendingDynamicConfig.compareAndSet(dynamicCoreConfig, null)) {
+                        session.applyDynamicConfig(dynamicCoreConfig)
+                    }
+                }
             }
         }
     }
@@ -203,25 +216,24 @@ internal class P2PMediaLoaderCore(
 
         val sessionToDestroy = activeSession
         activeSession = null
-        pendingDynamicConfig = null
+        pendingDynamicConfig.value = null
 
         coreScope.cancel()
 
         CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-            try {
-                sessionToDestroy?.destroy()
-            } catch (e: CancellationException) {
-                logger.d { "Teardown cancelled." }
-                throw e
-            } catch (e: IOException) {
-                logger.e { "IO Error during session teardown: ${e.message}" }
-            } catch (e: IllegalStateException) {
-                logger.e { "State Error during session teardown: ${e.message}" }
-            } catch (e: IllegalArgumentException) {
-                logger.e { "Arg Error during session teardown: ${e.message}" }
-            } finally {
-                status.value = LoaderStatus.RELEASED
-                logger.d { "Release complete." }
+            withContext(NonCancellable) {
+                try {
+                    sessionToDestroy?.destroy()
+                } catch (e: IOException) {
+                    logger.e { "IO Error during session teardown: ${e.message}" }
+                } catch (e: IllegalStateException) {
+                    logger.e { "State Error during session teardown: ${e.message}" }
+                } catch (e: IllegalArgumentException) {
+                    logger.e { "Arg Error during session teardown: ${e.message}" }
+                } finally {
+                    status.value = LoaderStatus.RELEASED
+                    logger.d { "Release complete." }
+                }
             }
         }
     }
