@@ -43,12 +43,7 @@ internal fun resolveAbsoluteUrl(baseUri: String, referenceUri: String): String {
     }
 }
 
-private fun resolveRelativePath(
-    base: String,
-    reference: String,
-    baseIndices: IntArray,
-    refIndices: IntArray
-): String {
+private fun resolveRelativePath(base: String, reference: String, baseIndices: IntArray, refIndices: IntArray): String {
     val isAuthoritySameAsQuery = baseIndices[PATH] == baseIndices[QUERY]
     val hasAuthoritySpace = baseIndices[SCHEME_COLON] + SCHEME_SLASH_OFFSET < baseIndices[PATH]
 
@@ -74,7 +69,9 @@ private fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): Strin
     while (i <= lim) {
         val nextSegmentStart = when {
             i == lim -> i
+
             sb[i] == '/' -> i + 1
+
             else -> {
                 i++
                 continue

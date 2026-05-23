@@ -7,10 +7,10 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsSegment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Rendition
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
-import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.extractVideoCodec
 import com.novage.p2pml.internal.utils.Clock
+import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.SystemClock
+import com.novage.p2pml.internal.utils.extractVideoCodec
 import kotlin.time.Duration.Companion.seconds
 
 private const val MAIN_STREAM = "main"

@@ -1,16 +1,14 @@
 package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
 import com.novage.p2pml.api.models.ByteRange
-import com.novage.p2pml.internal.utils.Clock
 import com.novage.p2pml.internal.parser.HlsStreamStateTracker
+import com.novage.p2pml.internal.utils.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
@@ -65,7 +63,7 @@ class HlsPlaylistParserTest {
     @Test
     fun testHeaderValidation() {
         val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
-        
+
         // Correct header
         val correctPlaylist = """
             #EXTM3U
@@ -74,7 +72,7 @@ class HlsPlaylistParserTest {
             #EXTINF:10.0,
             segment.ts
         """.trimIndent()
-        
+
         // This should pass without error (fails with if invalid)
         parser.parse("http://example.com/manifest.m3u8", correctPlaylist)
 
@@ -90,7 +88,7 @@ class HlsPlaylistParserTest {
         val missingHeader = """
             #EXT-X-VERSION:3
         """.trimIndent()
-        
+
         assertFailsWith<IllegalArgumentException> {
             parser.parse("http://example.com/manifest.m3u8", missingHeader)
         }
@@ -100,7 +98,7 @@ class HlsPlaylistParserTest {
             #EXTM3U-something
             #EXT-X-VERSION:3
         """.trimIndent()
-        
+
         assertFailsWith<IllegalArgumentException> {
             parser.parse("http://example.com/manifest.m3u8", invalidPrefixHeader)
         }
@@ -267,7 +265,7 @@ class HlsPlaylistParserTest {
 
         // Eviction test: Move fake time forward by 30 seconds (TTL is 60s)
         fakeTimeSource.timeNs += 30.seconds.inWholeNanoseconds
-        
+
         val livePlaylist2 = HlsMediaPlaylist(
             baseUri = "http://example.com/live-other.m3u8",
             mediaSequence = 1,
@@ -277,14 +275,14 @@ class HlsPlaylistParserTest {
             preloadHints = emptyList(),
             renditionReports = emptyList()
         )
-        
+
         // Process a different live playlist, should not evict yet
         tracker.postProcessMediaPlaylist("http://example.com/live-other.m3u8", livePlaylist2)
         assertTrue(tracker.isManifestTracked("http://example.com/live.m3u8"))
 
         // Move time past 60s TTL (ttl is 60s, we add another 40s -> total 70s since first update)
         fakeTimeSource.timeNs += 40.seconds.inWholeNanoseconds
-        
+
         // Processing live-other again should now evict the first one
         tracker.postProcessMediaPlaylist("http://example.com/live-other.m3u8", livePlaylist2)
         assertFalse(tracker.isManifestTracked("http://example.com/live.m3u8"))

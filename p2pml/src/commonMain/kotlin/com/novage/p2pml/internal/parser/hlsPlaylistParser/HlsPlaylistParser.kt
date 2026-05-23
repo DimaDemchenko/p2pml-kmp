@@ -7,11 +7,7 @@ import kotlin.math.roundToLong
 private const val VARIABLE_REFERENCE_MARKER = "{\$"
 private const val BYTERANGE_SEPARATOR = '@'
 
-
-internal data class ParserContext(
-    val baseUri: String,
-    val vars: MutableMap<String, String> = mutableMapOf()
-)
+internal data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
 
 private data class SegmentState(
     var mediaSequence: Long = 0L,
@@ -97,20 +93,18 @@ internal class HlsPlaylistParser(
         extraLines: ArrayDeque<String>,
         iterator: PlaylistLineIterator,
         context: ParserContext
-    ): ParsedPlaylist? {
-        return when {
-            trimmed.startsWith(TAG_STREAM_INF) -> {
-                pushBackExtraLines(extraLines, iterator)
-                parseMultivariantPlaylist(iterator, context)
-            }
-
-            isMediaPlaylistTag(trimmed) -> {
-                pushBackExtraLines(extraLines, iterator)
-                parseMediaPlaylist(iterator, context)
-            }
-
-            else -> null
+    ): ParsedPlaylist? = when {
+        trimmed.startsWith(TAG_STREAM_INF) -> {
+            pushBackExtraLines(extraLines, iterator)
+            parseMultivariantPlaylist(iterator, context)
         }
+
+        isMediaPlaylistTag(trimmed) -> {
+            pushBackExtraLines(extraLines, iterator)
+            parseMediaPlaylist(iterator, context)
+        }
+
+        else -> null
     }
 
     private fun pushBackExtraLines(extraLines: ArrayDeque<String>, iterator: PlaylistLineIterator) {
@@ -168,60 +162,58 @@ internal class HlsPlaylistParser(
         state: SegmentState,
         llState: LowLatencyState,
         context: ParserContext
-    ): String {
-        return when {
-            trimmedLine.startsWith(TAG_DEFINE) -> {
-                parseDefineTag(trimmedLine, context)
-                originalLine
-            }
-
-            trimmedLine.startsWith(TAG_MEDIA_SEQUENCE) -> {
-                parseMediaSequenceTag(trimmedLine, state)
-                originalLine
-            }
-
-            trimmedLine.startsWith(TAG_ENDLIST) -> {
-                state.hasEndTag = true
-                originalLine
-            }
-
-            trimmedLine.startsWith(TAG_MEDIA_DURATION) -> {
-                parseMediaDurationTag(trimmedLine, state)
-                originalLine
-            }
-
-            trimmedLine.startsWith(TAG_BYTERANGE) -> {
-                applyByteRange(trimmedLine, context.vars, state)
-                originalLine
-            }
-
-            trimmedLine.startsWith(TAG_PROGRAM_DATE_TIME) -> {
-                parseProgramDateTimeTag(trimmedLine, state)
-                originalLine
-            }
-
-            trimmedLine.startsWith(TAG_INIT_SEGMENT) -> {
-                processInitSegmentTag(originalLine, trimmedLine, state, context)
-            }
-
-            trimmedLine.startsWith(TAG_KEY) -> {
-                processKeyTag(originalLine, trimmedLine, state, context)
-            }
-
-            trimmedLine.startsWith(TAG_PART) -> {
-                processPartTag(originalLine, trimmedLine, llState, context)
-            }
-
-            trimmedLine.startsWith(TAG_PRELOAD_HINT) -> {
-                processPreloadHintTag(originalLine, trimmedLine, llState, context)
-            }
-
-            trimmedLine.startsWith(TAG_RENDITION_REPORT) -> {
-                processRenditionReportTag(originalLine, trimmedLine, llState, context)
-            }
-
-            else -> originalLine
+    ): String = when {
+        trimmedLine.startsWith(TAG_DEFINE) -> {
+            parseDefineTag(trimmedLine, context)
+            originalLine
         }
+
+        trimmedLine.startsWith(TAG_MEDIA_SEQUENCE) -> {
+            parseMediaSequenceTag(trimmedLine, state)
+            originalLine
+        }
+
+        trimmedLine.startsWith(TAG_ENDLIST) -> {
+            state.hasEndTag = true
+            originalLine
+        }
+
+        trimmedLine.startsWith(TAG_MEDIA_DURATION) -> {
+            parseMediaDurationTag(trimmedLine, state)
+            originalLine
+        }
+
+        trimmedLine.startsWith(TAG_BYTERANGE) -> {
+            applyByteRange(trimmedLine, context.vars, state)
+            originalLine
+        }
+
+        trimmedLine.startsWith(TAG_PROGRAM_DATE_TIME) -> {
+            parseProgramDateTimeTag(trimmedLine, state)
+            originalLine
+        }
+
+        trimmedLine.startsWith(TAG_INIT_SEGMENT) -> {
+            processInitSegmentTag(originalLine, trimmedLine, state, context)
+        }
+
+        trimmedLine.startsWith(TAG_KEY) -> {
+            processKeyTag(originalLine, trimmedLine, state, context)
+        }
+
+        trimmedLine.startsWith(TAG_PART) -> {
+            processPartTag(originalLine, trimmedLine, llState, context)
+        }
+
+        trimmedLine.startsWith(TAG_PRELOAD_HINT) -> {
+            processPreloadHintTag(originalLine, trimmedLine, llState, context)
+        }
+
+        trimmedLine.startsWith(TAG_RENDITION_REPORT) -> {
+            processRenditionReportTag(originalLine, trimmedLine, llState, context)
+        }
+
+        else -> originalLine
     }
 
     private fun processInitSegmentTag(
@@ -229,59 +221,51 @@ internal class HlsPlaylistParser(
         trimmedLine: String,
         state: SegmentState,
         context: ParserContext
-    ): String {
-        return processUrlTag(
-            line = originalLine,
-            urlExtractor = {
-                parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
-                    ?: throw NoSuchElementException("Missing URI")
-            },
-            stateUpdater = { state.initSegment = InitializationSegment(it) },
-            rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
-        )
-    }
+    ): String = processUrlTag(
+        line = originalLine,
+        urlExtractor = {
+            parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
+                ?: throw NoSuchElementException("Missing URI")
+        },
+        stateUpdater = { state.initSegment = InitializationSegment(it) },
+        rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
+    )
 
     private fun processPartTag(
         originalLine: String,
         trimmedLine: String,
         llState: LowLatencyState,
         context: ParserContext
-    ): String {
-        return processUrlTag(
-            line = originalLine,
-            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-            stateUpdater = { llState.parts.add(it) },
-            rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-        )
-    }
+    ): String = processUrlTag(
+        line = originalLine,
+        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+        stateUpdater = { llState.parts.add(it) },
+        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
+    )
 
     private fun processPreloadHintTag(
         originalLine: String,
         trimmedLine: String,
         llState: LowLatencyState,
         context: ParserContext
-    ): String {
-        return processUrlTag(
-            line = originalLine,
-            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-            stateUpdater = { llState.preloadHints.add(it) },
-            rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-        )
-    }
+    ): String = processUrlTag(
+        line = originalLine,
+        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+        stateUpdater = { llState.preloadHints.add(it) },
+        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
+    )
 
     private fun processRenditionReportTag(
         originalLine: String,
         trimmedLine: String,
         llState: LowLatencyState,
         context: ParserContext
-    ): String {
-        return processUrlTag(
-            line = originalLine,
-            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-            stateUpdater = { llState.renditionReports.add(it) },
-            rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-        )
-    }
+    ): String = processUrlTag(
+        line = originalLine,
+        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+        stateUpdater = { llState.renditionReports.add(it) },
+        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
+    )
 
     private fun processKeyTag(
         originalLine: String,
@@ -418,9 +402,7 @@ internal class HlsPlaylistParser(
     }
 }
 
-private fun cleanBOM(data: String): String {
-    return if (data.startsWith("\uFEFF")) data.substring(1) else data
-}
+private fun cleanBOM(data: String): String = if (data.startsWith("\uFEFF")) data.substring(1) else data
 
 private fun isMediaPlaylistTag(trimmed: String): Boolean = trimmed.startsWith(TAG_TARGET_DURATION) ||
     trimmed.startsWith(TAG_MEDIA_SEQUENCE) ||
@@ -479,27 +461,18 @@ private fun String.toParsedUrl(baseUri: String, vars: Map<String, String>): Pars
 private fun parseUrlAttribute(line: String, vars: Map<String, String>, baseUri: String): ParsedUrl? =
     REGEX_URI.find(line)?.groups?.get(1)?.value?.toParsedUrl(baseUri, vars)
 
-private fun createSegment(
-    line: String,
-    baseUri: String,
-    vars: Map<String, String>,
-    state: SegmentState
-): HlsSegment = HlsSegment(
-    url = line.toParsedUrl(baseUri, vars),
-    byteRangeOffset = state.offset,
-    byteRangeLength = state.length,
-    durationUs = state.durationUs,
-    programDateTimeUs = state.programDateTimeUs,
-    initializationSegment = state.initSegment,
-    encryptionKey = state.encryptionKey
-)
+private fun createSegment(line: String, baseUri: String, vars: Map<String, String>, state: SegmentState): HlsSegment =
+    HlsSegment(
+        url = line.toParsedUrl(baseUri, vars),
+        byteRangeOffset = state.offset,
+        byteRangeLength = state.length,
+        durationUs = state.durationUs,
+        programDateTimeUs = state.programDateTimeUs,
+        initializationSegment = state.initSegment,
+        encryptionKey = state.encryptionKey
+    )
 
-private fun parseVariant(
-    line: String,
-    context: ParserContext,
-    nextLine: String? = null,
-    isIFrame: Boolean
-): Variant {
+private fun parseVariant(line: String, context: ParserContext, nextLine: String? = null, isIFrame: Boolean): Variant {
     val parsedUrl = if (isIFrame) {
         parseUrlAttribute(line, context.vars, context.baseUri)
             ?: throw NoSuchElementException("Missing URI for I-FRAME variant")
