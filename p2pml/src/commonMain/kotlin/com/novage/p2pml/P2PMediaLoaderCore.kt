@@ -24,6 +24,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,8 +63,7 @@ internal class P2PMediaLoaderCore(
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
 
-    @Volatile
-    private var pendingDynamicConfig: DynamicCoreConfig? = null
+    private val pendingDynamicConfig = MutableStateFlow<DynamicCoreConfig?>(null)
 
     val fatalErrors = errorDispatcher.errors
     val events: P2PEventRegistry = P2PEventRegistry(
@@ -119,10 +119,10 @@ internal class P2PMediaLoaderCore(
 
         events.syncEarlySubscriptions()
 
-        pendingDynamicConfig?.let {
+        val configToApply = pendingDynamicConfig.getAndUpdate { null }
+        if (configToApply != null) {
             logger.i { "Applying cached pending dynamic config..." }
-            session.applyDynamicConfig(it)
-            pendingDynamicConfig = null
+            session.applyDynamicConfig(configToApply)
         }
     }
 
@@ -194,11 +194,12 @@ internal class P2PMediaLoaderCore(
             }
 
             LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> {
-                pendingDynamicConfig = dynamicCoreConfig
+                pendingDynamicConfig.value = dynamicCoreConfig
                 val session = activeSession
                 if (session != null) {
-                    session.applyDynamicConfig(dynamicCoreConfig)
-                    pendingDynamicConfig = null
+                    if (pendingDynamicConfig.compareAndSet(dynamicCoreConfig, null)) {
+                        session.applyDynamicConfig(dynamicCoreConfig)
+                    }
                 }
             }
         }
@@ -216,7 +217,7 @@ internal class P2PMediaLoaderCore(
 
         val sessionToDestroy = activeSession
         activeSession = null
-        pendingDynamicConfig = null
+        pendingDynamicConfig.value = null
 
         coreScope.cancel()
 
