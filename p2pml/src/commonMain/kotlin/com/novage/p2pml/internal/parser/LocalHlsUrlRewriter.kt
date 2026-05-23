@@ -2,10 +2,10 @@ package com.novage.p2pml.internal.parser
 
 import com.novage.p2pml.api.models.ByteRange
 import com.novage.p2pml.internal.parser.encoding.encodeToUrlSafeBase64
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_CLOSED_CAPTIONS
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsConstants.TYPE_SUBTITLES
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsUrlRewriter
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.ParsedUrl
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.TYPE_CLOSED_CAPTIONS
+import com.novage.p2pml.internal.parser.hlsPlaylistParser.TYPE_SUBTITLES
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import io.ktor.http.encodeURLParameter
 

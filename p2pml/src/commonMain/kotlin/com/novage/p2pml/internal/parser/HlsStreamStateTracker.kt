@@ -7,19 +7,21 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsSegment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Rendition
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
+import com.novage.p2pml.internal.utils.Clock
 import com.novage.p2pml.internal.utils.CoreLogger
+import com.novage.p2pml.internal.utils.SystemClock
 import com.novage.p2pml.internal.utils.extractVideoCodec
-import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 
 private const val MAIN_STREAM = "main"
 private const val SECONDARY_STREAM = "secondary"
 private const val MICROSECONDS_IN_SECOND = 1_000_000.0
 private val LIVE_VARIANT_TTL = 60.seconds
 
-internal class HlsStreamStateTracker {
-    private val logger = CoreLogger("HlsStreamStateTracker")
+internal class HlsStreamStateTracker(
+    private val clock: Clock = SystemClock,
+    private val logger: CoreLogger = CoreLogger("HlsStreamStateTracker")
+) {
 
     private var currentMasterManifestUrl: String? = null
 
@@ -100,7 +102,7 @@ internal class HlsStreamStateTracker {
         context.currentSegmentRuntimeIds.clear()
 
         if (isStreamLive) {
-            context.lastUpdated = TimeSource.Monotonic.markNow()
+            context.lastUpdated = clock.timeSource.markNow()
         }
 
         var segmentIndex = if (isStreamLive) newMediaSequence else 0
@@ -135,7 +137,7 @@ internal class HlsStreamStateTracker {
         if (segmentsMap.contains(segmentId)) return null
 
         val startTime = if (hlsSegment.programDateTimeUs != null) {
-            hlsSegment.programDateTimeUs!! / MICROSECONDS_IN_SECOND
+            hlsSegment.programDateTimeUs / MICROSECONDS_IN_SECOND
         } else {
             segmentsMap[segmentId - 1]?.endTime ?: initialStartTime
         }
@@ -179,32 +181,27 @@ internal class HlsStreamStateTracker {
     ) {
         val segmentsMap = trackedStreams[variantUrl]?.segments ?: return
 
-        val iterator = segmentsMap.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (entry.key < removeUntilId) {
-                val runtimeId = entry.value.runtimeId
+        segmentsMap.entries.removeAll { (key, segment) ->
+            val isObsolete = key < removeUntilId
+            if (isObsolete) {
+                val runtimeId = segment.runtimeId
                 obsoleteSegmentIds.add(runtimeId)
                 runtimeIdToSegmentMap.remove(runtimeId)
-                iterator.remove()
             }
+            isObsolete
         }
     }
 
     private fun evictAbandonedLiveVariants(activeVariantUrl: String) {
-        val iterator = trackedStreams.entries.iterator()
-
-        while (iterator.hasNext()) {
-            val (staleUrl, context) = iterator.next()
-            if (staleUrl != activeVariantUrl && context.lastUpdated.elapsedNow() > LIVE_VARIANT_TTL) {
+        trackedStreams.entries.removeAll { (staleUrl, context) ->
+            val isAbandoned = staleUrl != activeVariantUrl && context.lastUpdated.elapsedNow() > LIVE_VARIANT_TTL
+            if (isAbandoned) {
                 logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
-
                 context.segments.values.forEach {
                     runtimeIdToSegmentMap.remove(it.runtimeId)
                 }
-
-                iterator.remove()
             }
+            isAbandoned
         }
     }
 
@@ -222,8 +219,13 @@ internal class HlsStreamStateTracker {
         return getCurrentEpochSeconds() - totalDurationSec
     }
 
+    private fun getCurrentEpochSeconds(): Double = clock.getCurrentEpochSeconds()
+
     private inline fun getOrCreateContext(manifestUrl: String, streamFactory: () -> Stream): TrackedStreamContext =
         trackedStreams.getOrPut(manifestUrl) {
-            TrackedStreamContext(stream = streamFactory())
+            TrackedStreamContext(
+                stream = streamFactory(),
+                lastUpdated = clock.timeSource.markNow()
+            )
         }
 }

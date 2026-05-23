@@ -13,14 +13,14 @@ import kotlinx.coroutines.sync.withLock
 
 internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
     private val logger = CoreLogger("HlsManifestManager")
-    private val parser = HlsPlaylistParser()
-    private val tracker = HlsStreamStateTracker()
     private val rewriter = LocalHlsUrlRewriter(urlFactory)
+    private val parser = HlsPlaylistParser(urlRewriter = rewriter)
+    private val tracker = HlsStreamStateTracker()
     private val mutex = Mutex()
 
     suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String = mutex.withLock {
         logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
-        val result = parser.parse(manifestUrl, originalManifest, rewriter)
+        val result = parser.parse(manifestUrl, originalManifest)
 
         when (val hlsPlaylist = result.playlist) {
             is HlsMediaPlaylist -> {

@@ -103,6 +103,8 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
             jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
         }
+
+        withHostTest {}
     }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
@@ -125,6 +127,12 @@ kotlin {
                 implementation(libs.ktor.server.cio)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.server.cors)
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
 

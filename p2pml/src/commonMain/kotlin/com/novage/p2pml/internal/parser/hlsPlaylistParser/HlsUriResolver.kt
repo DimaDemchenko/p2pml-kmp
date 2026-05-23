@@ -10,39 +10,36 @@ private const val FRAGMENT = 3
 private const val SCHEME_SLASH_OFFSET = 2
 private const val AUTHORITY_OFFSET = 3
 
-internal fun resolveAbsoluteUrl(baseUri: String?, referenceUri: String?): String {
-    val base = baseUri ?: ""
-    val reference = referenceUri ?: ""
-
-    val refIndices = getUriIndices(reference)
-    val baseIndices = getUriIndices(base)
+internal fun resolveAbsoluteUrl(baseUri: String, referenceUri: String): String {
+    val refIndices = getUriIndices(referenceUri)
+    val baseIndices = getUriIndices(baseUri)
 
     return when {
         refIndices[SCHEME_COLON] != -1 -> {
-            val sb = StringBuilder(reference)
+            val sb = StringBuilder(referenceUri)
             removeDotSegments(sb, refIndices[PATH], refIndices[QUERY])
         }
 
         refIndices[FRAGMENT] == 0 -> {
-            StringBuilder().append(base, 0, baseIndices[FRAGMENT]).append(reference).toString()
+            StringBuilder().append(baseUri, 0, baseIndices[FRAGMENT]).append(referenceUri).toString()
         }
 
         refIndices[QUERY] == 0 -> {
-            StringBuilder().append(base, 0, baseIndices[QUERY]).append(reference).toString()
+            StringBuilder().append(baseUri, 0, baseIndices[QUERY]).append(referenceUri).toString()
         }
 
         refIndices[PATH] != 0 -> {
             val baseLimit = baseIndices[SCHEME_COLON] + 1
-            val sb = StringBuilder().append(base, 0, baseLimit).append(reference)
+            val sb = StringBuilder().append(baseUri, 0, baseLimit).append(referenceUri)
             removeDotSegments(sb, baseLimit + refIndices[PATH], baseLimit + refIndices[QUERY])
         }
 
-        reference.getOrNull(refIndices[PATH]) == '/' -> {
-            val sb = StringBuilder().append(base, 0, baseIndices[PATH]).append(reference)
+        referenceUri.getOrNull(refIndices[PATH]) == '/' -> {
+            val sb = StringBuilder().append(baseUri, 0, baseIndices[PATH]).append(referenceUri)
             removeDotSegments(sb, baseIndices[PATH], baseIndices[PATH] + refIndices[QUERY])
         }
 
-        else -> resolveRelativePath(base, reference, baseIndices, refIndices)
+        else -> resolveRelativePath(baseUri, referenceUri, baseIndices, refIndices)
     }
 }
 
@@ -61,7 +58,7 @@ private fun resolveRelativePath(base: String, reference: String, baseIndices: In
     }
 }
 
-internal fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): String {
+private fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): String {
     var off = offset
     var lim = limit
     if (off >= lim) return sb.toString()
@@ -99,7 +96,7 @@ internal fun removeDotSegments(sb: StringBuilder, offset: Int, limit: Int): Stri
     return sb.toString()
 }
 
-internal fun getUriIndices(uriString: String): IntArray {
+private fun getUriIndices(uriString: String): IntArray {
     if (uriString.isEmpty()) {
         return IntArray(INDEX_COUNT).apply { this[SCHEME_COLON] = -1 }
     }
