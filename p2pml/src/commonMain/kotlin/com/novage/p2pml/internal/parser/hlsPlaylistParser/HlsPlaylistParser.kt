@@ -7,7 +7,7 @@ import kotlin.math.roundToLong
 private const val VARIABLE_REFERENCE_MARKER = "{\$"
 private const val BYTERANGE_SEPARATOR = '@'
 
-internal data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
+private data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
 
 private data class SegmentState(
     var mediaSequence: Long = 0L,
