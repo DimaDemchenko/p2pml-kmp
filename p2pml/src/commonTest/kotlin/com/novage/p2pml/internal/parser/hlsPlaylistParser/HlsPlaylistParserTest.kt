@@ -113,6 +113,7 @@ class HlsPlaylistParserTest {
             #EXT-X-SESSION-KEY:METHOD=AES-128,URI="https://priv.key"
             #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio-group",NAME="English",URI="audio_en.m3u8"
             #EXT-X-STREAM-INF:BANDWIDTH=1280000,RESOLUTION=1280x720,CODECS="avc1.640028,mp4a.40.2",AUDIO="audio-group"
+            
             video_{${'$'}QUALITY}.m3u8
             #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=860000,URI="iframe.m3u8"
         """.trimIndent()

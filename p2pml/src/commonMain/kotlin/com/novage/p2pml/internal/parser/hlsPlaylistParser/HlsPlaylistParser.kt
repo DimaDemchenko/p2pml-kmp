@@ -359,9 +359,24 @@ internal class HlsPlaylistParser(
             }
         }
 
-        check(iterator.hasNext()) { "Missing URI line after $TAG_STREAM_INF" }
-        val nextOriginalLine = iterator.next()
-        val nextTrimmedLine = nextOriginalLine.trim()
+        val skippedEmptyLines = StringBuilder()
+        var nextOriginalLine = ""
+        var nextTrimmedLine = ""
+        var foundUri = false
+        while (iterator.hasNext()) {
+            val line = iterator.next()
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) {
+                skippedEmptyLines.append(line).append("\n")
+            } else {
+                nextOriginalLine = line
+                nextTrimmedLine = trimmed
+                foundUri = true
+                break
+            }
+        }
+        check(foundUri) { "Missing URI line after $TAG_STREAM_INF" }
+
         val variant = parseVariant(trimmedLine, context, nextTrimmedLine, false)
         variants.add(variant)
 
@@ -369,7 +384,11 @@ internal class HlsPlaylistParser(
             nextOriginalLine.replaceFirst(variant.url.original, newUrl)
         }
 
-        return "$originalLine\n$rewrittenNextLine"
+        return if (skippedEmptyLines.isNotEmpty()) {
+            "$originalLine\n$skippedEmptyLines$rewrittenNextLine"
+        } else {
+            "$originalLine\n$rewrittenNextLine"
+        }
     }
 
     private fun processMediaRendition(
