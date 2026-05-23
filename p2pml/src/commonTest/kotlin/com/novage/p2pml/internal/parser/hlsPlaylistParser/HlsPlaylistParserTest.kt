@@ -51,7 +51,7 @@ class HlsPlaylistParserTest {
 
         // Absolute base, parent-relative reference
         assertEquals(
-            "http://example.com/path/sub/../segment.ts",
+            "http://example.com/path/segment.ts",
             resolveAbsoluteUrl("http://example.com/path/sub/manifest.m3u8", "../segment.ts")
         )
 
@@ -93,6 +93,16 @@ class HlsPlaylistParserTest {
         
         assertFailsWith<IllegalArgumentException> {
             parser.parse("http://example.com/manifest.m3u8", missingHeader)
+        }
+
+        // Invalid prefix header
+        val invalidPrefixHeader = """
+            #EXTM3U-something
+            #EXT-X-VERSION:3
+        """.trimIndent()
+        
+        assertFailsWith<IllegalArgumentException> {
+            parser.parse("http://example.com/manifest.m3u8", invalidPrefixHeader)
         }
     }
 

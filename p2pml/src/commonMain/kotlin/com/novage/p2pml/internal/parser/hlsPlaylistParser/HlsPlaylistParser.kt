@@ -73,7 +73,7 @@ internal class HlsPlaylistParser(
             }
         }
 
-        require(headerLine != null && headerLine.trim().startsWith(PLAYLIST_HEADER)) {
+        require(headerLine != null && headerLine.trim() == PLAYLIST_HEADER) {
             logger.e { "Playlist missing $PLAYLIST_HEADER header: $manifestUrl" }
             "Invalid playlist header"
         }
