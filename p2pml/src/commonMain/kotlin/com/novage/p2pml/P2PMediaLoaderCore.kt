@@ -20,7 +20,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -104,6 +103,12 @@ internal class P2PMediaLoaderCore(
 
         this@P2PMediaLoaderCore.activeSession = session
 
+        val configToApply = pendingDynamicConfig.getAndUpdate { null }
+        if (configToApply != null) {
+            logger.i { "Applying cached pending dynamic config..." }
+            session.applyDynamicConfig(configToApply)
+        }
+
         if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
             this@P2PMediaLoaderCore.activeSession = null
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
@@ -118,12 +123,6 @@ internal class P2PMediaLoaderCore(
         }
 
         events.syncEarlySubscriptions()
-
-        val configToApply = pendingDynamicConfig.getAndUpdate { null }
-        if (configToApply != null) {
-            logger.i { "Applying cached pending dynamic config..." }
-            session.applyDynamicConfig(configToApply)
-        }
     }
 
     private fun handleInitializationException(e: Exception): Exception = when (e) {
