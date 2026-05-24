@@ -45,7 +45,8 @@ private class IosHeadlessWebView(
     private var onPageReadyCallback: (() -> Unit)? = null
 
     init {
-        runOnMainThread { initWebView() }
+        require(NSThread.isMainThread) { "IosHeadlessWebView must be instantiated on the main thread" }
+        initWebView()
     }
 
     private inline fun runOnMainThread(crossinline block: () -> Unit) {

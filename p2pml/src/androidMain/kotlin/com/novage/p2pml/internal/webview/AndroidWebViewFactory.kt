@@ -33,6 +33,12 @@ private class AndroidHeadlessWebView(
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
 
+    init {
+        require(Looper.myLooper() == Looper.getMainLooper()) {
+            "AndroidHeadlessWebView must be instantiated on the Main thread"
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private var webView: WebView? = WebView(context).apply {
         settings.javaScriptEnabled = true
