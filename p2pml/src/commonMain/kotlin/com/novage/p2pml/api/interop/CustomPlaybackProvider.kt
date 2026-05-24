@@ -1,8 +1,10 @@
 package com.novage.p2pml.api.interop
 
+import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
+import kotlin.concurrent.Volatile
 
 /**
  * A platform-agnostic base class for custom [PlaybackProvider] implementations.
@@ -12,64 +14,56 @@ import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
  *
  * This class automatically handles the Absolute Epoch Time synchronization
  * required by the P2P engine for live streams. Custom developers only need to
- * implement five simple native getters — no timeline math required.
+ * periodically push updates using the [notifyPlaybackInfoUpdated] helper method.
  *
- * **Threading:** The abstract getters are called from a background thread.
- * If your player API requires main-thread access, cache the values in your
- * implementation (e.g., via a periodic main-thread observer) and return the
- * cached values from the getters.
+ * **Threading:** Custom implementations should call [notifyPlaybackInfoUpdated]
+ * from their player's native listeners or callbacks (typically running on the UI/Main thread).
  */
 abstract class CustomPlaybackProvider : PlaybackProvider {
+    @Volatile
+    private var listener: PlaybackListener? = null
 
+    @Volatile
     private var syntheticWindowStartSec: Double? = null
+
+    @Volatile
     private var currentVideoId: String? = null
 
-    /** @return The player's standard relative playhead position in seconds (e.g., 15.5). */
-    abstract fun getRelativePositionSec(): Double
-
-    /** @return The current playback speed/rate (e.g., 1.0f). */
-    abstract fun getPlaybackSpeed(): Float
-
-    /** @return True if the current stream is a live broadcast, false for VOD. */
-    abstract fun isLiveStream(): Boolean
+    final override fun setPlaybackListener(listener: PlaybackListener) {
+        this.listener = listener
+    }
 
     /**
-     * @return The absolute playback position as Unix Epoch seconds,
-     * if available from the player (e.g., via `EXT-X-PROGRAM-DATE-TIME`
-     * or an equivalent player API like AVPlayer's `currentDate`).
-     * Return null to use the synthetic live-window fallback.
+     * Pushes a playback progress update to the P2P engine.
+     * Call this method periodically (e.g. every second) from your player's time observer or callback.
+     *
+     * @param relativePositionSec The player's relative playhead position in seconds.
+     * @param speed The current playback speed/rate (e.g., 1.0f).
+     * @param isLive True if the current stream is a live broadcast, false for VOD.
+     * @param absolutePositionSec Optional absolute position as Unix Epoch seconds.
+     * @param videoId Optional unique ID for the current video. Reset the timeline when changed.
      */
-    abstract fun getAbsolutePositionSec(): Double?
-
-    /**
-     * @return A unique ID for the current video (e.g., URL or playlist ID).
-     * When this value changes, the provider automatically resets the internal live timeline.
-     * Returning null disables stream-change detection — the synthetic live window
-     * will not reset when switching between streams. Return a non-null value if your
-     * player handles multiple live streams.
-     */
-    abstract fun getCurrentVideoId(): String?
-
-    /**
-     * Resolved internally by the P2P engine. Custom developers should not override this.
-     */
-    final override fun getPlaybackInfo(): PlaybackInfo {
-        val relativePositionSec = getRelativePositionSec()
-        val isLive = isLiveStream()
-        val videoId = getCurrentVideoId()
-
+    fun notifyPlaybackInfoUpdated(
+        relativePositionSec: Double,
+        speed: Float,
+        isLive: Boolean,
+        absolutePositionSec: Double? = null,
+        videoId: String? = null
+    ) {
         if (videoId != null && currentVideoId != videoId) {
             currentVideoId = videoId
             syntheticWindowStartSec = null
         }
 
-        val absolutePositionSec = resolveAbsolutePosition(
-            relativePositionSec,
-            isLive,
-            getAbsolutePositionSec()
-        )
+        val resolvedAbsolutePos = resolveAbsolutePosition(relativePositionSec, isLive, absolutePositionSec)
+        listener?.onPlaybackInfoUpdated(PlaybackInfo(resolvedAbsolutePos, speed))
+    }
 
-        return PlaybackInfo(absolutePositionSec, getPlaybackSpeed())
+    /**
+     * Swift-friendly overload to bypass Swift/Objective-C default parameter limitations.
+     */
+    fun notifyPlaybackInfoUpdated(relativePositionSec: Double, speed: Float, isLive: Boolean) {
+        notifyPlaybackInfoUpdated(relativePositionSec, speed, isLive, null, null)
     }
 
     private fun resolveAbsolutePosition(
@@ -83,13 +77,17 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
         }
 
         if (isLive) {
-            if (syntheticWindowStartSec == null) {
-                syntheticWindowStartSec = getCurrentEpochSeconds() - relativePositionSec
+            val start = syntheticWindowStartSec ?: (getCurrentEpochSeconds() - relativePositionSec).also {
+                syntheticWindowStartSec = it
             }
-            return syntheticWindowStartSec!! + relativePositionSec
+            return start + relativePositionSec
         }
 
         syntheticWindowStartSec = null
         return relativePositionSec
+    }
+
+    override fun release() {
+        listener = null
     }
 }
