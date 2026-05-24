@@ -47,8 +47,8 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
         relativePositionSec: Double,
         speed: Float,
         isLive: Boolean,
-        absolutePositionSec: Double? = null,
-        videoId: String? = null
+        absolutePositionSec: Double?,
+        videoId: String?
     ) {
         if (videoId != null && currentVideoId != videoId) {
             currentVideoId = videoId
