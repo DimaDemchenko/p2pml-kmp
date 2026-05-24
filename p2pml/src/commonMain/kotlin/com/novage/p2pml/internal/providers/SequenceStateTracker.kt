@@ -8,7 +8,6 @@ import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
-import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -31,8 +31,7 @@ internal class SequenceStateTracker(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mutex = Mutex()
 
-    @Volatile
-    private var latestPlaybackInfo = PlaybackInfo(0.0, 1.0f)
+    private val playbackInfoFlow = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
 
     private var suspensionJob: Job? = null
 
@@ -51,13 +50,16 @@ internal class SequenceStateTracker(
 
     init {
         playbackProvider.setPlaybackListener(this)
+
+        scope.launch {
+            playbackInfoFlow.collect { info ->
+                processPlaybackUpdate(info)
+            }
+        }
     }
 
     override fun onPlaybackInfoUpdated(info: PlaybackInfo) {
-        latestPlaybackInfo = info
-        scope.launch {
-            processPlaybackUpdate(info)
-        }
+        playbackInfoFlow.value = info
     }
 
     private suspend fun processPlaybackUpdate(actualInfo: PlaybackInfo) {
@@ -107,7 +109,7 @@ internal class SequenceStateTracker(
         }
 
         if (needsForcedUpdate) {
-            val info = latestPlaybackInfo
+            val info = playbackInfoFlow.value
             updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
         }
     }
