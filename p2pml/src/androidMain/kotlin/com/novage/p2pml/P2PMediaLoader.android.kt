@@ -65,7 +65,7 @@ class P2PMediaLoader @JvmOverloads constructor(
             provider.release()
             throw e
         }
-        
+
         defaultProvider = provider
     }
 

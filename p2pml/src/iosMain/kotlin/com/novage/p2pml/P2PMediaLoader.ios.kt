@@ -61,7 +61,7 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
             provider.release()
             throw e
         }
-        
+
         defaultProvider = provider
     }
 
