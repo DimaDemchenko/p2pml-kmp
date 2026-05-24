@@ -17,6 +17,7 @@ import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -84,7 +85,6 @@ internal class P2PSessionFactory(
                 enableCors = customEngineUrl != null,
                 errorDispatcher = errorDispatcher
             )
-            cleanupTasks.add { provider.release() }
             cleanupTasks.add { serverModule.destroy() }
 
             val performFullTeardown: suspend () -> Unit = {
