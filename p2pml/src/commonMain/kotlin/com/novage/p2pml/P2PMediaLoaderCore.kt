@@ -205,11 +205,15 @@ internal class P2PMediaLoaderCore(
     }
 
     fun release() {
-        status.update { current ->
+        val previousStatus = status.getAndUpdate { current ->
             if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) {
-                return
+                current
+            } else {
+                LoaderStatus.RELEASING
             }
-            LoaderStatus.RELEASING
+        }
+        if (previousStatus != LoaderStatus.ACTIVE && previousStatus != LoaderStatus.INITIALIZING) {
+            return
         }
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
