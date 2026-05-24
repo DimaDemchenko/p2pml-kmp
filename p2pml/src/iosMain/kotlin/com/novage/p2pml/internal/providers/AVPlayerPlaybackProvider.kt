@@ -1,9 +1,11 @@
 package com.novage.p2pml.internal.providers
 
+import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
-import kotlin.concurrent.AtomicReference
+import kotlin.concurrent.Volatile
+import kotlin.native.ref.WeakReference
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
@@ -22,10 +24,11 @@ import platform.darwin.dispatch_get_main_queue
 
 private const val UPDATE_INTERVAL_SEC = 1.0
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, kotlin.experimental.ExperimentalNativeApi::class)
 internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : PlaybackProvider {
 
-    private val latestInfo = AtomicReference(PlaybackInfo(0.0, 1.0f))
+    @Volatile
+    private var listener: PlaybackListener? = null
 
     private var timeObserverToken: Any? = null
     private var syntheticWindowStartSec: Double? = null
@@ -36,21 +39,28 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
 
     init {
         val interval = CMTimeMakeWithSeconds(UPDATE_INTERVAL_SEC, 1)
+        val weakThis = WeakReference(this)
 
         timeObserverToken = player.addPeriodicTimeObserverForInterval(
             interval,
             dispatch_get_main_queue()
         ) { time ->
+            val ref = weakThis.get() ?: return@addPeriodicTimeObserverForInterval
+
             val relativePositionSec = CMTimeGetSeconds(time)
             if (relativePositionSec.isNaN() || relativePositionSec.isInfinite()) {
                 return@addPeriodicTimeObserverForInterval
             }
 
-            val speed = player.rate
-            val absolutePositionSec = resolveAbsolutePosition(player.currentItem, relativePositionSec)
+            val speed = ref.player.rate
+            val absolutePositionSec = ref.resolveAbsolutePosition(ref.player.currentItem, relativePositionSec)
 
-            latestInfo.value = PlaybackInfo(absolutePositionSec, speed)
+            ref.listener?.onPlaybackInfoUpdated(PlaybackInfo(absolutePositionSec, speed))
         }
+    }
+
+    override fun setPlaybackListener(listener: PlaybackListener?) {
+        this.listener = listener
     }
 
     private fun resolveAbsolutePosition(currentItem: AVPlayerItem?, relativePositionSec: Double): Double {
@@ -86,8 +96,6 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
         return item.performSelector(currentDateSelector)?.let { it as? NSDate }
     }
 
-    override fun getPlaybackInfo(): PlaybackInfo = latestInfo.value
-
     override fun release() {
         timeObserverToken?.let { token ->
             dispatch_async(dispatch_get_main_queue()) {
@@ -95,5 +103,6 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
             }
             timeObserverToken = null
         }
+        listener = null
     }
 }

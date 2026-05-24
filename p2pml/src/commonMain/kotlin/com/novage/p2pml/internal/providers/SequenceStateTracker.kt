@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.providers
 
 import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.engine.P2PEngine
@@ -14,7 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,12 +26,13 @@ internal class SequenceStateTracker(
     private val p2pEngine: P2PEngine,
     private val hlsManifestManager: HlsManifestManager,
     private val errorDispatcher: RuntimeErrorDispatcher
-) {
+) : PlaybackListener {
     private val logger = CoreLogger("SequenceStateTracker")
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mutex = Mutex()
 
-    private var pollingJob: Job? = null
+    private val playbackInfoFlow = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
+
     private var suspensionJob: Job? = null
 
     private var forcedPlaybackPosition: Double? = null
@@ -42,22 +44,22 @@ internal class SequenceStateTracker(
     private data class TrackState(val lastId: Long, val lastStartTime: Double)
 
     companion object {
-        private const val POLL_INTERVAL_MS = 1000L
         private const val SUSPENSION_TIMEOUT_MS = 8000L
         private const val DEFAULT_CATCH_UP_THRESHOLD_SEC = 5.0
     }
 
-    fun start() {
-        if (pollingJob?.isActive == true) return
-        logger.d { "Starting event-driven playback sequence observer." }
+    init {
+        playbackProvider.setPlaybackListener(this)
 
-        pollingJob = scope.launch {
-            while (isActive) {
-                val info = playbackProvider.getPlaybackInfo()
+        scope.launch {
+            playbackInfoFlow.collect { info ->
                 processPlaybackUpdate(info)
-                delay(POLL_INTERVAL_MS)
             }
         }
+    }
+
+    override fun onPlaybackInfoUpdated(info: PlaybackInfo) {
+        playbackInfoFlow.value = info
     }
 
     private suspend fun processPlaybackUpdate(actualInfo: PlaybackInfo) {
@@ -78,8 +80,6 @@ internal class SequenceStateTracker(
     }
 
     suspend fun onSegmentRequested(runtimeId: String) {
-        start()
-
         val (manifestUrl, segment) = hlsManifestManager.getSegmentWithManifestByUrl(runtimeId) ?: run {
             logger.w { "Segment requested but not tracked in manifest: $runtimeId" }
             return
@@ -109,7 +109,7 @@ internal class SequenceStateTracker(
         }
 
         if (needsForcedUpdate) {
-            val info = playbackProvider.getPlaybackInfo()
+            val info = playbackInfoFlow.value
             updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
         }
     }
@@ -145,6 +145,7 @@ internal class SequenceStateTracker(
 
     fun destroy() {
         logger.i { "Destroying SequenceStateTracker..." }
+        playbackProvider.setPlaybackListener(null)
         scope.cancel()
     }
 

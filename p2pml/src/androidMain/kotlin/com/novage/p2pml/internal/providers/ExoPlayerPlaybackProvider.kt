@@ -1,14 +1,14 @@
 package com.novage.p2pml.internal.providers
 
-import android.os.Handler
-import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
+import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,7 +23,7 @@ private const val UPDATE_INTERVAL_MS = 1000L
 
 internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : PlaybackProvider {
     @Volatile
-    private var latestInfo = PlaybackInfo(0.0, 1.0f)
+    private var listener: PlaybackListener? = null
 
     private val providerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressTrackerJob: Job? = null
@@ -33,7 +33,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     private var currentWindowUid: Any? = null
 
-    private val listener = object : Player.Listener {
+    private val listenerImpl = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startTrackingProgress() else stopTrackingProgress()
         }
@@ -53,9 +53,13 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     init {
         providerScope.launch {
-            exoPlayer.addListener(listener)
+            exoPlayer.addListener(listenerImpl)
             if (exoPlayer.isPlaying) startTrackingProgress()
         }
+    }
+
+    override fun setPlaybackListener(listener: PlaybackListener?) {
+        this.listener = listener
     }
 
     private fun startTrackingProgress() {
@@ -77,7 +81,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         val speed = exoPlayer.playbackParameters.speed
         val relativePositionMs = exoPlayer.currentPosition
         val absolutePositionSec = resolveAbsolutePositionMs(relativePositionMs) / MILLISECONDS_IN_SECOND
-        latestInfo = PlaybackInfo(absolutePositionSec, speed)
+        listener?.onPlaybackInfoUpdated(PlaybackInfo(absolutePositionSec, speed))
     }
 
     private fun resolveAbsolutePositionMs(relativePositionMs: Long): Double {
@@ -107,12 +111,11 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         return relativePositionMs.toDouble()
     }
 
-    override fun getPlaybackInfo(): PlaybackInfo = latestInfo
-
     override fun release() {
         providerScope.cancel()
-        Handler(Looper.getMainLooper()).post {
-            exoPlayer.removeListener(listener)
+        CoroutineScope(Dispatchers.Main.immediate).launch {
+            exoPlayer.removeListener(listenerImpl)
         }
+        listener = null
     }
 }

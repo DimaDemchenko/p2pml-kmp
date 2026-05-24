@@ -220,7 +220,7 @@ internal class P2PMediaLoaderCore(
 
         coreScope.cancel()
 
-        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             withContext(NonCancellable) {
                 try {
                     sessionToDestroy?.destroy()
