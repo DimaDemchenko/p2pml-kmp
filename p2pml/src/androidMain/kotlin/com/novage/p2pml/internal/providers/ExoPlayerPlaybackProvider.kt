@@ -58,7 +58,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         }
     }
 
-    override fun setPlaybackListener(listener: PlaybackListener) {
+    override fun setPlaybackListener(listener: PlaybackListener?) {
         this.listener = listener
     }
 

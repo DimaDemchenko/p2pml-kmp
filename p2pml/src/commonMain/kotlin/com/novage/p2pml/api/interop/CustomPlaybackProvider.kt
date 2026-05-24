@@ -29,7 +29,7 @@ abstract class CustomPlaybackProvider : PlaybackProvider {
     @Volatile
     private var currentVideoId: String? = null
 
-    final override fun setPlaybackListener(listener: PlaybackListener) {
+    final override fun setPlaybackListener(listener: PlaybackListener?) {
         this.listener = listener
     }
 

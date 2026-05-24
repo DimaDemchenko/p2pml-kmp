@@ -143,6 +143,7 @@ internal class SequenceStateTracker(
 
     fun destroy() {
         logger.i { "Destroying SequenceStateTracker..." }
+        playbackProvider.setPlaybackListener(null)
         scope.cancel()
     }
 

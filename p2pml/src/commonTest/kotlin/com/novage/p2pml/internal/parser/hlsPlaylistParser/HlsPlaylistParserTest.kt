@@ -288,4 +288,10 @@ class HlsPlaylistParserTest {
         tracker.postProcessMediaPlaylist("http://example.com/live-other.m3u8", livePlaylist2)
         assertFalse(tracker.isManifestTracked("http://example.com/live.m3u8"))
     }
+
+    @Test
+    fun testCustomPlaybackProviderOverloads() {
+        val provider = object : com.novage.p2pml.api.interop.CustomPlaybackProvider() {}
+        provider.notifyPlaybackInfoUpdated(10.0, 1.0f, true)
+    }
 }
