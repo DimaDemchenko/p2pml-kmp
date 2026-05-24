@@ -40,6 +40,8 @@ internal class P2PMediaLoaderCore(
     private val customEngineUrl: String? = null
 ) {
     companion object {
+        private val cleanupScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
         fun enableLogging() {
             LogConfig.isEnabled = true
         }
@@ -220,7 +222,7 @@ internal class P2PMediaLoaderCore(
 
         coreScope.cancel()
 
-        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+        cleanupScope.launch {
             withContext(NonCancellable) {
                 try {
                     sessionToDestroy?.destroy()
