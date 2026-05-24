@@ -1,11 +1,11 @@
 package com.novage.p2pml.internal.providers
 
 import com.novage.p2pml.api.interfaces.PlaybackListener
-import kotlin.native.ref.WeakReference
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
 import kotlin.concurrent.Volatile
+import kotlin.native.ref.WeakReference
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
