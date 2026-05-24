@@ -119,7 +119,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     override fun release() {
         providerScope.cancel()
         CoroutineScope(Dispatchers.Main.immediate).launch {
-            exoPlayer.removeListener(listenerImpl)
+            exoPlayer.removeListener(playerListener)
         }
         listener = null
     }
