@@ -17,6 +17,7 @@ import platform.AVFoundation.AVPlayer
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+    private var defaultProvider: AVPlayerPlaybackProvider? = null
 
     val events get() = core.events
     val fatalErrors get() = core.fatalErrors
@@ -27,19 +28,54 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
-    fun release() = core.release()
+    fun release() {
+        core.release()
+        defaultProvider?.release()
+        defaultProvider = null
+    }
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 
+    /**
+     * Initializes and starts P2P media streaming components.
+     *
+     * The media loader automatically creates and manages the lifecycle of the internal playback
+     * provider for [AVPlayer], and will release it when [release] is called on this loader.
+     *
+     * @param player AVPlayer instance for media playback
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
+     */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(player: AVPlayer) {
         val provider = AVPlayerPlaybackProvider(player)
-        core.initialize(provider, IosWebViewFactory())
+        try {
+            core.initialize(provider, IosWebViewFactory())
+        } catch (e: P2PMediaLoaderException) {
+            provider.release()
+            throw e
+        } catch (e: CancellationException) {
+            provider.release()
+            throw e
+        }
+
+        defaultProvider = provider
     }
 
+    /**
+     * Initializes and starts P2P media streaming components with a custom playback provider.
+     *
+     * **Important:** When passing a custom [PlaybackProvider], the caller retains ownership of
+     * its lifecycle and is responsible for calling [PlaybackProvider.release] when the provider
+     * is no longer needed. The media loader will not release custom providers automatically.
+     *
+     * @param provider Custom Playback Provider
+     * @throws P2PMediaLoaderException if initialization or startup fails
+     * @throws CancellationException if the coroutine is cancelled
+     */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {
         core.initialize(provider, IosWebViewFactory())

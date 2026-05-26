@@ -33,7 +33,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     private var currentWindowUid: Any? = null
 
-    private val listenerImpl = object : Player.Listener {
+    private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startTrackingProgress() else stopTrackingProgress()
         }
@@ -51,15 +51,21 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
         }
     }
 
-    init {
-        providerScope.launch {
-            exoPlayer.addListener(listenerImpl)
-            if (exoPlayer.isPlaying) startTrackingProgress()
-        }
-    }
-
     override fun setPlaybackListener(listener: PlaybackListener?) {
         this.listener = listener
+
+        if (listener != null) {
+            providerScope.launch {
+                exoPlayer.removeListener(playerListener)
+                exoPlayer.addListener(playerListener)
+                if (exoPlayer.isPlaying) startTrackingProgress()
+            }
+        } else {
+            providerScope.launch {
+                stopTrackingProgress()
+                exoPlayer.removeListener(playerListener)
+            }
+        }
     }
 
     private fun startTrackingProgress() {
@@ -114,7 +120,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     override fun release() {
         providerScope.cancel()
         CoroutineScope(Dispatchers.Main.immediate).launch {
-            exoPlayer.removeListener(listenerImpl)
+            exoPlayer.removeListener(playerListener)
         }
         listener = null
     }

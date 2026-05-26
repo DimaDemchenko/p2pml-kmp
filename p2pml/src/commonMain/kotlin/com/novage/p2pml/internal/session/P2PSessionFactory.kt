@@ -1,6 +1,5 @@
 package com.novage.p2pml.internal.session
 
-import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
@@ -28,7 +27,18 @@ internal class P2PSessionFactory(
     private val coreConfig: CoreConfig,
     private val errorDispatcher: RuntimeErrorDispatcher,
     private val customEngineUrl: String?,
-    private val httpClientFactory: () -> HttpClient = ::createHttpClient
+    private val httpClientProvider: () -> HttpClient = ::createHttpClient,
+    private val engineProvider: suspend (
+        WebViewFactory,
+        P2PEventRegistry
+    ) -> P2PEngineManager = { webViewFactory, events ->
+        withContext(Dispatchers.Main) {
+            val webView = webViewFactory.createHeadlessWebView(events) { exception ->
+                errorDispatcher.tryEmit(exception.type, exception.message ?: "Unknown error")
+            }
+            P2PEngineManager(webView)
+        }
+    }
 ) {
     companion object {
         private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
@@ -46,23 +56,16 @@ internal class P2PSessionFactory(
         return runCatching {
             val urlFactory = LocalUrlFactory()
 
-            val engine = withContext(Dispatchers.Main) {
-                val webView = webViewFactory.createHeadlessWebView(events) { exception ->
-                    errorDispatcher.tryEmit(exception.type, exception.message ?: "Unknown error")
-                }
-                val engineManager = P2PEngineManager(webView)
-                cleanupTasks.add { engineManager.destroy() }
-                engineManager
-            }
+            val engine = engineProvider(webViewFactory, events)
+            cleanupTasks.add { engine.destroy() }
 
-            val client = httpClientFactory()
+            val client = httpClientProvider()
             cleanupTasks.add { client.close() }
 
             val hlsManifestManager = HlsManifestManager(urlFactory)
 
             val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, errorDispatcher)
             cleanupTasks.add { sequenceStateTracker.destroy() }
-            cleanupTasks.add { sequenceStateTracker.reset() }
 
             val manifestService = ManifestService(hlsManifestManager, engine) {
                 logger.d { "Resetting playback and parser state via ManifestService" }
@@ -82,7 +85,6 @@ internal class P2PSessionFactory(
                 enableCors = customEngineUrl != null,
                 errorDispatcher = errorDispatcher
             )
-            cleanupTasks.add { provider.release() }
             cleanupTasks.add { serverModule.destroy() }
 
             val performFullTeardown: suspend () -> Unit = {
@@ -138,7 +140,6 @@ internal class P2PSessionFactory(
         }
 
         cleanupSafely(cleanupTasks.reversed())
-
         throw e
     }
 }

@@ -21,6 +21,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     customEngineUrl: String? = null
 ) {
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+    private var defaultProvider: ExoPlayerPlaybackProvider? = null
 
     val events get() = core.events
     val fatalErrors get() = core.fatalErrors
@@ -31,7 +32,11 @@ class P2PMediaLoader @JvmOverloads constructor(
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
-    fun release() = core.release()
+    fun release() {
+        core.release()
+        defaultProvider?.release()
+        defaultProvider = null
+    }
 
     companion object {
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
@@ -41,17 +46,35 @@ class P2PMediaLoader @JvmOverloads constructor(
     /**
      * Initializes and starts P2P media streaming components.
      *
+     * The media loader automatically creates and manages the lifecycle of the internal playback
+     * provider for [ExoPlayer], and will release it when [release] is called on this loader.
+     *
      * @param exoPlayer ExoPlayer instance for media playback
      * @throws P2PMediaLoaderException if initialization or startup fails
      * @throws CancellationException if the coroutine is cancelled
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(exoPlayer: ExoPlayer) {
-        core.initialize(ExoPlayerPlaybackProvider(exoPlayer), AndroidWebViewFactory(context))
+        val provider = ExoPlayerPlaybackProvider(exoPlayer)
+        try {
+            core.initialize(provider, AndroidWebViewFactory(context))
+        } catch (e: P2PMediaLoaderException) {
+            provider.release()
+            throw e
+        } catch (e: CancellationException) {
+            provider.release()
+            throw e
+        }
+
+        defaultProvider = provider
     }
 
     /**
      * Initializes and starts P2P media streaming components with a custom playback provider.
+     *
+     * **Important:** When passing a custom [PlaybackProvider], the caller retains ownership of
+     * its lifecycle and is responsible for calling [PlaybackProvider.release] when the provider
+     * is no longer needed. The media loader will not release custom providers automatically.
      *
      * @param provider Custom Playback Provider
      * @throws P2PMediaLoaderException if initialization or startup fails
