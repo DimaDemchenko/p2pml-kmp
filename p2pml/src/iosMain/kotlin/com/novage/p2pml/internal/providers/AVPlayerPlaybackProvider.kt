@@ -109,13 +109,15 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
     }
 
     override fun release() {
-        timeObserverToken?.let { token ->
-            dispatch_async(dispatch_get_main_queue()) {
-                player.removeTimeObserver(token)
-            }
-            timeObserverToken = null
-        }
         listener = null
-        isListening = false
+        dispatch_async(dispatch_get_main_queue()) {
+            if (isListening) {
+                isListening = false
+                timeObserverToken?.let { token ->
+                    player.removeTimeObserver(token)
+                }
+                timeObserverToken = null
+            }
+        }
     }
 }
