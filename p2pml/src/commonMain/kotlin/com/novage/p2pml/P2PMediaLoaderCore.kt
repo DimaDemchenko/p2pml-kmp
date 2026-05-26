@@ -177,8 +177,7 @@ internal class P2PMediaLoaderCore(
 
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        val currentStatus = status.value
-        when (currentStatus) {
+        when (val currentStatus = status.value) {
             LoaderStatus.RELEASING, LoaderStatus.RELEASED -> {
                 logger.w { "Ignored dynamic config. Core state: $currentStatus." }
                 return

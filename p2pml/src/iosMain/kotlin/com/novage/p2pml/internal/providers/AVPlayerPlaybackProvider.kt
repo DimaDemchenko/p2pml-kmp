@@ -29,6 +29,7 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
 
     @Volatile
     private var listener: PlaybackListener? = null
+    private var isListening = false
 
     private var timeObserverToken: Any? = null
     private var syntheticWindowStartSec: Double? = null
@@ -37,30 +38,41 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
 
     private val currentDateSelector = NSSelectorFromString("currentDate")
 
-    init {
-        val interval = CMTimeMakeWithSeconds(UPDATE_INTERVAL_SEC, 1)
-        val weakThis = WeakReference(this)
-
-        timeObserverToken = player.addPeriodicTimeObserverForInterval(
-            interval,
-            dispatch_get_main_queue()
-        ) { time ->
-            val ref = weakThis.get() ?: return@addPeriodicTimeObserverForInterval
-
-            val relativePositionSec = CMTimeGetSeconds(time)
-            if (relativePositionSec.isNaN() || relativePositionSec.isInfinite()) {
-                return@addPeriodicTimeObserverForInterval
-            }
-
-            val speed = ref.player.rate
-            val absolutePositionSec = ref.resolveAbsolutePosition(ref.player.currentItem, relativePositionSec)
-
-            ref.listener?.onPlaybackInfoUpdated(PlaybackInfo(absolutePositionSec, speed))
-        }
-    }
-
     override fun setPlaybackListener(listener: PlaybackListener?) {
         this.listener = listener
+        dispatch_async(dispatch_get_main_queue()) {
+            if (listener != null) {
+                if (!isListening) {
+                    isListening = true
+                    val interval = CMTimeMakeWithSeconds(UPDATE_INTERVAL_SEC, 1)
+                    val weakThis = WeakReference(this@AVPlayerPlaybackProvider)
+                    timeObserverToken = player.addPeriodicTimeObserverForInterval(
+                        interval,
+                        dispatch_get_main_queue()
+                    ) { time ->
+                        val ref = weakThis.get() ?: return@addPeriodicTimeObserverForInterval
+                        val relativePositionSec = CMTimeGetSeconds(time)
+                        if (relativePositionSec.isNaN() || relativePositionSec.isInfinite()) {
+                            return@addPeriodicTimeObserverForInterval
+                        }
+                        val speed = ref.player.rate
+                        val absolutePositionSec = ref.resolveAbsolutePosition(
+                            ref.player.currentItem,
+                            relativePositionSec
+                        )
+                        ref.listener?.onPlaybackInfoUpdated(PlaybackInfo(absolutePositionSec, speed))
+                    }
+                }
+            } else {
+                if (isListening) {
+                    isListening = false
+                    timeObserverToken?.let { token ->
+                        player.removeTimeObserver(token)
+                    }
+                    timeObserverToken = null
+                }
+            }
+        }
     }
 
     private fun resolveAbsolutePosition(currentItem: AVPlayerItem?, relativePositionSec: Double): Double {
@@ -104,5 +116,6 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
             timeObserverToken = null
         }
         listener = null
+        isListening = false
     }
 }
