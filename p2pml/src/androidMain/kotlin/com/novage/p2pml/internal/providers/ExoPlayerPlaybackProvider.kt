@@ -56,6 +56,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
         if (listener != null) {
             providerScope.launch {
+                exoPlayer.removeListener(playerListener)
                 exoPlayer.addListener(playerListener)
                 if (exoPlayer.isPlaying) startTrackingProgress()
             }
