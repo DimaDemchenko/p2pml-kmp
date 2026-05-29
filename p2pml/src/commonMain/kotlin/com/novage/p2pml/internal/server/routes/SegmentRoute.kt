@@ -24,7 +24,6 @@ import io.ktor.server.routing.post
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 
@@ -41,7 +40,7 @@ internal fun Route.registerSegmentRoutes(
     segmentUploadRoute(segmentService)
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
@@ -67,13 +66,14 @@ private fun Route.segmentDownloadRoute(
         }
 
         var deferred: CompletableDeferred<SegmentPayload>? = null
+        var payload: SegmentPayload? = null
 
         try {
             deferred = segmentService.createOrReplaceRequest(segmentUrl)
 
             logger.d { "Waiting for segment data from p2p engine for: $segmentUrl" }
 
-            val payload = withTimeout(P2P_ENGINE_TIMEOUT_MS) {
+            payload = withTimeout(P2P_ENGINE_TIMEOUT_MS) {
                 deferred.await()
             }
 
@@ -99,9 +99,7 @@ private fun Route.segmentDownloadRoute(
                 logger.d { "Cleaning up active request." }
                 segmentService.cancelRequest(segmentUrl, deferred)
             }
-            if (deferred?.isCompleted == true) {
-                runCatching { deferred.getCompleted().channel.cancel(null) }
-            }
+            payload?.channel?.cancel(null)
         }
     }
 }
