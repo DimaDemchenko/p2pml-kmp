@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.server.config
 
 import com.novage.p2pml.internal.server.routes.RoutePaths
+import kotlin.concurrent.Volatile
 
 internal class LocalUrlFactory {
     @Volatile
