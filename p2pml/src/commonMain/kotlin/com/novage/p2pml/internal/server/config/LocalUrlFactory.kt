@@ -3,6 +3,7 @@ package com.novage.p2pml.internal.server.config
 import com.novage.p2pml.internal.server.routes.RoutePaths
 
 internal class LocalUrlFactory {
+    @Volatile
     private var port: Int = -1
 
     fun setPort(newPort: Int) {
