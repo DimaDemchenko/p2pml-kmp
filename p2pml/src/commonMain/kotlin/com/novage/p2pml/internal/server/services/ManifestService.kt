@@ -16,28 +16,23 @@ internal class ManifestService(
     private var isInitialManifestProcessed = false
     private val mutex = Mutex()
 
-    suspend fun processManifest(manifestUrl: String, manifest: String): String {
+    suspend fun processManifest(manifestUrl: String, manifest: String): String = mutex.withLock {
         if (!parser.isManifestTracked(manifestUrl)) {
             logger.i { "Untracked manifest detected. Resetting ManifestService state for: $manifestUrl" }
-            resetState()
+            isInitialManifestProcessed = false
             onManifestChanged()
         }
 
         val modifiedManifest = parser.getModifiedManifest(manifest, manifestUrl)
-        val needsInitialSetup = checkAndSetInitialProcessing()
+
+        val needsInitialSetup = !isInitialManifestProcessed
+        if (needsInitialSetup) {
+            isInitialManifestProcessed = true
+        }
 
         syncWithEngine(manifestUrl, needsInitialSetup)
 
-        return modifiedManifest
-    }
-
-    private suspend fun checkAndSetInitialProcessing(): Boolean = mutex.withLock {
-        if (!isInitialManifestProcessed) {
-            isInitialManifestProcessed = true
-            true
-        } else {
-            false
-        }
+        modifiedManifest
     }
 
     private suspend fun syncWithEngine(manifestUrl: String, needsInitialSetup: Boolean) {
