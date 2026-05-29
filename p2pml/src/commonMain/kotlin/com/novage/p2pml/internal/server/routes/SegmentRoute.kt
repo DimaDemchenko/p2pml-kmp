@@ -40,7 +40,6 @@ internal fun Route.registerSegmentRoutes(
     segmentUploadRoute(segmentService)
 }
 
-
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
