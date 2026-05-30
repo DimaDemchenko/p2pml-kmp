@@ -123,7 +123,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                     console.log(`Validating segment: ${url} Range: ${byteRange}`);
                     return data.byteLength > 0;
                 }
-                """.trimIndent()
+            """.trimIndent()
         )
 
         val loader = P2PMediaLoader(
