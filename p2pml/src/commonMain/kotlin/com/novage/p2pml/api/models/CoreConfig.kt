@@ -9,6 +9,7 @@ data class IceServer(val urls: List<String>, val username: String? = null, val c
 @Serializable
 data class RtcConfig(val iceServers: List<IceServer>? = null)
 
+@Suppress("LongParameterList")
 @Serializable
 class StreamConfig(
     var isP2PUploadDisabled: Boolean? = null,
@@ -34,6 +35,7 @@ class StreamConfig(
     @Transient var httpRequestSetupJs: String? = null
 )
 
+@Suppress("LongParameterList")
 @Serializable
 class CoreConfig(
     var segmentMemoryStorageLimit: Int? = null,
@@ -65,6 +67,7 @@ class CoreConfig(
     var secondaryStream: StreamConfig? = null
 )
 
+@Suppress("LongParameterList")
 @Serializable
 class DynamicStreamConfig(
     var highDemandTimeWindow: Int? = null,
@@ -85,6 +88,7 @@ class DynamicStreamConfig(
     @Transient var httpRequestSetupJs: String? = null
 )
 
+@Suppress("LongParameterList")
 @Serializable
 class DynamicCoreConfig(
     var segmentMemoryStorageLimit: Int? = null,
