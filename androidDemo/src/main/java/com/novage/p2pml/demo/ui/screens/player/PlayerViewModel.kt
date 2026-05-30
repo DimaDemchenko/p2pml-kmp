@@ -112,19 +112,19 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     ) {
         P2PMediaLoader.enableLogging()
 
-        val coreConfig = CoreConfig(
-            highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC,
-            isP2PDisabled = !shouldAutoPlay,
-            simultaneousP2PDownloads = P2P_SIMULTANEOUS_DOWNLOADS,
-            webRtcMaxMessageSize = WEBRTC_MAX_MESSAGE_SIZE,
-            p2pNotReceivingBytesTimeoutMs = P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS,
+        val coreConfig = CoreConfig().apply {
+            highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC
+            isP2PDisabled = !shouldAutoPlay
+            simultaneousP2PDownloads = P2P_SIMULTANEOUS_DOWNLOADS
+            webRtcMaxMessageSize = WEBRTC_MAX_MESSAGE_SIZE
+            p2pNotReceivingBytesTimeoutMs = P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS
             validateHTTPSegmentJs = $$"""
                 (url, byteRange, data) => {
                     console.log(`Validating segment: ${url} Range: ${byteRange}`);
                     return data.byteLength > 0;
                 }
             """.trimIndent()
-        )
+        }
 
         val loader = P2PMediaLoader(
             context = context,
@@ -272,7 +272,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private fun setP2PEnabled(isEnabled: Boolean) {
         val loader = p2pLoader ?: return
 
-        val config = DynamicCoreConfig(isP2PDisabled = !isEnabled)
+        val config = DynamicCoreConfig().apply { isP2PDisabled = !isEnabled }
 
         loader.applyDynamicConfig(config)
     }

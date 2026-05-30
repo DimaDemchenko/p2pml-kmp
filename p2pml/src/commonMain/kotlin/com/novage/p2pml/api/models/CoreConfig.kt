@@ -9,108 +9,198 @@ data class IceServer(val urls: List<String>, val username: String? = null, val c
 @Serializable
 data class RtcConfig(val iceServers: List<IceServer>? = null)
 
-@Suppress("LongParameterList")
+/**
+ * Per-stream P2P configuration. Override specific properties to customize behavior for
+ * a single stream type; any property left as `null` will use the JS engine's default.
+ *
+ * Properties are declared as class-body `var` fields (rather than constructor parameters)
+ * so that Kotlin/Native exports a true no-arg `init()` to Swift/ObjC.
+ * SKIE's [DefaultArgumentInterop] is disabled because the number of parameters
+ * exceeds the practical 2^N overload limit.
+ *
+ * **Kotlin:**
+ * ```kotlin
+ * val stream = StreamConfig().apply {
+ *     highDemandTimeWindow = 20
+ *     simultaneousP2PDownloads = 5
+ * }
+ * ```
+ *
+ * **Swift:**
+ * ```swift
+ * let stream = StreamConfig()
+ * stream.highDemandTimeWindow = 20
+ * stream.simultaneousP2PDownloads = 5
+ * ```
+ */
 @Serializable
-class StreamConfig(
-    var isP2PUploadDisabled: Boolean? = null,
-    var isP2PDisabled: Boolean? = null,
-    var highDemandTimeWindow: Int? = null,
-    var httpDownloadTimeWindow: Int? = null,
-    var p2pDownloadTimeWindow: Int? = null,
-    var simultaneousHttpDownloads: Int? = null,
-    var simultaneousP2PDownloads: Int? = null,
-    var webRtcMaxMessageSize: Int? = null,
-    var p2pNotReceivingBytesTimeoutMs: Int? = null,
-    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    var httpNotReceivingBytesTimeoutMs: Int? = null,
-    var httpErrorRetries: Int? = null,
-    var p2pErrorRetries: Int? = null,
-    var announceTrackers: List<String>? = null,
-    var rtcConfig: RtcConfig? = null,
-    var trackerClientVersionPrefix: String? = null,
-    var swarmId: String? = null,
+class StreamConfig {
+    var isP2PUploadDisabled: Boolean? = null
+    var isP2PDisabled: Boolean? = null
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+    var announceTrackers: List<String>? = null
+    var rtcConfig: RtcConfig? = null
+    var trackerClientVersionPrefix: String? = null
+    var swarmId: String? = null
 
-    @Transient var validateP2PSegmentJs: String? = null,
-    @Transient var validateHTTPSegmentJs: String? = null,
+    @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var validateHTTPSegmentJs: String? = null
+
     @Transient var httpRequestSetupJs: String? = null
-)
+}
 
-@Suppress("LongParameterList")
+/**
+ * Core P2P engine configuration passed to [P2PMediaLoader] at initialization.
+ * Set only the properties you want to override; `null` values are omitted during
+ * JSON serialization (`encodeDefaults = false`, `explicitNulls = false`) and the
+ * JS engine fills in its own defaults.
+ *
+ * **Note on mutability:** Properties are `var` for cross-platform interop (Kotlin/Native
+ * does not export constructor default values to Swift/ObjC). The config is serialized
+ * to JSON and sent to the JS engine **once** during initialization. Mutating properties
+ * after passing the config to [P2PMediaLoader] has no effect. To change settings at
+ * runtime, use [DynamicCoreConfig] with [P2PMediaLoader.applyDynamicConfig] instead.
+ *
+ * Top-level stream properties (e.g. [highDemandTimeWindow]) apply to **both** streams
+ * unless overridden via [mainStream] or [secondaryStream].
+ *
+ * **Kotlin:**
+ * ```kotlin
+ * val config = CoreConfig().apply {
+ *     isP2PDisabled = false
+ *     highDemandTimeWindow = 20
+ *     simultaneousP2PDownloads = 3
+ * }
+ * ```
+ *
+ * **Swift:**
+ * ```swift
+ * let config = CoreConfig()
+ * config.isP2PDisabled = false
+ * config.highDemandTimeWindow = 20
+ * config.simultaneousP2PDownloads = 3
+ * ```
+ */
 @Serializable
-class CoreConfig(
-    var segmentMemoryStorageLimit: Int? = null,
-    @Transient var customSegmentStorageFactoryJs: String? = null,
+class CoreConfig {
+    var segmentMemoryStorageLimit: Int? = null
 
-    var isP2PUploadDisabled: Boolean? = null,
-    var isP2PDisabled: Boolean? = null,
-    var highDemandTimeWindow: Int? = null,
-    var httpDownloadTimeWindow: Int? = null,
-    var p2pDownloadTimeWindow: Int? = null,
-    var simultaneousHttpDownloads: Int? = null,
-    var simultaneousP2PDownloads: Int? = null,
-    var webRtcMaxMessageSize: Int? = null,
-    var p2pNotReceivingBytesTimeoutMs: Int? = null,
-    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    var httpNotReceivingBytesTimeoutMs: Int? = null,
-    var httpErrorRetries: Int? = null,
-    var p2pErrorRetries: Int? = null,
-    var announceTrackers: List<String>? = null,
-    var rtcConfig: RtcConfig? = null,
-    var trackerClientVersionPrefix: String? = null,
-    var swarmId: String? = null,
+    @Transient var customSegmentStorageFactoryJs: String? = null
 
-    @Transient var validateP2PSegmentJs: String? = null,
-    @Transient var validateHTTPSegmentJs: String? = null,
-    @Transient var httpRequestSetupJs: String? = null,
+    var isP2PUploadDisabled: Boolean? = null
+    var isP2PDisabled: Boolean? = null
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+    var announceTrackers: List<String>? = null
+    var rtcConfig: RtcConfig? = null
+    var trackerClientVersionPrefix: String? = null
+    var swarmId: String? = null
 
-    var mainStream: StreamConfig? = null,
+    @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var validateHTTPSegmentJs: String? = null
+
+    @Transient var httpRequestSetupJs: String? = null
+
+    var mainStream: StreamConfig? = null
     var secondaryStream: StreamConfig? = null
-)
+}
 
-@Suppress("LongParameterList")
+/**
+ * Subset of [StreamConfig] properties that can be updated at runtime
+ * via [P2PMediaLoader.applyDynamicConfig] without restarting the engine.
+ *
+ * @see DynamicCoreConfig
+ */
 @Serializable
-class DynamicStreamConfig(
-    var highDemandTimeWindow: Int? = null,
-    var httpDownloadTimeWindow: Int? = null,
-    var p2pDownloadTimeWindow: Int? = null,
-    var simultaneousHttpDownloads: Int? = null,
-    var simultaneousP2PDownloads: Int? = null,
-    var webRtcMaxMessageSize: Int? = null,
-    var p2pNotReceivingBytesTimeoutMs: Int? = null,
-    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    var httpNotReceivingBytesTimeoutMs: Int? = null,
-    var httpErrorRetries: Int? = null,
-    var p2pErrorRetries: Int? = null,
-    var isP2PDisabled: Boolean? = null,
-    var isP2PUploadDisabled: Boolean? = null,
+class DynamicStreamConfig {
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+    var isP2PDisabled: Boolean? = null
+    var isP2PUploadDisabled: Boolean? = null
 
-    @Transient var validateP2PSegmentJs: String? = null,
+    @Transient var validateP2PSegmentJs: String? = null
+
     @Transient var httpRequestSetupJs: String? = null
-)
+}
 
-@Suppress("LongParameterList")
+/**
+ * Subset of [CoreConfig] properties that can be updated at runtime
+ * via [P2PMediaLoader.applyDynamicConfig] without restarting the engine.
+ *
+ * Same mutability note as [CoreConfig]: properties are `var` for cross-platform interop.
+ * Each call to [P2PMediaLoader.applyDynamicConfig] snapshots the current property values
+ * and pushes them to the JS engine. Mutating the object afterwards has no effect
+ * until you call [P2PMediaLoader.applyDynamicConfig] again.
+ *
+ * **Kotlin:**
+ * ```kotlin
+ * val config = DynamicCoreConfig().apply { isP2PDisabled = true }
+ * loader.applyDynamicConfig(config)
+ * ```
+ *
+ * **Swift:**
+ * ```swift
+ * let config = DynamicCoreConfig()
+ * config.isP2PDisabled = true
+ * try loader.applyDynamicConfig(dynamicCoreConfig: config)
+ * ```
+ *
+ * @see CoreConfig
+ */
 @Serializable
-class DynamicCoreConfig(
-    var segmentMemoryStorageLimit: Int? = null,
-    @Transient var customSegmentStorageFactoryJs: String? = null,
+class DynamicCoreConfig {
+    var segmentMemoryStorageLimit: Int? = null
 
-    var highDemandTimeWindow: Int? = null,
-    var httpDownloadTimeWindow: Int? = null,
-    var p2pDownloadTimeWindow: Int? = null,
-    var simultaneousHttpDownloads: Int? = null,
-    var simultaneousP2PDownloads: Int? = null,
-    var webRtcMaxMessageSize: Int? = null,
-    var p2pNotReceivingBytesTimeoutMs: Int? = null,
-    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    var httpNotReceivingBytesTimeoutMs: Int? = null,
-    var httpErrorRetries: Int? = null,
-    var p2pErrorRetries: Int? = null,
-    var isP2PDisabled: Boolean? = null,
-    var isP2PUploadDisabled: Boolean? = null,
+    @Transient var customSegmentStorageFactoryJs: String? = null
 
-    @Transient var validateP2PSegmentJs: String? = null,
-    @Transient var httpRequestSetupJs: String? = null,
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+    var isP2PDisabled: Boolean? = null
+    var isP2PUploadDisabled: Boolean? = null
 
-    var mainStream: DynamicStreamConfig? = null,
+    @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var httpRequestSetupJs: String? = null
+
+    var mainStream: DynamicStreamConfig? = null
     var secondaryStream: DynamicStreamConfig? = null
-)
+}
