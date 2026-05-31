@@ -16,10 +16,11 @@ import kotlinx.coroutines.CancellationException
  * Create a new [P2PMediaLoader] instance if you need to restart P2P streaming.
  */
 class P2PMediaLoader @JvmOverloads constructor(
-    private val context: Context,
+    context: Context,
     coreConfig: CoreConfig = CoreConfig(),
     customEngineUrl: String? = null
 ) {
+    private val appContext: Context = context.applicationContext
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
     private var defaultProvider: ExoPlayerPlaybackProvider? = null
 
@@ -57,7 +58,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     suspend fun initialize(exoPlayer: ExoPlayer) {
         val provider = ExoPlayerPlaybackProvider(exoPlayer)
         try {
-            core.initialize(provider, AndroidWebViewFactory(context))
+            core.initialize(provider, AndroidWebViewFactory(appContext))
         } catch (e: P2PMediaLoaderException) {
             provider.release()
             throw e
@@ -82,6 +83,6 @@ class P2PMediaLoader @JvmOverloads constructor(
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {
-        core.initialize(provider, AndroidWebViewFactory(context))
+        core.initialize(provider, AndroidWebViewFactory(appContext))
     }
 }

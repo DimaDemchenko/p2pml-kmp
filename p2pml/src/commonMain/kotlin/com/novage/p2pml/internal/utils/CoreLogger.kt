@@ -1,7 +1,9 @@
 package com.novage.p2pml.internal.utils
 
+import kotlin.concurrent.Volatile
+
 internal object LogConfig {
-    var isEnabled: Boolean = false
+    @Volatile var isEnabled: Boolean = false
 }
 
 internal enum class LogLevel {

@@ -66,8 +66,8 @@ internal class P2PMediaLoaderCore(
     val fatalErrors = errorDispatcher.errors
     val events: P2PEventRegistry = P2PEventRegistry(
         coreScope = coreScope,
-        onSubscribe = { eventName -> activeSession?.engineManager?.subscribeToP2PEvent(eventName) },
-        onUnsubscribe = { eventName -> activeSession?.engineManager?.unsubscribeFromP2PEvent(eventName) },
+        onSubscribe = { eventName -> activeSession?.subscribeToEvent(eventName) },
+        onUnsubscribe = { eventName -> activeSession?.unsubscribeFromEvent(eventName) },
         isCoreActive = { status.value == LoaderStatus.ACTIVE }
     )
 

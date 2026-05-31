@@ -2,6 +2,7 @@ package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
 import com.novage.p2pml.api.models.ByteRange
 import com.novage.p2pml.api.models.Segment
+import com.novage.p2pml.internal.utils.buildSegmentRuntimeId
 import kotlinx.serialization.Serializable
 
 internal sealed interface HlsPlaylist {
@@ -73,7 +74,7 @@ internal data class HlsSegment(
         null
     }
 
-    val runtimeUrl = byteRange?.let { "${url.absolute}|${it.start}-${it.end}" } ?: url.absolute
+    val runtimeUrl = buildSegmentRuntimeId(url.absolute, byteRange)
 }
 
 @Serializable
