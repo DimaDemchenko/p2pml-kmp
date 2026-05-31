@@ -56,11 +56,13 @@ internal class P2PMediaLoaderCore(
         customEngineUrl = customEngineUrl
     )
     private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private val cleanupScope = CoroutineScope(
-        Dispatchers.IO + CoroutineExceptionHandler { _, e ->
-            logger.e { "Uncaught error during session teardown: ${e.message}" }
-        }
-    )
+    private val cleanupScope by lazy {
+        CoroutineScope(
+            Dispatchers.IO + CoroutineExceptionHandler { _, e ->
+                logger.e { "Uncaught error during session teardown: ${e.message}" }
+            }
+        )
+    }
 
     @Volatile
     private var activeSession: P2PSession? = null
@@ -118,9 +120,13 @@ internal class P2PMediaLoaderCore(
             this@P2PMediaLoaderCore.activeSession = null
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
 
-            withContext(NonCancellable + Dispatchers.IO) {
-                runCatching { session.destroy() }.onFailure { e ->
-                    logger.e(e) { "Error destroying orphaned session: ${e.message}" }
+            val isReleaseInProgress = status.value == LoaderStatus.RELEASING ||
+                status.value == LoaderStatus.RELEASED
+            if (!isReleaseInProgress) {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    runCatching { session.destroy() }.onFailure { e ->
+                        logger.e(e) { "Error destroying orphaned session: ${e.message}" }
+                    }
                 }
             }
 
@@ -167,45 +173,32 @@ internal class P2PMediaLoaderCore(
 
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String): String {
-        if (status.value != LoaderStatus.ACTIVE) {
-            throw P2PMediaLoaderException(
-                P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
-                "P2PMediaLoader is not ready. Current state: ${status.value}"
-            )
-        }
-        return activeSession?.createPlaybackUrl(manifestUrl.encodeURLParameter())
-            ?: throw P2PMediaLoaderException(
-                P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
-                "Internal invariant violation: activeSession is null while status is ${status.value}"
-            )
+        val session = activeSession ?: throw P2PMediaLoaderException(
+            P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
+            "P2PMediaLoader is not ready. Current state: ${status.value}"
+        )
+        return session.createPlaybackUrl(manifestUrl.encodeURLParameter())
     }
 
     @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        when (val currentStatus = status.value) {
-            LoaderStatus.RELEASING, LoaderStatus.RELEASED -> {
-                logger.w { "Ignored dynamic config. Core state: $currentStatus." }
-                return
-            }
-
-            LoaderStatus.ACTIVE -> {
-                val session = activeSession ?: throw P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
-                    "Internal invariant violation: activeSession is null while status is ACTIVE"
-                )
-                session.applyDynamicConfig(dynamicCoreConfig)
-            }
-
-            LoaderStatus.IDLE, LoaderStatus.INITIALIZING -> {
-                pendingDynamicConfig.value = dynamicCoreConfig
-                val session = activeSession
-                if (session != null) {
-                    if (pendingDynamicConfig.compareAndSet(dynamicCoreConfig, null)) {
-                        session.applyDynamicConfig(dynamicCoreConfig)
-                    }
-                }
-            }
+        val currentStatus = status.value
+        if (currentStatus == LoaderStatus.RELEASING || currentStatus == LoaderStatus.RELEASED) {
+            logger.w { "Ignored dynamic config. Core state: $currentStatus." }
+            return
         }
+
+        if (currentStatus == LoaderStatus.IDLE || currentStatus == LoaderStatus.INITIALIZING) {
+            pendingDynamicConfig.value = dynamicCoreConfig
+            return
+        }
+
+        val session = activeSession
+        if (session == null) {
+            logger.w { "Session was null during ACTIVE state; release likely in progress. Ignoring." }
+            return
+        }
+        session.applyDynamicConfig(dynamicCoreConfig)
     }
 
     fun release() {

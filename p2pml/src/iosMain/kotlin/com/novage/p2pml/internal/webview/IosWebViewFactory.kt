@@ -3,6 +3,7 @@ package com.novage.p2pml.internal.webview
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
+import com.novage.p2pml.internal.utils.LogConfig
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -62,7 +63,9 @@ private class IosHeadlessWebView(
         val configuration = WKWebViewConfiguration()
 
         val preferences = WKPreferences()
-        preferences.setValue(true, forKey = "developerExtrasEnabled")
+        if (LogConfig.isEnabled) {
+            preferences.setValue(true, forKey = "developerExtrasEnabled")
+        }
         configuration.preferences = preferences
 
         val scriptMessageHandler = IosWebViewEventDispatcher(events) {
@@ -94,7 +97,7 @@ private class IosHeadlessWebView(
 
         wkWebView.hidden = true
         wkWebView.userInteractionEnabled = false
-        wkWebView.inspectable = true
+        wkWebView.inspectable = LogConfig.isEnabled
 
         this.webView = wkWebView
     }
