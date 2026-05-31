@@ -71,8 +71,8 @@ class StreamConfig {
  *
  * **Note on mutability:** Properties are `var` for cross-platform interop (Kotlin/Native
  * does not export constructor default values to Swift/ObjC). The config is serialized
- * to JSON and sent to the JS engine **once** during initialization. Mutating properties
- * after passing the config to [P2PMediaLoader] has no effect. To change settings at
+ * to JSON and sent to the JS engine **once** when the loader is initialized.
+ * Mutating properties after initialization has no effect. To change settings at
  * runtime, use [DynamicCoreConfig] with [P2PMediaLoader.applyDynamicConfig] instead.
  *
  * Top-level stream properties (e.g. [highDemandTimeWindow]) apply to **both** streams
