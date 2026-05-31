@@ -1,5 +1,6 @@
 package com.novage.p2pml.api.models
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -35,10 +36,11 @@ data class RtcConfig(val iceServers: List<IceServer>? = null)
  */
 @Serializable
 class StreamConfig {
-    var isP2PUploadDisabled: Boolean? = null
-    var isP2PDisabled: Boolean? = null
+    var isP2PUploadDisabled: Boolean = false
+    var isP2PDisabled: Boolean = false
     var highDemandTimeWindow: Int? = null
     var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
     var p2pDownloadTimeWindow: Int? = null
     var simultaneousHttpDownloads: Int? = null
     var simultaneousP2PDownloads: Int? = null
@@ -98,10 +100,11 @@ class CoreConfig {
 
     @Transient var customSegmentStorageFactoryJs: String? = null
 
-    var isP2PUploadDisabled: Boolean? = null
-    var isP2PDisabled: Boolean? = null
+    var isP2PUploadDisabled: Boolean = false
+    var isP2PDisabled: Boolean = false
     var highDemandTimeWindow: Int? = null
     var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
     var p2pDownloadTimeWindow: Int? = null
     var simultaneousHttpDownloads: Int? = null
     var simultaneousP2PDownloads: Int? = null
@@ -136,6 +139,7 @@ class CoreConfig {
 class DynamicStreamConfig {
     var highDemandTimeWindow: Int? = null
     var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
     var p2pDownloadTimeWindow: Int? = null
     var simultaneousHttpDownloads: Int? = null
     var simultaneousP2PDownloads: Int? = null
@@ -145,8 +149,26 @@ class DynamicStreamConfig {
     var httpNotReceivingBytesTimeoutMs: Int? = null
     var httpErrorRetries: Int? = null
     var p2pErrorRetries: Int? = null
-    var isP2PDisabled: Boolean? = null
-    var isP2PUploadDisabled: Boolean? = null
+
+    @SerialName("isP2PDisabled")
+    private var _isP2PDisabled: Boolean? = null
+
+    @SerialName("isP2PUploadDisabled")
+    private var _isP2PUploadDisabled: Boolean? = null
+
+    @Transient
+    var isP2PDisabled: Boolean
+        get() = _isP2PDisabled ?: false
+        set(value) {
+            _isP2PDisabled = value
+        }
+
+    @Transient
+    var isP2PUploadDisabled: Boolean
+        get() = _isP2PUploadDisabled ?: false
+        set(value) {
+            _isP2PUploadDisabled = value
+        }
 
     @Transient var validateP2PSegmentJs: String? = null
 
@@ -185,6 +207,7 @@ class DynamicCoreConfig {
 
     var highDemandTimeWindow: Int? = null
     var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
     var p2pDownloadTimeWindow: Int? = null
     var simultaneousHttpDownloads: Int? = null
     var simultaneousP2PDownloads: Int? = null
@@ -194,8 +217,26 @@ class DynamicCoreConfig {
     var httpNotReceivingBytesTimeoutMs: Int? = null
     var httpErrorRetries: Int? = null
     var p2pErrorRetries: Int? = null
-    var isP2PDisabled: Boolean? = null
-    var isP2PUploadDisabled: Boolean? = null
+
+    @SerialName("isP2PDisabled")
+    private var _isP2PDisabled: Boolean? = null
+
+    @SerialName("isP2PUploadDisabled")
+    private var _isP2PUploadDisabled: Boolean? = null
+
+    @Transient
+    var isP2PDisabled: Boolean
+        get() = _isP2PDisabled ?: false
+        set(value) {
+            _isP2PDisabled = value
+        }
+
+    @Transient
+    var isP2PUploadDisabled: Boolean
+        get() = _isP2PUploadDisabled ?: false
+        set(value) {
+            _isP2PUploadDisabled = value
+        }
 
     @Transient var validateP2PSegmentJs: String? = null
 
