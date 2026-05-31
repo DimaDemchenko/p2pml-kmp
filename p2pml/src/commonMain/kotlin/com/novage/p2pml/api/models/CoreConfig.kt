@@ -12,7 +12,8 @@ data class RtcConfig(val iceServers: List<IceServer>? = null)
 
 /**
  * Per-stream P2P configuration. Override specific properties to customize behavior for
- * a single stream type; any property left as `null` will use the JS engine's default.
+ * a single stream type; any property left unset (null or default value) will use the
+ * JS engine's default.
  *
  * Properties are declared as class-body `var` fields (rather than constructor parameters)
  * so that Kotlin/Native exports a true no-arg `init()` to Swift/ObjC.
@@ -64,9 +65,9 @@ class StreamConfig {
 
 /**
  * Core P2P engine configuration passed to [P2PMediaLoader] at initialization.
- * Set only the properties you want to override; `null` values are omitted during
- * JSON serialization (`encodeDefaults = false`, `explicitNulls = false`) and the
- * JS engine fills in its own defaults.
+ * Set only the properties you want to override; properties that remain `null` (or equal
+ * to their Kotlin defaults) are omitted during JSON serialization (`encodeDefaults = false`,
+ * `explicitNulls = false`) and the JS engine fills in its own defaults.
  *
  * **Note on mutability:** Properties are `var` for cross-platform interop (Kotlin/Native
  * does not export constructor default values to Swift/ObjC). The config is serialized
