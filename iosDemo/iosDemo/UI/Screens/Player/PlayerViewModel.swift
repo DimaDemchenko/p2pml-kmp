@@ -26,12 +26,11 @@ class PlayerViewModel: ObservableObject {
 
         P2PMediaLoader.companion.enableLogging()
 
-        let coreConfig = CoreConfigBuilder()
-            .highDemandTimeWindow(value: 45)
-            .isP2PDisabled(value: !shouldAutoPlay)
-            .simultaneousP2PDownloads(value: 3)
-            .webRtcMaxMessageSize(value: 65535)
-            .build()
+        let coreConfig = CoreConfig()
+        coreConfig.highDemandTimeWindow = 45
+        coreConfig.isP2PDisabled = !shouldAutoPlay
+        coreConfig.simultaneousP2PDownloads = 3
+        coreConfig.webRtcMaxMessageSize = 65535
 
         let loader = P2PMediaLoader(
             coreConfig: coreConfig,
@@ -232,9 +231,8 @@ class PlayerViewModel: ObservableObject {
     private func applyP2PEnabled(_ enabled: Bool) {
         guard let loader = p2pLoader else { return }
 
-        let config = DynamicCoreConfigBuilder()
-            .isP2PDisabled(value: !enabled)
-            .build()
+        let config = DynamicCoreConfig()
+        config.isP2PDisabled = !enabled
 
         do {
             try loader.applyDynamicConfig(dynamicCoreConfig: config)

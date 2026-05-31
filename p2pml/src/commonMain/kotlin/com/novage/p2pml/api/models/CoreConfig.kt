@@ -1,5 +1,6 @@
 package com.novage.p2pml.api.models
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -9,310 +10,239 @@ data class IceServer(val urls: List<String>, val username: String? = null, val c
 @Serializable
 data class RtcConfig(val iceServers: List<IceServer>? = null)
 
+/**
+ * Per-stream P2P configuration. Override specific properties to customize behavior for
+ * a single stream type; any property left unset (null or default value) will use the
+ * JS engine's default.
+ *
+ * Properties are declared as class-body `var` fields (rather than constructor parameters)
+ * so that Kotlin/Native exports a true no-arg `init()` to Swift/ObjC.
+ * SKIE's [DefaultArgumentInterop] is disabled because the number of parameters
+ * exceeds the practical 2^N overload limit.
+ *
+ * **Kotlin:**
+ * ```kotlin
+ * val stream = StreamConfig().apply {
+ *     highDemandTimeWindow = 20
+ *     simultaneousP2PDownloads = 5
+ * }
+ * ```
+ *
+ * **Swift:**
+ * ```swift
+ * let stream = StreamConfig()
+ * stream.highDemandTimeWindow = 20
+ * stream.simultaneousP2PDownloads = 5
+ * ```
+ */
 @Serializable
-data class StreamConfig(
-    val isP2PUploadDisabled: Boolean? = null,
-    val isP2PDisabled: Boolean? = null,
-    val highDemandTimeWindow: Int? = null,
-    val httpDownloadTimeWindow: Int? = null,
-    val p2pDownloadTimeWindow: Int? = null,
-    val simultaneousHttpDownloads: Int? = null,
-    val simultaneousP2PDownloads: Int? = null,
-    val webRtcMaxMessageSize: Int? = null,
-    val p2pNotReceivingBytesTimeoutMs: Int? = null,
-    val p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    val httpNotReceivingBytesTimeoutMs: Int? = null,
-    val httpErrorRetries: Int? = null,
-    val p2pErrorRetries: Int? = null,
-    val announceTrackers: List<String>? = null,
-    val rtcConfig: RtcConfig? = null,
-    val trackerClientVersionPrefix: String? = null,
-    val swarmId: String? = null,
+class StreamConfig {
+    var isP2PUploadDisabled: Boolean = false
+    var isP2PDisabled: Boolean = false
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+    var announceTrackers: List<String>? = null
+    var rtcConfig: RtcConfig? = null
+    var trackerClientVersionPrefix: String? = null
+    var swarmId: String? = null
 
-    @Transient val validateP2PSegmentJs: String? = null,
-    @Transient val validateHTTPSegmentJs: String? = null,
-    @Transient val httpRequestSetupJs: String? = null
-)
+    @Transient var validateP2PSegmentJs: String? = null
 
-@Serializable
-data class CoreConfig(
-    val segmentMemoryStorageLimit: Int? = null,
-    @Transient val customSegmentStorageFactoryJs: String? = null,
+    @Transient var validateHTTPSegmentJs: String? = null
 
-    val isP2PUploadDisabled: Boolean? = null,
-    val isP2PDisabled: Boolean? = null,
-    val highDemandTimeWindow: Int? = null,
-    val httpDownloadTimeWindow: Int? = null,
-    val p2pDownloadTimeWindow: Int? = null,
-    val simultaneousHttpDownloads: Int? = null,
-    val simultaneousP2PDownloads: Int? = null,
-    val webRtcMaxMessageSize: Int? = null,
-    val p2pNotReceivingBytesTimeoutMs: Int? = null,
-    val p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    val httpNotReceivingBytesTimeoutMs: Int? = null,
-    val httpErrorRetries: Int? = null,
-    val p2pErrorRetries: Int? = null,
-    val announceTrackers: List<String>? = null,
-    val rtcConfig: RtcConfig? = null,
-    val trackerClientVersionPrefix: String? = null,
-    val swarmId: String? = null,
-
-    @Transient val validateP2PSegmentJs: String? = null,
-    @Transient val validateHTTPSegmentJs: String? = null,
-    @Transient val httpRequestSetupJs: String? = null,
-
-    val mainStream: StreamConfig? = null,
-    val secondaryStream: StreamConfig? = null
-)
-
-@Serializable
-data class DynamicStreamConfig(
-    val highDemandTimeWindow: Int? = null,
-    val httpDownloadTimeWindow: Int? = null,
-    val p2pDownloadTimeWindow: Int? = null,
-    val simultaneousHttpDownloads: Int? = null,
-    val simultaneousP2PDownloads: Int? = null,
-    val webRtcMaxMessageSize: Int? = null,
-    val p2pNotReceivingBytesTimeoutMs: Int? = null,
-    val p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    val httpNotReceivingBytesTimeoutMs: Int? = null,
-    val httpErrorRetries: Int? = null,
-    val p2pErrorRetries: Int? = null,
-    val isP2PDisabled: Boolean? = null,
-    val isP2PUploadDisabled: Boolean? = null,
-
-    @Transient val validateP2PSegmentJs: String? = null,
-    @Transient val httpRequestSetupJs: String? = null
-)
-
-@Serializable
-data class DynamicCoreConfig(
-    val segmentMemoryStorageLimit: Int? = null,
-    @Transient val customSegmentStorageFactoryJs: String? = null,
-
-    val highDemandTimeWindow: Int? = null,
-    val httpDownloadTimeWindow: Int? = null,
-    val p2pDownloadTimeWindow: Int? = null,
-    val simultaneousHttpDownloads: Int? = null,
-    val simultaneousP2PDownloads: Int? = null,
-    val webRtcMaxMessageSize: Int? = null,
-    val p2pNotReceivingBytesTimeoutMs: Int? = null,
-    val p2pInactiveLoaderDestroyTimeoutMs: Int? = null,
-    val httpNotReceivingBytesTimeoutMs: Int? = null,
-    val httpErrorRetries: Int? = null,
-    val p2pErrorRetries: Int? = null,
-    val isP2PDisabled: Boolean? = null,
-    val isP2PUploadDisabled: Boolean? = null,
-
-    @Transient val validateP2PSegmentJs: String? = null,
-    @Transient val httpRequestSetupJs: String? = null,
-
-    val mainStream: DynamicStreamConfig? = null,
-    val secondaryStream: DynamicStreamConfig? = null
-)
-
-class StreamConfigBuilder {
-    private var isP2PUploadDisabled: Boolean? = null
-    private var isP2PDisabled: Boolean? = null
-    private var highDemandTimeWindow: Int? = null
-    private var httpDownloadTimeWindow: Int? = null
-    private var p2pDownloadTimeWindow: Int? = null
-    private var simultaneousHttpDownloads: Int? = null
-    private var simultaneousP2PDownloads: Int? = null
-    private var webRtcMaxMessageSize: Int? = null
-    private var p2pNotReceivingBytesTimeoutMs: Int? = null
-    private var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
-    private var httpNotReceivingBytesTimeoutMs: Int? = null
-    private var httpErrorRetries: Int? = null
-    private var p2pErrorRetries: Int? = null
-    private var announceTrackers: List<String>? = null
-    private var rtcConfig: RtcConfig? = null
-    private var trackerClientVersionPrefix: String? = null
-    private var swarmId: String? = null
-    private var validateP2PSegmentJs: String? = null
-    private var validateHTTPSegmentJs: String? = null
-    private var httpRequestSetupJs: String? = null
-
-    fun isP2PUploadDisabled(value: Boolean) = apply { this.isP2PUploadDisabled = value }
-    fun isP2PDisabled(value: Boolean) = apply { this.isP2PDisabled = value }
-    fun highDemandTimeWindow(value: Int) = apply { this.highDemandTimeWindow = value }
-    fun httpDownloadTimeWindow(value: Int) = apply { this.httpDownloadTimeWindow = value }
-    fun p2pDownloadTimeWindow(value: Int) = apply { this.p2pDownloadTimeWindow = value }
-    fun simultaneousHttpDownloads(value: Int) = apply { this.simultaneousHttpDownloads = value }
-    fun simultaneousP2PDownloads(value: Int) = apply { this.simultaneousP2PDownloads = value }
-    fun webRtcMaxMessageSize(value: Int) = apply { this.webRtcMaxMessageSize = value }
-    fun p2pNotReceivingBytesTimeoutMs(value: Int) = apply { this.p2pNotReceivingBytesTimeoutMs = value }
-    fun p2pInactiveLoaderDestroyTimeoutMs(value: Int) = apply { this.p2pInactiveLoaderDestroyTimeoutMs = value }
-    fun httpNotReceivingBytesTimeoutMs(value: Int) = apply { this.httpNotReceivingBytesTimeoutMs = value }
-    fun httpErrorRetries(value: Int) = apply { this.httpErrorRetries = value }
-    fun p2pErrorRetries(value: Int) = apply { this.p2pErrorRetries = value }
-    fun announceTrackers(value: List<String>) = apply { this.announceTrackers = value }
-    fun rtcConfig(value: RtcConfig) = apply { this.rtcConfig = value }
-    fun trackerClientVersionPrefix(value: String) = apply { this.trackerClientVersionPrefix = value }
-    fun swarmId(value: String) = apply { this.swarmId = value }
-    fun validateP2PSegmentJs(value: String) = apply { this.validateP2PSegmentJs = value }
-    fun validateHTTPSegmentJs(value: String) = apply { this.validateHTTPSegmentJs = value }
-    fun httpRequestSetupJs(value: String) = apply { this.httpRequestSetupJs = value }
-
-    fun build() = StreamConfig(
-        isP2PUploadDisabled, isP2PDisabled, highDemandTimeWindow, httpDownloadTimeWindow,
-        p2pDownloadTimeWindow, simultaneousHttpDownloads, simultaneousP2PDownloads,
-        webRtcMaxMessageSize, p2pNotReceivingBytesTimeoutMs, p2pInactiveLoaderDestroyTimeoutMs,
-        httpNotReceivingBytesTimeoutMs, httpErrorRetries, p2pErrorRetries, announceTrackers,
-        rtcConfig, trackerClientVersionPrefix, swarmId, validateP2PSegmentJs,
-        validateHTTPSegmentJs, httpRequestSetupJs
-    )
+    @Transient var httpRequestSetupJs: String? = null
 }
 
-@Suppress("TooManyFunctions")
-class CoreConfigBuilder {
-    private var segmentMemoryStorageLimit: Int? = null
-    private var customSegmentStorageFactoryJs: String? = null
-    private var isP2PUploadDisabled: Boolean? = null
-    private var isP2PDisabled: Boolean? = null
-    private var highDemandTimeWindow: Int? = null
-    private var httpDownloadTimeWindow: Int? = null
-    private var p2pDownloadTimeWindow: Int? = null
-    private var simultaneousHttpDownloads: Int? = null
-    private var simultaneousP2PDownloads: Int? = null
-    private var webRtcMaxMessageSize: Int? = null
-    private var p2pNotReceivingBytesTimeoutMs: Int? = null
-    private var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
-    private var httpNotReceivingBytesTimeoutMs: Int? = null
-    private var httpErrorRetries: Int? = null
-    private var p2pErrorRetries: Int? = null
-    private var announceTrackers: List<String>? = null
-    private var rtcConfig: RtcConfig? = null
-    private var trackerClientVersionPrefix: String? = null
-    private var swarmId: String? = null
-    private var validateP2PSegmentJs: String? = null
-    private var validateHTTPSegmentJs: String? = null
-    private var httpRequestSetupJs: String? = null
-    private var mainStream: StreamConfig? = null
-    private var secondaryStream: StreamConfig? = null
+/**
+ * Core P2P engine configuration passed to [P2PMediaLoader] at initialization.
+ * Set only the properties you want to override; properties that remain `null` (or equal
+ * to their Kotlin defaults) are omitted during JSON serialization (`encodeDefaults = false`,
+ * `explicitNulls = false`) and the JS engine fills in its own defaults.
+ *
+ * **Note on mutability:** Properties are `var` for cross-platform interop (Kotlin/Native
+ * does not export constructor default values to Swift/ObjC). The config is serialized
+ * to JSON and sent to the JS engine **once** when the loader is initialized.
+ * Mutating properties after initialization has no effect. To change settings at
+ * runtime, use [DynamicCoreConfig] with [P2PMediaLoader.applyDynamicConfig] instead.
+ *
+ * Top-level stream properties (e.g. [highDemandTimeWindow]) apply to **both** streams
+ * unless overridden via [mainStream] or [secondaryStream].
+ *
+ * **Kotlin:**
+ * ```kotlin
+ * val config = CoreConfig().apply {
+ *     isP2PDisabled = false
+ *     highDemandTimeWindow = 20
+ *     simultaneousP2PDownloads = 3
+ * }
+ * ```
+ *
+ * **Swift:**
+ * ```swift
+ * let config = CoreConfig()
+ * config.isP2PDisabled = false
+ * config.highDemandTimeWindow = 20
+ * config.simultaneousP2PDownloads = 3
+ * ```
+ */
+@Serializable
+class CoreConfig {
+    var segmentMemoryStorageLimit: Int? = null
 
-    fun segmentMemoryStorageLimit(value: Int) = apply { this.segmentMemoryStorageLimit = value }
-    fun customSegmentStorageFactoryJs(value: String) = apply { this.customSegmentStorageFactoryJs = value }
-    fun isP2PUploadDisabled(value: Boolean) = apply { this.isP2PUploadDisabled = value }
-    fun isP2PDisabled(value: Boolean) = apply { this.isP2PDisabled = value }
-    fun highDemandTimeWindow(value: Int) = apply { this.highDemandTimeWindow = value }
-    fun httpDownloadTimeWindow(value: Int) = apply { this.httpDownloadTimeWindow = value }
-    fun p2pDownloadTimeWindow(value: Int) = apply { this.p2pDownloadTimeWindow = value }
-    fun simultaneousHttpDownloads(value: Int) = apply { this.simultaneousHttpDownloads = value }
-    fun simultaneousP2PDownloads(value: Int) = apply { this.simultaneousP2PDownloads = value }
-    fun webRtcMaxMessageSize(value: Int) = apply { this.webRtcMaxMessageSize = value }
-    fun p2pNotReceivingBytesTimeoutMs(value: Int) = apply { this.p2pNotReceivingBytesTimeoutMs = value }
-    fun p2pInactiveLoaderDestroyTimeoutMs(value: Int) = apply { this.p2pInactiveLoaderDestroyTimeoutMs = value }
-    fun httpNotReceivingBytesTimeoutMs(value: Int) = apply { this.httpNotReceivingBytesTimeoutMs = value }
-    fun httpErrorRetries(value: Int) = apply { this.httpErrorRetries = value }
-    fun p2pErrorRetries(value: Int) = apply { this.p2pErrorRetries = value }
-    fun announceTrackers(value: List<String>) = apply { this.announceTrackers = value }
-    fun rtcConfig(value: RtcConfig) = apply { this.rtcConfig = value }
-    fun trackerClientVersionPrefix(value: String) = apply { this.trackerClientVersionPrefix = value }
-    fun swarmId(value: String) = apply { this.swarmId = value }
-    fun validateP2PSegmentJs(value: String) = apply { this.validateP2PSegmentJs = value }
-    fun validateHTTPSegmentJs(value: String) = apply { this.validateHTTPSegmentJs = value }
-    fun httpRequestSetupJs(value: String) = apply { this.httpRequestSetupJs = value }
-    fun mainStream(value: StreamConfig) = apply { this.mainStream = value }
-    fun secondaryStream(value: StreamConfig) = apply { this.secondaryStream = value }
+    @Transient var customSegmentStorageFactoryJs: String? = null
 
-    fun build() = CoreConfig(
-        segmentMemoryStorageLimit, customSegmentStorageFactoryJs, isP2PUploadDisabled, isP2PDisabled,
-        highDemandTimeWindow, httpDownloadTimeWindow, p2pDownloadTimeWindow, simultaneousHttpDownloads,
-        simultaneousP2PDownloads, webRtcMaxMessageSize, p2pNotReceivingBytesTimeoutMs,
-        p2pInactiveLoaderDestroyTimeoutMs, httpNotReceivingBytesTimeoutMs, httpErrorRetries,
-        p2pErrorRetries, announceTrackers, rtcConfig, trackerClientVersionPrefix, swarmId,
-        validateP2PSegmentJs, validateHTTPSegmentJs, httpRequestSetupJs, mainStream, secondaryStream
-    )
+    var isP2PUploadDisabled: Boolean = false
+    var isP2PDisabled: Boolean = false
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+    var announceTrackers: List<String>? = null
+    var rtcConfig: RtcConfig? = null
+    var trackerClientVersionPrefix: String? = null
+    var swarmId: String? = null
+
+    @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var validateHTTPSegmentJs: String? = null
+
+    @Transient var httpRequestSetupJs: String? = null
+
+    var mainStream: StreamConfig? = null
+    var secondaryStream: StreamConfig? = null
 }
 
-class DynamicStreamConfigBuilder {
-    private var highDemandTimeWindow: Int? = null
-    private var httpDownloadTimeWindow: Int? = null
-    private var p2pDownloadTimeWindow: Int? = null
-    private var simultaneousHttpDownloads: Int? = null
-    private var simultaneousP2PDownloads: Int? = null
-    private var webRtcMaxMessageSize: Int? = null
-    private var p2pNotReceivingBytesTimeoutMs: Int? = null
-    private var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
-    private var httpNotReceivingBytesTimeoutMs: Int? = null
-    private var httpErrorRetries: Int? = null
-    private var p2pErrorRetries: Int? = null
-    private var isP2PDisabled: Boolean? = null
-    private var isP2PUploadDisabled: Boolean? = null
-    private var validateP2PSegmentJs: String? = null
-    private var httpRequestSetupJs: String? = null
+/**
+ * Subset of [StreamConfig] properties that can be updated at runtime
+ * via [P2PMediaLoader.applyDynamicConfig] without restarting the engine.
+ *
+ * @see DynamicCoreConfig
+ */
+@Serializable
+class DynamicStreamConfig {
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
 
-    fun highDemandTimeWindow(value: Int) = apply { this.highDemandTimeWindow = value }
-    fun httpDownloadTimeWindow(value: Int) = apply { this.httpDownloadTimeWindow = value }
-    fun p2pDownloadTimeWindow(value: Int) = apply { this.p2pDownloadTimeWindow = value }
-    fun simultaneousHttpDownloads(value: Int) = apply { this.simultaneousHttpDownloads = value }
-    fun simultaneousP2PDownloads(value: Int) = apply { this.simultaneousP2PDownloads = value }
-    fun webRtcMaxMessageSize(value: Int) = apply { this.webRtcMaxMessageSize = value }
-    fun p2pNotReceivingBytesTimeoutMs(value: Int) = apply { this.p2pNotReceivingBytesTimeoutMs = value }
-    fun p2pInactiveLoaderDestroyTimeoutMs(value: Int) = apply { this.p2pInactiveLoaderDestroyTimeoutMs = value }
-    fun httpNotReceivingBytesTimeoutMs(value: Int) = apply { this.httpNotReceivingBytesTimeoutMs = value }
-    fun httpErrorRetries(value: Int) = apply { this.httpErrorRetries = value }
-    fun p2pErrorRetries(value: Int) = apply { this.p2pErrorRetries = value }
-    fun isP2PDisabled(value: Boolean) = apply { this.isP2PDisabled = value }
-    fun isP2PUploadDisabled(value: Boolean) = apply { this.isP2PUploadDisabled = value }
-    fun validateP2PSegmentJs(value: String) = apply { this.validateP2PSegmentJs = value }
-    fun httpRequestSetupJs(value: String) = apply { this.httpRequestSetupJs = value }
+    @SerialName("isP2PDisabled")
+    private var _isP2PDisabled: Boolean? = null
 
-    fun build() = DynamicStreamConfig(
-        highDemandTimeWindow, httpDownloadTimeWindow, p2pDownloadTimeWindow, simultaneousHttpDownloads,
-        simultaneousP2PDownloads, webRtcMaxMessageSize, p2pNotReceivingBytesTimeoutMs,
-        p2pInactiveLoaderDestroyTimeoutMs, httpNotReceivingBytesTimeoutMs, httpErrorRetries,
-        p2pErrorRetries, isP2PDisabled, isP2PUploadDisabled, validateP2PSegmentJs, httpRequestSetupJs
-    )
+    @SerialName("isP2PUploadDisabled")
+    private var _isP2PUploadDisabled: Boolean? = null
+
+    @Transient
+    var isP2PDisabled: Boolean
+        get() = _isP2PDisabled ?: false
+        set(value) {
+            _isP2PDisabled = value
+        }
+
+    @Transient
+    var isP2PUploadDisabled: Boolean
+        get() = _isP2PUploadDisabled ?: false
+        set(value) {
+            _isP2PUploadDisabled = value
+        }
+
+    @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var httpRequestSetupJs: String? = null
 }
 
-class DynamicCoreConfigBuilder {
-    private var segmentMemoryStorageLimit: Int? = null
-    private var customSegmentStorageFactoryJs: String? = null
-    private var highDemandTimeWindow: Int? = null
-    private var httpDownloadTimeWindow: Int? = null
-    private var p2pDownloadTimeWindow: Int? = null
-    private var simultaneousHttpDownloads: Int? = null
-    private var simultaneousP2PDownloads: Int? = null
-    private var webRtcMaxMessageSize: Int? = null
-    private var p2pNotReceivingBytesTimeoutMs: Int? = null
-    private var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
-    private var httpNotReceivingBytesTimeoutMs: Int? = null
-    private var httpErrorRetries: Int? = null
-    private var p2pErrorRetries: Int? = null
-    private var isP2PDisabled: Boolean? = null
-    private var isP2PUploadDisabled: Boolean? = null
-    private var validateP2PSegmentJs: String? = null
-    private var httpRequestSetupJs: String? = null
-    private var mainStream: DynamicStreamConfig? = null
-    private var secondaryStream: DynamicStreamConfig? = null
+/**
+ * Subset of [CoreConfig] properties that can be updated at runtime
+ * via [P2PMediaLoader.applyDynamicConfig] without restarting the engine.
+ *
+ * Same mutability note as [CoreConfig]: properties are `var` for cross-platform interop.
+ * Each call to [P2PMediaLoader.applyDynamicConfig] snapshots the current property values
+ * and pushes them to the JS engine. Mutating the object afterwards has no effect
+ * until you call [P2PMediaLoader.applyDynamicConfig] again.
+ *
+ * **Kotlin:**
+ * ```kotlin
+ * val config = DynamicCoreConfig().apply { isP2PDisabled = true }
+ * loader.applyDynamicConfig(config)
+ * ```
+ *
+ * **Swift:**
+ * ```swift
+ * let config = DynamicCoreConfig()
+ * config.isP2PDisabled = true
+ * try loader.applyDynamicConfig(dynamicCoreConfig: config)
+ * ```
+ *
+ * @see CoreConfig
+ */
+@Serializable
+class DynamicCoreConfig {
+    var segmentMemoryStorageLimit: Int? = null
 
-    fun segmentMemoryStorageLimit(value: Int) = apply { this.segmentMemoryStorageLimit = value }
-    fun customSegmentStorageFactoryJs(value: String) = apply { this.customSegmentStorageFactoryJs = value }
-    fun highDemandTimeWindow(value: Int) = apply { this.highDemandTimeWindow = value }
-    fun httpDownloadTimeWindow(value: Int) = apply { this.httpDownloadTimeWindow = value }
-    fun p2pDownloadTimeWindow(value: Int) = apply { this.p2pDownloadTimeWindow = value }
-    fun simultaneousHttpDownloads(value: Int) = apply { this.simultaneousHttpDownloads = value }
-    fun simultaneousP2PDownloads(value: Int) = apply { this.simultaneousP2PDownloads = value }
-    fun webRtcMaxMessageSize(value: Int) = apply { this.webRtcMaxMessageSize = value }
-    fun p2pNotReceivingBytesTimeoutMs(value: Int) = apply { this.p2pNotReceivingBytesTimeoutMs = value }
-    fun p2pInactiveLoaderDestroyTimeoutMs(value: Int) = apply { this.p2pInactiveLoaderDestroyTimeoutMs = value }
-    fun httpNotReceivingBytesTimeoutMs(value: Int) = apply { this.httpNotReceivingBytesTimeoutMs = value }
-    fun httpErrorRetries(value: Int) = apply { this.httpErrorRetries = value }
-    fun p2pErrorRetries(value: Int) = apply { this.p2pErrorRetries = value }
-    fun isP2PDisabled(value: Boolean) = apply { this.isP2PDisabled = value }
-    fun isP2PUploadDisabled(value: Boolean) = apply { this.isP2PUploadDisabled = value }
-    fun validateP2PSegmentJs(value: String) = apply { this.validateP2PSegmentJs = value }
-    fun httpRequestSetupJs(value: String) = apply { this.httpRequestSetupJs = value }
-    fun mainStream(value: DynamicStreamConfig) = apply { this.mainStream = value }
-    fun secondaryStream(value: DynamicStreamConfig) = apply { this.secondaryStream = value }
+    @Transient var customSegmentStorageFactoryJs: String? = null
 
-    fun build() = DynamicCoreConfig(
-        segmentMemoryStorageLimit, customSegmentStorageFactoryJs, highDemandTimeWindow, httpDownloadTimeWindow,
-        p2pDownloadTimeWindow, simultaneousHttpDownloads, simultaneousP2PDownloads, webRtcMaxMessageSize,
-        p2pNotReceivingBytesTimeoutMs, p2pInactiveLoaderDestroyTimeoutMs, httpNotReceivingBytesTimeoutMs,
-        httpErrorRetries, p2pErrorRetries, isP2PDisabled, isP2PUploadDisabled, validateP2PSegmentJs,
-        httpRequestSetupJs, mainStream, secondaryStream
-    )
+    var highDemandTimeWindow: Int? = null
+    var httpDownloadTimeWindow: Int? = null
+    var httpDownloadInitialTimeoutMs: Int? = null
+    var p2pDownloadTimeWindow: Int? = null
+    var simultaneousHttpDownloads: Int? = null
+    var simultaneousP2PDownloads: Int? = null
+    var webRtcMaxMessageSize: Int? = null
+    var p2pNotReceivingBytesTimeoutMs: Int? = null
+    var p2pInactiveLoaderDestroyTimeoutMs: Int? = null
+    var httpNotReceivingBytesTimeoutMs: Int? = null
+    var httpErrorRetries: Int? = null
+    var p2pErrorRetries: Int? = null
+
+    @SerialName("isP2PDisabled")
+    private var _isP2PDisabled: Boolean? = null
+
+    @SerialName("isP2PUploadDisabled")
+    private var _isP2PUploadDisabled: Boolean? = null
+
+    @Transient
+    var isP2PDisabled: Boolean
+        get() = _isP2PDisabled ?: false
+        set(value) {
+            _isP2PDisabled = value
+        }
+
+    @Transient
+    var isP2PUploadDisabled: Boolean
+        get() = _isP2PUploadDisabled ?: false
+        set(value) {
+            _isP2PUploadDisabled = value
+        }
+
+    @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var httpRequestSetupJs: String? = null
+
+    var mainStream: DynamicStreamConfig? = null
+    var secondaryStream: DynamicStreamConfig? = null
 }
