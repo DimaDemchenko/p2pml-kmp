@@ -7,6 +7,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.ParsedUrl
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.TYPE_CLOSED_CAPTIONS
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.TYPE_SUBTITLES
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
+import com.novage.p2pml.internal.utils.buildSegmentRuntimeId
 import io.ktor.http.encodeURLParameter
 
 internal class LocalHlsUrlRewriter(private val urlFactory: LocalUrlFactory) : HlsUrlRewriter {
@@ -25,7 +26,7 @@ internal class LocalHlsUrlRewriter(private val urlFactory: LocalUrlFactory) : Hl
     override fun rewriteLowLatencyUrl(url: ParsedUrl): String = url.absolute
 
     override fun rewriteSegmentUrl(url: ParsedUrl, byteRange: ByteRange?): String {
-        val payload = byteRange?.let { "${url.absolute}|${it.start}-${it.end}" } ?: url.absolute
+        val payload = buildSegmentRuntimeId(url.absolute, byteRange)
         return urlFactory.buildSegmentUrl(encodeToUrlSafeBase64(payload))
     }
 
