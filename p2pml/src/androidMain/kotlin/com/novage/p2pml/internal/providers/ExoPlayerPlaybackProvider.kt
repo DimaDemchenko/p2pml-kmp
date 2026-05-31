@@ -1,5 +1,7 @@
 package com.novage.p2pml.internal.providers
 
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -119,9 +121,9 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     override fun release() {
         providerScope.cancel()
-        CoroutineScope(Dispatchers.Main.immediate).launch {
+        listener = null
+        Handler(Looper.getMainLooper()).post {
             exoPlayer.removeListener(playerListener)
         }
-        listener = null
     }
 }
