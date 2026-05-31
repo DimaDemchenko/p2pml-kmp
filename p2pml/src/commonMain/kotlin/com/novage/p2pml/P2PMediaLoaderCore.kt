@@ -13,6 +13,7 @@ import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -55,6 +56,11 @@ internal class P2PMediaLoaderCore(
         customEngineUrl = customEngineUrl
     )
     private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val cleanupScope = CoroutineScope(
+        Dispatchers.IO + CoroutineExceptionHandler { _, e ->
+            logger.e { "Uncaught error during session teardown: ${e.message}" }
+        }
+    )
 
     @Volatile
     private var activeSession: P2PSession? = null
@@ -222,20 +228,19 @@ internal class P2PMediaLoaderCore(
 
         coreScope.cancel()
 
-        CoroutineScope(Dispatchers.IO).launch {
-            withContext(NonCancellable) {
-                try {
-                    sessionToDestroy?.destroy()
-                } catch (e: IOException) {
-                    logger.e { "IO Error during session teardown: ${e.message}" }
-                } catch (e: IllegalStateException) {
-                    logger.e { "State Error during session teardown: ${e.message}" }
-                } catch (e: IllegalArgumentException) {
-                    logger.e { "Arg Error during session teardown: ${e.message}" }
-                } finally {
-                    status.value = LoaderStatus.RELEASED
-                    logger.d { "Release complete." }
-                }
+        cleanupScope.launch {
+            try {
+                sessionToDestroy?.destroy()
+            } catch (e: IOException) {
+                logger.e { "IO Error during session teardown: ${e.message}" }
+            } catch (e: IllegalStateException) {
+                logger.e { "State Error during session teardown: ${e.message}" }
+            } catch (e: IllegalArgumentException) {
+                logger.e { "Arg Error during session teardown: ${e.message}" }
+            } finally {
+                status.value = LoaderStatus.RELEASED
+                logger.d { "Release complete." }
+                cleanupScope.cancel()
             }
         }
     }
