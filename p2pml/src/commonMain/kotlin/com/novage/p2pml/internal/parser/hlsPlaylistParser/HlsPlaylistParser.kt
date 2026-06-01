@@ -202,15 +202,15 @@ internal class HlsPlaylistParser(
         }
 
         trimmedLine.startsWith(TAG_PART) -> {
-            processPartTag(originalLine, trimmedLine, llState, context)
+            processLowLatencyTag(originalLine, trimmedLine, llState.parts, context)
         }
 
         trimmedLine.startsWith(TAG_PRELOAD_HINT) -> {
-            processPreloadHintTag(originalLine, trimmedLine, llState, context)
+            processLowLatencyTag(originalLine, trimmedLine, llState.preloadHints, context)
         }
 
         trimmedLine.startsWith(TAG_RENDITION_REPORT) -> {
-            processRenditionReportTag(originalLine, trimmedLine, llState, context)
+            processLowLatencyTag(originalLine, trimmedLine, llState.renditionReports, context)
         }
 
         else -> originalLine
@@ -231,39 +231,15 @@ internal class HlsPlaylistParser(
         rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
     )
 
-    private fun processPartTag(
+    private fun processLowLatencyTag(
         originalLine: String,
         trimmedLine: String,
-        llState: LowLatencyState,
+        targetList: MutableList<ParsedUrl>,
         context: ParserContext
     ): String = processUrlTag(
         line = originalLine,
         urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { llState.parts.add(it) },
-        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-    )
-
-    private fun processPreloadHintTag(
-        originalLine: String,
-        trimmedLine: String,
-        llState: LowLatencyState,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { llState.preloadHints.add(it) },
-        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-    )
-
-    private fun processRenditionReportTag(
-        originalLine: String,
-        trimmedLine: String,
-        llState: LowLatencyState,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { llState.renditionReports.add(it) },
+        stateUpdater = { targetList.add(it) },
         rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
     )
 
