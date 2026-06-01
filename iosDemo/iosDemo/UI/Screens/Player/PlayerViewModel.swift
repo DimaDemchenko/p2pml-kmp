@@ -3,6 +3,12 @@ import AVKit
 import Combine
 import P2PML
 
+private let highDemandWindowSec: Int32 = 45
+private let preferredBufferDurationSec = 45.0
+private let simultaneousP2PDownloads: Int32 = 3
+private let webRtcMaxMessageSize: Int32 = 65535
+private let p2pNotReceivingBytesTimeoutMs: Int32 = 1000
+
 @MainActor
 class PlayerViewModel: ObservableObject {
     @Published var uiState = PlayerUiState()
@@ -27,10 +33,17 @@ class PlayerViewModel: ObservableObject {
         P2PMediaLoader.companion.enableLogging()
 
         let coreConfig = CoreConfig()
-        coreConfig.highDemandTimeWindow = 45
+        coreConfig.highDemandTimeWindow = highDemandWindowSec
         coreConfig.isP2PDisabled = !shouldAutoPlay
-        coreConfig.simultaneousP2PDownloads = 3
-        coreConfig.webRtcMaxMessageSize = 65535
+        coreConfig.simultaneousP2PDownloads = simultaneousP2PDownloads
+        coreConfig.webRtcMaxMessageSize = webRtcMaxMessageSize
+        coreConfig.p2pNotReceivingBytesTimeoutMs = p2pNotReceivingBytesTimeoutMs
+        coreConfig.validateHTTPSegmentJs = """
+            (url, byteRange, data) => {
+                // console.log(`Validating segment: ${url} Range: ${byteRange}`);
+                return data.byteLength > 0;
+            }
+            """
 
         let loader = P2PMediaLoader(
             coreConfig: coreConfig,
@@ -77,7 +90,7 @@ class PlayerViewModel: ObservableObject {
         }
 
         let playerItem = AVPlayerItem(url: urlObj)
-        playerItem.preferredForwardBufferDuration = 45.0
+        playerItem.preferredForwardBufferDuration = preferredBufferDurationSec
         
         // Replace the item on the existing player created during initialization
         self.player?.replaceCurrentItem(with: playerItem)
@@ -203,13 +216,16 @@ class PlayerViewModel: ObservableObject {
             }
         })
         eventTasks.append(Task { [weak self] in
-            for await _ in loader.events.onPeerConnect {
-                self?.uiState.peerCount += 1
+            for await details in loader.events.onPeerConnect {
+                guard let self = self else { return }
+                if !self.uiState.peers.contains(details.peerId) {
+                    self.uiState.peers.append(details.peerId)
+                }
             }
         })
         eventTasks.append(Task { [weak self] in
-            for await _ in loader.events.onPeerClose {
-                self?.uiState.peerCount = max(0, (self?.uiState.peerCount ?? 1) - 1)
+            for await details in loader.events.onPeerClose {
+                self?.uiState.peers.removeAll { $0 == details.peerId }
             }
         })
     }

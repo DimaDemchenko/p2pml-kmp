@@ -12,16 +12,16 @@ struct StatsSection: View {
 
                 HStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.onErrorContainer)
                     VStack(alignment: .leading) {
                         Text("P2P Disabled").font(.subheadline).bold()
                         Text("Engine failed. Playing via standard HTTP.").font(.caption)
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.onErrorContainer)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AppTheme.error)
+                .background(AppTheme.errorContainer)
                 .cornerRadius(12)
             } else {
                 Text("Live Statistics")
@@ -33,7 +33,7 @@ struct StatsSection: View {
                     StatCard(label: "HTTP", value: formatBytes(uiState.httpDownloaded), color: AppTheme.secondary, isLoading: isInitialLoading)
                     StatCard(label: "P2P", value: formatBytes(uiState.p2pDownloaded), color: AppTheme.primary, isLoading: isInitialLoading)
                     StatCard(label: "Upload", value: formatBytes(uiState.uploadTotal), color: AppTheme.onSurfaceVariant, isLoading: isInitialLoading)
-                    StatCard(label: "Peers", value: "\(uiState.peerCount)", color: AppTheme.onSurface, isLoading: isInitialLoading)
+                    StatCard(label: "Peers", value: "\(uiState.peers.count)", color: AppTheme.onSurface, isLoading: isInitialLoading)
                 }
             }
         }
@@ -41,10 +41,11 @@ struct StatsSection: View {
     }
 
     private func formatBytes(_ bytes: Int64) -> String {
-        if bytes == 0 { return "0 MB" }
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useMB, .useGB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
+        let bytesPerKB = 1024.0
+        if bytes < Int64(bytesPerKB) { return "\(bytes) B" }
+        let prefixes = ["K", "M", "G", "T", "P", "E"]
+        let exp = min(Int(log(Double(bytes)) / log(bytesPerKB)), prefixes.count)
+        let pre = prefixes[exp - 1]
+        return String(format: "%.1f %@B", Double(bytes) / pow(bytesPerKB, Double(exp)), pre)
     }
 }

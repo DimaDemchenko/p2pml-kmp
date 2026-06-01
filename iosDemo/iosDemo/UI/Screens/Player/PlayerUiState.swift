@@ -10,7 +10,7 @@ struct PlayerUiState {
     var p2pDownloaded: Int64 = 0
     var httpDownloaded: Int64 = 0
     var uploadTotal: Int64 = 0
-    var peerCount: Int = 0
+    var peers: [String] = []
 
     var availableTracks = AvailableTracks()
 }
