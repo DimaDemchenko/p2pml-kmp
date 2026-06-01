@@ -62,9 +62,9 @@ internal class HlsPlaylistParser(
 
         var headerLine: String? = null
         while (iterator.hasNext()) {
-            val l = iterator.next()
-            if (l.trim().isNotEmpty()) {
-                headerLine = l
+            val line = iterator.next()
+            if (line.trim().isNotEmpty()) {
+                headerLine = line
                 break
             }
         }
@@ -114,7 +114,7 @@ internal class HlsPlaylistParser(
     }
 
     private fun parseMediaPlaylist(iterator: PlaylistLineIterator, context: ParserContext): ParsedPlaylist {
-        val state = SegmentState()
+        val segmentState = SegmentState()
         val llState = LowLatencyState()
         val segments = mutableListOf<HlsSegment>()
         val builder = StringBuilder("$PLAYLIST_HEADER\n")
@@ -129,25 +129,25 @@ internal class HlsPlaylistParser(
 
             var rewrittenLine = originalLine
             if (trimmed.startsWith("#")) {
-                rewrittenLine = processMediaTag(originalLine, trimmed, state, llState, context)
+                rewrittenLine = processMediaTag(originalLine, trimmed, segmentState, llState, context)
             } else {
-                val seg = createSegment(trimmed, context.baseUri, context.vars, state)
+                val seg = createSegment(trimmed, context.baseUri, context.vars, segmentState)
                 segments.add(seg)
                 urlRewriter.rewriteSegmentUrl(seg.url, seg.byteRange).let { newUrl ->
                     rewrittenLine = originalLine.replaceFirst(trimmed, newUrl)
                 }
-                if (state.length != -1L) state.offset += state.length
-                state.durationUs = 0L
-                state.length = -1L
-                state.programDateTimeUs = null
+                if (segmentState.length != -1L) segmentState.offset += segmentState.length
+                segmentState.durationUs = 0L
+                segmentState.length = -1L
+                segmentState.programDateTimeUs = null
             }
             builder.append(rewrittenLine).append("\n")
         }
 
         val playlist = HlsMediaPlaylist(
             context.baseUri,
-            state.mediaSequence,
-            state.hasEndTag,
+            segmentState.mediaSequence,
+            segmentState.hasEndTag,
             segments,
             llState.parts,
             llState.preloadHints,
