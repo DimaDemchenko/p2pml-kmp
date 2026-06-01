@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.server.services
 
 import com.novage.p2pml.internal.engine.P2PEngine
-import com.novage.p2pml.internal.providers.SequenceStateTracker
+import com.novage.p2pml.internal.playback.SequenceStateTracker
 import com.novage.p2pml.internal.server.exceptions.SegmentAbortedException
 import com.novage.p2pml.internal.server.exceptions.SegmentProcessingException
 import com.novage.p2pml.internal.server.exceptions.SegmentReplacedException

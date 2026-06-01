@@ -17,8 +17,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
 import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
-import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DownloadSource
 import com.novage.p2pml.api.models.DynamicCoreConfig

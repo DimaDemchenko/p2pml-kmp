@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.webview
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.internal.utils.LogConfig
 import kotlin.coroutines.resume

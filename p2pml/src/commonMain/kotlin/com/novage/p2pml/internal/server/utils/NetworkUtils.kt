@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server.utils
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient

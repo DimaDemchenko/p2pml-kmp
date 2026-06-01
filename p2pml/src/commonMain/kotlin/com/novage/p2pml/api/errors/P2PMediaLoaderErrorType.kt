@@ -1,4 +1,4 @@
-package com.novage.p2pml
+package com.novage.p2pml.api.errors
 
 /**
  * Categorizes errors that occur during the media loading process.
