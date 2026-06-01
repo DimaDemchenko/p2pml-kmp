@@ -67,6 +67,7 @@ fun VideoErrorView(errorMessage: String, onBackClick: () -> Unit) {
     }
 }
 
+@Suppress("UnusedPrivateMember")
 @Preview
 @Composable
 private fun VideoErrorViewPreview() {

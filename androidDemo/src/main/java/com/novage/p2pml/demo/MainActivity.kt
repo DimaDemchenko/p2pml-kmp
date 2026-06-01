@@ -14,12 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.demo.ui.navigation.Player
 import com.novage.p2pml.demo.ui.navigation.VideoList
 import com.novage.p2pml.demo.ui.screens.list.VideoListScreen
 import com.novage.p2pml.demo.ui.screens.player.PlayerScreen
 import com.novage.p2pml.demo.ui.theme.P2PDemoTheme
-import com.novage.p2pml.P2PMediaLoader
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

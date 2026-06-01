@@ -118,7 +118,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         manifestUrl: String,
         customEngineUrl: String?
     ) {
-
         val coreConfig = CoreConfig().apply {
             highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC
             isP2PDisabled = !shouldAutoPlay

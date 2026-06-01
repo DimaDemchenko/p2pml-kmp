@@ -54,6 +54,7 @@ fun StatCard(label: String, value: String, color: Color, modifier: Modifier = Mo
     }
 }
 
+@Suppress("UnusedPrivateMember", "MagicNumber")
 @Preview
 @Composable
 private fun StatCardPreview() {
@@ -62,6 +63,7 @@ private fun StatCardPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember", "MagicNumber")
 @Preview
 @Composable
 private fun StatCardLoadingPreview() {
