@@ -43,8 +43,9 @@ struct StatsSection: View {
     private func formatBytes(_ bytes: Int64) -> String {
         let bytesPerKB = 1024.0
         if bytes < Int64(bytesPerKB) { return "\(bytes) B" }
-        let exp = Int(log(Double(bytes)) / log(bytesPerKB))
-        let pre = ["K", "M", "G", "T", "P", "E"][exp - 1]
+        let prefixes = ["K", "M", "G", "T", "P", "E"]
+        let exp = min(Int(log(Double(bytes)) / log(bytesPerKB)), prefixes.count)
+        let pre = prefixes[exp - 1]
         return String(format: "%.1f %@B", Double(bytes) / pow(bytesPerKB, Double(exp)), pre)
     }
 }

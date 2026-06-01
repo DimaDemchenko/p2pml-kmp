@@ -128,7 +128,8 @@ private fun LiveStatsGrid(uiState: PlayerUiState, isInitialLoading: Boolean) {
 
 private fun formatBytes(bytes: Long): String {
     if (bytes < BYTES_PER_KB) return "$bytes B"
-    val exp = (ln(bytes.toDouble()) / ln(BYTES_PER_KB)).toInt()
-    val pre = "KMGTPE"[exp - 1]
+    val prefixes = "KMGTPE"
+    val exp = minOf((ln(bytes.toDouble()) / ln(BYTES_PER_KB)).toInt(), prefixes.length)
+    val pre = prefixes[exp - 1]
     return String.format(Locale.US, "%.1f %sB", bytes / BYTES_PER_KB.pow(exp.toDouble()), pre)
 }
