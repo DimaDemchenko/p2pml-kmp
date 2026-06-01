@@ -1,9 +1,9 @@
 package com.novage.p2pml.api.models
 
+import kotlin.experimental.ExperimentalObjCName
 import kotlin.native.ObjCName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.experimental.ExperimentalObjCName
 
 /**
  * Represents the source from which a segment or chunk was downloaded.
