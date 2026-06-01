@@ -20,6 +20,7 @@ import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.P2PMediaLoaderErrorType
 import com.novage.p2pml.P2PMediaLoaderException
 import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.models.DownloadSource
 import com.novage.p2pml.api.models.DynamicCoreConfig
 import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
@@ -212,12 +213,12 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 _uiState.update { state ->
                     state.copy(
                         totalDownloaded = state.totalDownloaded + chunk.bytesLength,
-                        p2pDownloaded = if (chunk.downloadSource == "p2p") {
+                        p2pDownloaded = if (chunk.downloadSource == DownloadSource.P2P) {
                             state.p2pDownloaded + chunk.bytesLength
                         } else {
                             state.p2pDownloaded
                         },
-                        httpDownloaded = if (chunk.downloadSource == "http") {
+                        httpDownloaded = if (chunk.downloadSource == DownloadSource.HTTP) {
                             state.httpDownloaded + chunk.bytesLength
                         } else {
                             state.httpDownloaded

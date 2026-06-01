@@ -1,6 +1,23 @@
 package com.novage.p2pml.api.models
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+/**
+ * Represents the source from which a segment or chunk was downloaded.
+ */
+@Serializable
+enum class DownloadSource(val value: String) {
+    /** The data was loaded via a peer-to-peer connection. */
+    @SerialName("p2p") P2P("p2p"),
+    /** The data was loaded via HTTP. */
+    @SerialName("http") HTTP("http");
+
+    companion object {
+        fun fromValue(value: String): DownloadSource =
+            entries.first { it.value == value }
+    }
+}
 
 /**
  * Represents the details of a peer in a peer-to-peer network.
@@ -33,7 +50,7 @@ data class PeerErrorDetails(val peerId: String, val streamType: String, val erro
 data class SegmentLoadDetails(
     val segmentUrl: String,
     val bytesLength: Int,
-    val downloadSource: String,
+    val downloadSource: DownloadSource,
     val peerId: String? = null,
     val streamType: String
 )
@@ -46,7 +63,7 @@ data class SegmentLoadDetails(
  * @property peerId The ID of the peer from which the segment was downloaded.
  */
 @Serializable
-data class SegmentStartDetails(val segment: Segment, val downloadSource: String, val peerId: String? = null)
+data class SegmentStartDetails(val segment: Segment, val downloadSource: DownloadSource, val peerId: String? = null)
 
 /**
  * Represents details about a segment error event.
@@ -61,7 +78,7 @@ data class SegmentStartDetails(val segment: Segment, val downloadSource: String,
 data class SegmentErrorDetails(
     val error: String,
     val segment: Segment,
-    val downloadSource: String,
+    val downloadSource: DownloadSource,
     val peerId: String?,
     val streamType: String
 )
@@ -77,7 +94,7 @@ data class SegmentErrorDetails(
 @Serializable
 data class SegmentAbortDetails(
     val segment: Segment,
-    val downloadSource: String,
+    val downloadSource: DownloadSource,
     val peerId: String? = null,
     val streamType: String
 )
@@ -90,7 +107,7 @@ data class SegmentAbortDetails(
  * @property peerId The ID of the peer from which the chunk was downloaded (if downloaded from a
  *   peer).
  */
-data class ChunkDownloadedDetails(val bytesLength: Int, val downloadSource: String, val peerId: String?)
+data class ChunkDownloadedDetails(val bytesLength: Int, val downloadSource: DownloadSource, val peerId: String?)
 
 /**
  * Represents the details of a chunk uploaded event.

@@ -3,6 +3,7 @@ package com.novage.p2pml.internal.webview
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
+import com.novage.p2pml.api.models.DownloadSource
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage
@@ -43,7 +44,7 @@ internal class IosWebViewEventDispatcher(
         val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val downloadSource = dict.objectForKey("downloadSource") as? String ?: return
         val peerId = dict.objectForKey("peerId") as? String
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, downloadSource, peerId))
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, DownloadSource.fromValue(downloadSource), peerId))
     }
 
     private fun handleChunkUploaded(body: Any?) {
