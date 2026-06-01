@@ -121,8 +121,8 @@ class PlayerViewModel: ObservableObject {
 
             var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0, isAudio: false)]
 
-            if let urlAsset = asset as? AVURLAsset {
-                let variants = try await urlAsset.load(.variants)
+            if let urlAsset = asset as? AVURLAsset,
+               let variants = try? await urlAsset.load(.variants) {
                 var seenHeights = Set<Int>()
                 let sorted = variants
                 .filter { $0.videoAttributes != nil }
