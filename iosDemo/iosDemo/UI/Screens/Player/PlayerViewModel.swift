@@ -1,7 +1,10 @@
 import Foundation
 import AVKit
 import Combine
+import os
 import P2PML
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.novage.p2pml", category: "PlayerViewModel")
 
 private let highDemandWindowSec: Int32 = 45
 private let preferredBufferDurationSec = 45.0
@@ -27,10 +30,10 @@ class PlayerViewModel: ObservableObject {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            print("Failed to set audio session category: \(error)")
+            logger.warning("Failed to set audio session category: \(error.localizedDescription)")
         }
 
-        P2PMediaLoader.companion.enableLogging()
+
 
         let coreConfig = CoreConfig()
         coreConfig.highDemandTimeWindow = highDemandWindowSec
@@ -110,7 +113,7 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func populateAvailableTracks(for playerItem: AVPlayerItem) {
-        Task {
+        let task = Task {
             let asset = playerItem.asset
             let currentBitrate = playerItem.preferredPeakBitRate
 
@@ -170,6 +173,7 @@ class PlayerViewModel: ObservableObject {
                 audioTracks: audioTracks
             )
         }
+        eventTasks.append(task)
     }
 
     func changeTrack(_ track: MediaTrack) {
@@ -253,7 +257,7 @@ class PlayerViewModel: ObservableObject {
         do {
             try loader.applyDynamicConfig(dynamicCoreConfig: config)
         } catch {
-            print("Failed to apply dynamic config: \(error)")
+            logger.warning("Failed to apply dynamic config: \(error.localizedDescription)")
         }
     }
 

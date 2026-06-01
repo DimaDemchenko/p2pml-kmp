@@ -19,11 +19,13 @@ import com.novage.p2pml.demo.ui.navigation.VideoList
 import com.novage.p2pml.demo.ui.screens.list.VideoListScreen
 import com.novage.p2pml.demo.ui.screens.player.PlayerScreen
 import com.novage.p2pml.demo.ui.theme.P2PDemoTheme
+import com.novage.p2pml.P2PMediaLoader
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        P2PMediaLoader.enableLogging()
 
         // Pre-warm the native Chromium engine during Activity startup.
         // On Android 12+, this processing happens cleanly behind the system Splash Screen.

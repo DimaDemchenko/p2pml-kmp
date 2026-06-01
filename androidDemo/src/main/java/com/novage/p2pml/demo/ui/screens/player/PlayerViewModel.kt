@@ -87,8 +87,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 override fun onTracksChanged(tracks: Tracks) {
                     currentTracks = tracks
 
-                    val tracks = getAvailableTracks(tracks, exoPlayer.trackSelectionParameters)
-                    _uiState.update { it.copy(availableTracks = tracks) }
+                    val availableTracks = getAvailableTracks(tracks, exoPlayer.trackSelectionParameters)
+                    _uiState.update { it.copy(availableTracks = availableTracks) }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -118,7 +118,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         manifestUrl: String,
         customEngineUrl: String?
     ) {
-        P2PMediaLoader.enableLogging()
 
         val coreConfig = CoreConfig().apply {
             highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC
