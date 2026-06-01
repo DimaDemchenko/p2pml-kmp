@@ -3,6 +3,7 @@ package com.novage.p2pml.api.models
 import kotlin.native.ObjCName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.experimental.ExperimentalObjCName
 
 /**
  * Represents the source from which a segment or chunk was downloaded.
@@ -10,11 +11,13 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class DownloadSource(val value: String) {
     /** The data was loaded via a peer-to-peer connection. */
+    @OptIn(ExperimentalObjCName::class)
     @SerialName("p2p")
     @ObjCName(swiftName = "p2p")
     P2P("p2p"),
 
     /** The data was loaded via HTTP. */
+    @OptIn(ExperimentalObjCName::class)
     @SerialName("http")
     @ObjCName(swiftName = "http")
     HTTP("http");
