@@ -3,11 +3,11 @@ import AVKit
 import Combine
 import P2PML
 
-private let kHighDemandWindowSec = 45
-private let kPreferredBufferDurationSec = 45.0
-private let kSimultaneousP2PDownloads: Int32 = 3
-private let kWebRtcMaxMessageSize: Int32 = 65535
-private let kP2PNotReceivingBytesTimeoutMs: Int32 = 1000
+private let highDemandWindowSec: Int32 = 45
+private let preferredBufferDurationSec = 45.0
+private let simultaneousP2PDownloads: Int32 = 3
+private let webRtcMaxMessageSize: Int32 = 65535
+private let p2pNotReceivingBytesTimeoutMs: Int32 = 1000
 
 @MainActor
 class PlayerViewModel: ObservableObject {
@@ -33,11 +33,11 @@ class PlayerViewModel: ObservableObject {
         P2PMediaLoader.companion.enableLogging()
 
         let coreConfig = CoreConfig()
-        coreConfig.highDemandTimeWindow = Int32(kHighDemandWindowSec)
+        coreConfig.highDemandTimeWindow = highDemandWindowSec
         coreConfig.isP2PDisabled = !shouldAutoPlay
-        coreConfig.simultaneousP2PDownloads = kSimultaneousP2PDownloads
-        coreConfig.webRtcMaxMessageSize = kWebRtcMaxMessageSize
-        coreConfig.p2pNotReceivingBytesTimeoutMs = kP2PNotReceivingBytesTimeoutMs
+        coreConfig.simultaneousP2PDownloads = simultaneousP2PDownloads
+        coreConfig.webRtcMaxMessageSize = webRtcMaxMessageSize
+        coreConfig.p2pNotReceivingBytesTimeoutMs = p2pNotReceivingBytesTimeoutMs
         coreConfig.validateHTTPSegmentJs = """
             (url, byteRange, data) => {
                 console.log(`Validating segment: ${url} Range: ${byteRange}`);
@@ -90,7 +90,7 @@ class PlayerViewModel: ObservableObject {
         }
 
         let playerItem = AVPlayerItem(url: urlObj)
-        playerItem.preferredForwardBufferDuration = kPreferredBufferDurationSec
+        playerItem.preferredForwardBufferDuration = preferredBufferDurationSec
         
         // Replace the item on the existing player created during initialization
         self.player?.replaceCurrentItem(with: playerItem)
