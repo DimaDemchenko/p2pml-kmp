@@ -174,6 +174,8 @@ class PlayerViewModel: ObservableObject {
                 }
             }
 
+            guard !Task.isCancelled else { return }
+
             uiState.availableTracks = AvailableTracks(
                 videoTracks: videoTracks,
                 audioTracks: audioTracks
