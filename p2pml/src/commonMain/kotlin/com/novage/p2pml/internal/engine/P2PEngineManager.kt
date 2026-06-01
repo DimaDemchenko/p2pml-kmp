@@ -75,7 +75,7 @@ internal class P2PEngineManager(
     }
 
     private fun evaluate(script: String) {
-        webView.evaluateJavascript("javascript:$script", null)
+        webView.evaluateJavascript(script, null)
     }
 
     override fun updatePlaybackInfo(info: PlaybackInfo) {
