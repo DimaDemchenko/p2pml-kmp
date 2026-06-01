@@ -331,13 +331,15 @@ internal class HlsPlaylistParser(
             builder.append(rewrittenLine).append("\n")
         }
 
+        val grouped = renditions.groupBy({ it.type }, { it.rendition })
+
         val playlist = HlsMultivariantPlaylist(
             baseUri = context.baseUri,
             variants = variants,
-            videos = renditions.filter { it.type == TYPE_VIDEO }.map { it.rendition },
-            audios = renditions.filter { it.type == TYPE_AUDIO }.map { it.rendition },
-            subtitles = renditions.filter { it.type == TYPE_SUBTITLES }.map { it.rendition },
-            closedCaptions = renditions.filter { it.type == TYPE_CLOSED_CAPTIONS }.map { it.rendition },
+            videos = grouped[TYPE_VIDEO].orEmpty(),
+            audios = grouped[TYPE_AUDIO].orEmpty(),
+            subtitles = grouped[TYPE_SUBTITLES].orEmpty(),
+            closedCaptions = grouped[TYPE_CLOSED_CAPTIONS].orEmpty(),
             sessionKeyUrls = sessionKeys
         )
         return ParsedPlaylist(playlist, builder.toString())
