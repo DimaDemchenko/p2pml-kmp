@@ -8,4 +8,8 @@ struct AppColors {
     static let gray900 = Color(red: 0x12/255, green: 0x12/255, blue: 0x12/255)
     static let gray800 = Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
     static let gray400 = Color(red: 0xBD/255, green: 0xBD/255, blue: 0xBD/255)
+
+    // Material3 dark theme error container defaults
+    static let errorContainer = Color(red: 0x93/255, green: 0x00/255, blue: 0x0A/255)
+    static let onErrorContainer = Color(red: 0xFF/255, green: 0xDA/255, blue: 0xD6/255)
 }

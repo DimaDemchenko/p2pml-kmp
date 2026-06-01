@@ -31,11 +31,10 @@ struct PlayerScreen: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         .padding(.bottom, 32)
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                showSnackbar = false
-                                viewModel.onMessageConsumed()
-                            }
+                        .task {
+                            try? await Task.sleep(for: .seconds(3))
+                            showSnackbar = false
+                            viewModel.onMessageConsumed()
                         }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
