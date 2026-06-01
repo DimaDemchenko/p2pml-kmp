@@ -117,14 +117,18 @@ internal class P2PMediaLoaderCore(
         }
 
         if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
-            this@P2PMediaLoaderCore.activeSession = null
+            val orphanedSession = if (this@P2PMediaLoaderCore.activeSession === session) {
+                this@P2PMediaLoaderCore.activeSession = null
+                session
+            } else {
+                null
+            }
+
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
 
-            val isReleaseInProgress = status.value == LoaderStatus.RELEASING ||
-                status.value == LoaderStatus.RELEASED
-            if (!isReleaseInProgress) {
+            if (orphanedSession != null) {
                 withContext(NonCancellable + Dispatchers.IO) {
-                    runCatching { session.destroy() }.onFailure { e ->
+                    runCatching { orphanedSession.destroy() }.onFailure { e ->
                         logger.e(e) { "Error destroying orphaned session: ${e.message}" }
                     }
                 }
