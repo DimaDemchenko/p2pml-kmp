@@ -174,62 +174,50 @@ class DynamicStreamConfig {
     @SerialName("p2pErrorRetries")
     private var _p2pErrorRetries: Int? = null
 
-    @Transient
     var highDemandTimeWindow: Int
         get() = _highDemandTimeWindow ?: -1
         set(value) { _highDemandTimeWindow = value }
 
-    @Transient
     var httpDownloadTimeWindow: Int
         get() = _httpDownloadTimeWindow ?: -1
         set(value) { _httpDownloadTimeWindow = value }
 
-    @Transient
     var httpDownloadInitialTimeoutMs: Int
         get() = _httpDownloadInitialTimeoutMs ?: -1
         set(value) { _httpDownloadInitialTimeoutMs = value }
 
-    @Transient
     var p2pDownloadTimeWindow: Int
         get() = _p2pDownloadTimeWindow ?: -1
         set(value) { _p2pDownloadTimeWindow = value }
 
-    @Transient
     var simultaneousHttpDownloads: Int
         get() = _simultaneousHttpDownloads ?: -1
         set(value) { _simultaneousHttpDownloads = value }
 
-    @Transient
     var simultaneousP2PDownloads: Int
         get() = _simultaneousP2PDownloads ?: -1
         set(value) { _simultaneousP2PDownloads = value }
 
-    @Transient
     var webRtcMaxMessageSize: Int
         get() = _webRtcMaxMessageSize ?: -1
         set(value) { _webRtcMaxMessageSize = value }
 
-    @Transient
     var p2pNotReceivingBytesTimeoutMs: Int
         get() = _p2pNotReceivingBytesTimeoutMs ?: -1
         set(value) { _p2pNotReceivingBytesTimeoutMs = value }
 
-    @Transient
     var p2pInactiveLoaderDestroyTimeoutMs: Int
         get() = _p2pInactiveLoaderDestroyTimeoutMs ?: -1
         set(value) { _p2pInactiveLoaderDestroyTimeoutMs = value }
 
-    @Transient
     var httpNotReceivingBytesTimeoutMs: Int
         get() = _httpNotReceivingBytesTimeoutMs ?: -1
         set(value) { _httpNotReceivingBytesTimeoutMs = value }
 
-    @Transient
     var httpErrorRetries: Int
         get() = _httpErrorRetries ?: -1
         set(value) { _httpErrorRetries = value }
 
-    @Transient
     var p2pErrorRetries: Int
         get() = _p2pErrorRetries ?: -1
         set(value) { _p2pErrorRetries = value }
@@ -240,14 +228,12 @@ class DynamicStreamConfig {
     @SerialName("isP2PUploadDisabled")
     private var _isP2PUploadDisabled: Boolean? = null
 
-    @Transient
     var isP2PDisabled: Boolean
         get() = _isP2PDisabled ?: false
         set(value) {
             _isP2PDisabled = value
         }
 
-    @Transient
     var isP2PUploadDisabled: Boolean
         get() = _isP2PUploadDisabled ?: false
         set(value) {
@@ -326,67 +312,54 @@ class DynamicCoreConfig {
     @SerialName("p2pErrorRetries")
     private var _p2pErrorRetries: Int? = null
 
-    @Transient
     var segmentMemoryStorageLimit: Int
         get() = _segmentMemoryStorageLimit ?: -1
         set(value) { _segmentMemoryStorageLimit = value }
 
-    @Transient
     var highDemandTimeWindow: Int
         get() = _highDemandTimeWindow ?: -1
         set(value) { _highDemandTimeWindow = value }
 
-    @Transient
     var httpDownloadTimeWindow: Int
         get() = _httpDownloadTimeWindow ?: -1
         set(value) { _httpDownloadTimeWindow = value }
 
-    @Transient
     var httpDownloadInitialTimeoutMs: Int
         get() = _httpDownloadInitialTimeoutMs ?: -1
         set(value) { _httpDownloadInitialTimeoutMs = value }
 
-    @Transient
     var p2pDownloadTimeWindow: Int
         get() = _p2pDownloadTimeWindow ?: -1
         set(value) { _p2pDownloadTimeWindow = value }
 
-    @Transient
     var simultaneousHttpDownloads: Int
         get() = _simultaneousHttpDownloads ?: -1
         set(value) { _simultaneousHttpDownloads = value }
 
-    @Transient
     var simultaneousP2PDownloads: Int
         get() = _simultaneousP2PDownloads ?: -1
         set(value) { _simultaneousP2PDownloads = value }
 
-    @Transient
     var webRtcMaxMessageSize: Int
         get() = _webRtcMaxMessageSize ?: -1
         set(value) { _webRtcMaxMessageSize = value }
 
-    @Transient
     var p2pNotReceivingBytesTimeoutMs: Int
         get() = _p2pNotReceivingBytesTimeoutMs ?: -1
         set(value) { _p2pNotReceivingBytesTimeoutMs = value }
 
-    @Transient
     var p2pInactiveLoaderDestroyTimeoutMs: Int
         get() = _p2pInactiveLoaderDestroyTimeoutMs ?: -1
         set(value) { _p2pInactiveLoaderDestroyTimeoutMs = value }
 
-    @Transient
     var httpNotReceivingBytesTimeoutMs: Int
         get() = _httpNotReceivingBytesTimeoutMs ?: -1
         set(value) { _httpNotReceivingBytesTimeoutMs = value }
 
-    @Transient
     var httpErrorRetries: Int
         get() = _httpErrorRetries ?: -1
         set(value) { _httpErrorRetries = value }
 
-    @Transient
     var p2pErrorRetries: Int
         get() = _p2pErrorRetries ?: -1
         set(value) { _p2pErrorRetries = value }
@@ -397,14 +370,12 @@ class DynamicCoreConfig {
     @SerialName("isP2PUploadDisabled")
     private var _isP2PUploadDisabled: Boolean? = null
 
-    @Transient
     var isP2PDisabled: Boolean
         get() = _isP2PDisabled ?: false
         set(value) {
             _isP2PDisabled = value
         }
 
-    @Transient
     var isP2PUploadDisabled: Boolean
         get() = _isP2PUploadDisabled ?: false
         set(value) {
