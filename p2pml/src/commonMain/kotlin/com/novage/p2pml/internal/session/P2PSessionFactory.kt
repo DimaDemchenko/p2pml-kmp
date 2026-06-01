@@ -3,6 +3,7 @@ package com.novage.p2pml.internal.session
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
 import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestManager
@@ -31,7 +32,7 @@ internal class P2PSessionFactory(
     private val engineProvider: suspend (
         WebViewFactory,
         P2PEventRegistry
-    ) -> P2PEngineManager = { webViewFactory, events ->
+    ) -> P2PEngine = { webViewFactory, events ->
         withContext(Dispatchers.Main) {
             val webView = webViewFactory.createHeadlessWebView(events) { exception ->
                 errorDispatcher.tryEmit(exception.type, exception.message ?: "Unknown error")
@@ -104,7 +105,7 @@ internal class P2PSessionFactory(
     }
 
     private suspend fun startServerAndEngine(
-        engine: P2PEngineManager,
+        engine: P2PEngine,
         serverModule: ServerModule,
         urlFactory: LocalUrlFactory
     ) {
