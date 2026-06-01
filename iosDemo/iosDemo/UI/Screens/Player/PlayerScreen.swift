@@ -31,11 +31,6 @@ struct PlayerScreen: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         .padding(.bottom, 32)
-                        .task {
-                            try? await Task.sleep(for: .seconds(3))
-                            showSnackbar = false
-                            viewModel.onMessageConsumed()
-                        }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .animation(.easeInOut, value: showSnackbar)
@@ -51,6 +46,12 @@ struct PlayerScreen: View {
         }
         .onChange(of: viewModel.uiState.userMessage) { msg in
             if msg != nil { showSnackbar = true }
+        }
+        .task(id: showSnackbar) {
+            guard showSnackbar else { return }
+            try? await Task.sleep(for: .seconds(3))
+            showSnackbar = false
+            viewModel.onMessageConsumed()
         }
     }
 }
