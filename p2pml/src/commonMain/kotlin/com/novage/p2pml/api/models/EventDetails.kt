@@ -1,5 +1,6 @@
 package com.novage.p2pml.api.models
 
+import kotlin.native.ObjCName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,10 +11,12 @@ import kotlinx.serialization.Serializable
 enum class DownloadSource(val value: String) {
     /** The data was loaded via a peer-to-peer connection. */
     @SerialName("p2p")
+    @ObjCName(swiftName = "p2p")
     P2P("p2p"),
 
     /** The data was loaded via HTTP. */
     @SerialName("http")
+    @ObjCName(swiftName = "http")
     HTTP("http");
 
     companion object {
