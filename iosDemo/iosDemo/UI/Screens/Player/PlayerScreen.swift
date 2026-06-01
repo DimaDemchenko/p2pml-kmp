@@ -41,9 +41,6 @@ struct PlayerScreen: View {
         .onAppear {
             viewModel.initializePlayer(manifestUrl: videoUrl, customEngineUrl: customEngineUrl)
         }
-        .onDisappear {
-            viewModel.releaseResources()
-        }
         .onChange(of: viewModel.uiState.userMessage) { msg in
             if msg != nil { showSnackbar = true }
         }

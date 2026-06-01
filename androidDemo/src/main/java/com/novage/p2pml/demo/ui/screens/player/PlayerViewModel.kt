@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
@@ -95,6 +96,12 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
                     _uiState.update { it.copy(isVideoReady = true) }
                 }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    _uiState.update {
+                        it.copy(fatalError = "Playback error: ${error.message}")
+                    }
+                }
             })
 
             exoPlayer.playWhenReady = shouldAutoPlay
@@ -179,7 +186,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 }
             }
 
-            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> TODO()
+            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> {
+                Log.w("PlayerViewModel", "Segment download error: $msg")
+            }
         }
     }
 

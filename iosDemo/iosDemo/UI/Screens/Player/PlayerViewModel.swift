@@ -271,4 +271,16 @@ class PlayerViewModel: ObservableObject {
         
         p2pLoader = nil
     }
+
+    nonisolated deinit {
+        let player = MainActor.assumeIsolated { self.player }
+        let observer = MainActor.assumeIsolated { self.playerItemObserver }
+        let tasks = MainActor.assumeIsolated { self.eventTasks }
+        let loader = MainActor.assumeIsolated { self.p2pLoader }
+
+        player?.pause()
+        observer?.invalidate()
+        tasks.forEach { $0.cancel() }
+        loader?.release()
+    }
 }
