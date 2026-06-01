@@ -1,9 +1,11 @@
 package com.novage.p2pml
 
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.internal.providers.AVPlayerPlaybackProvider
+import com.novage.p2pml.internal.core.P2PMediaLoaderCore
+import com.novage.p2pml.internal.playback.AVPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
 import kotlinx.coroutines.CancellationException
 import platform.AVFoundation.AVPlayer

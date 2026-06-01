@@ -1,4 +1,4 @@
-package com.novage.p2pml.api.interop
+package com.novage.p2pml.api
 
 import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider

@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.server
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.server.plugins.configureCORS
 import com.novage.p2pml.internal.server.routes.configureRoutes

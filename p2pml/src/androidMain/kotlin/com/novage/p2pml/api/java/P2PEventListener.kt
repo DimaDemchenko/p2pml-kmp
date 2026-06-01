@@ -1,4 +1,4 @@
-package com.novage.p2pml.api.interop
+package com.novage.p2pml.api.java
 
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails

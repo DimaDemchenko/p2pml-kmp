@@ -9,8 +9,8 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.novage.p2pml.P2PMediaLoaderErrorType
-import com.novage.p2pml.P2PMediaLoaderException
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException

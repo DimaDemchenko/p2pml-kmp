@@ -1,5 +1,7 @@
-package com.novage.p2pml
+package com.novage.p2pml.internal.core
 
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig

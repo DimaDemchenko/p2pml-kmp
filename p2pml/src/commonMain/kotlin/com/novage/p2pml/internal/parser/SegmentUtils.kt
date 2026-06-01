@@ -1,4 +1,4 @@
-package com.novage.p2pml.internal.utils
+package com.novage.p2pml.internal.parser
 
 import com.novage.p2pml.api.models.ByteRange
 

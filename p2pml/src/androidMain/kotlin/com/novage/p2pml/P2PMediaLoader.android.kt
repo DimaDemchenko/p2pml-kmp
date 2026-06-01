@@ -2,10 +2,12 @@ package com.novage.p2pml
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
-import com.novage.p2pml.internal.providers.ExoPlayerPlaybackProvider
+import com.novage.p2pml.internal.core.P2PMediaLoaderCore
+import com.novage.p2pml.internal.playback.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
 import kotlinx.coroutines.CancellationException
 

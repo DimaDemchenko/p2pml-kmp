@@ -1,4 +1,4 @@
-package com.novage.p2pml.internal.utils
+package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
 private val AUDIO_CODEC_PREFIXES = listOf("mp4a", "ac-3", "ec-3", "opus", "vorbis", "flac")
 

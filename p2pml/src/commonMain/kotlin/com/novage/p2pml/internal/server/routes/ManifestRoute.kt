@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.utils.fetchManifest
 import com.novage.p2pml.internal.utils.CoreLogger

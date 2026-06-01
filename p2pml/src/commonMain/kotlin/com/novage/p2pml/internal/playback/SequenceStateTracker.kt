@@ -1,6 +1,6 @@
-package com.novage.p2pml.internal.providers
+package com.novage.p2pml.internal.playback
 
-import com.novage.p2pml.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo

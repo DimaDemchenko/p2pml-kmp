@@ -7,7 +7,7 @@ import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
 import com.novage.p2pml.internal.http.createHttpClient
 import com.novage.p2pml.internal.parser.HlsManifestManager
-import com.novage.p2pml.internal.providers.SequenceStateTracker
+import com.novage.p2pml.internal.playback.SequenceStateTracker
 import com.novage.p2pml.internal.server.ServerModule
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.server.services.ManifestService
