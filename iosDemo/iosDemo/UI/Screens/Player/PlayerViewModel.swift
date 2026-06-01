@@ -276,7 +276,7 @@ class PlayerViewModel: ObservableObject {
         p2pLoader = nil
     }
 
-    nonisolated deinit {
+    deinit {
         let player = MainActor.assumeIsolated { self.player }
         let observer = MainActor.assumeIsolated { self.playerItemObserver }
         let tasks = MainActor.assumeIsolated { self.eventTasks }
