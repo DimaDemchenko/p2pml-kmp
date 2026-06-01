@@ -138,113 +138,18 @@ class CoreConfig {
  */
 @Serializable
 class DynamicStreamConfig {
-    @SerialName("highDemandTimeWindow")
-    private var _highDemandTimeWindow: Int? = null
-
-    @SerialName("httpDownloadTimeWindow")
-    private var _httpDownloadTimeWindow: Int? = null
-
-    @SerialName("httpDownloadInitialTimeoutMs")
-    private var _httpDownloadInitialTimeoutMs: Int? = null
-
-    @SerialName("p2pDownloadTimeWindow")
-    private var _p2pDownloadTimeWindow: Int? = null
-
-    @SerialName("simultaneousHttpDownloads")
-    private var _simultaneousHttpDownloads: Int? = null
-
-    @SerialName("simultaneousP2PDownloads")
-    private var _simultaneousP2PDownloads: Int? = null
-
-    @SerialName("webRtcMaxMessageSize")
-    private var _webRtcMaxMessageSize: Int? = null
-
-    @SerialName("p2pNotReceivingBytesTimeoutMs")
-    private var _p2pNotReceivingBytesTimeoutMs: Int? = null
-
-    @SerialName("p2pInactiveLoaderDestroyTimeoutMs")
-    private var _p2pInactiveLoaderDestroyTimeoutMs: Int? = null
-
-    @SerialName("httpNotReceivingBytesTimeoutMs")
-    private var _httpNotReceivingBytesTimeoutMs: Int? = null
-
-    @SerialName("httpErrorRetries")
-    private var _httpErrorRetries: Int? = null
-
-    @SerialName("p2pErrorRetries")
-    private var _p2pErrorRetries: Int? = null
-
-    var highDemandTimeWindow: Int
-        get() = _highDemandTimeWindow ?: -1
-        set(value) {
-            _highDemandTimeWindow = value
-        }
-
-    var httpDownloadTimeWindow: Int
-        get() = _httpDownloadTimeWindow ?: -1
-        set(value) {
-            _httpDownloadTimeWindow = value
-        }
-
-    var httpDownloadInitialTimeoutMs: Int
-        get() = _httpDownloadInitialTimeoutMs ?: -1
-        set(value) {
-            _httpDownloadInitialTimeoutMs = value
-        }
-
-    var p2pDownloadTimeWindow: Int
-        get() = _p2pDownloadTimeWindow ?: -1
-        set(value) {
-            _p2pDownloadTimeWindow = value
-        }
-
-    var simultaneousHttpDownloads: Int
-        get() = _simultaneousHttpDownloads ?: -1
-        set(value) {
-            _simultaneousHttpDownloads = value
-        }
-
-    var simultaneousP2PDownloads: Int
-        get() = _simultaneousP2PDownloads ?: -1
-        set(value) {
-            _simultaneousP2PDownloads = value
-        }
-
-    var webRtcMaxMessageSize: Int
-        get() = _webRtcMaxMessageSize ?: -1
-        set(value) {
-            _webRtcMaxMessageSize = value
-        }
-
-    var p2pNotReceivingBytesTimeoutMs: Int
-        get() = _p2pNotReceivingBytesTimeoutMs ?: -1
-        set(value) {
-            _p2pNotReceivingBytesTimeoutMs = value
-        }
-
-    var p2pInactiveLoaderDestroyTimeoutMs: Int
-        get() = _p2pInactiveLoaderDestroyTimeoutMs ?: -1
-        set(value) {
-            _p2pInactiveLoaderDestroyTimeoutMs = value
-        }
-
-    var httpNotReceivingBytesTimeoutMs: Int
-        get() = _httpNotReceivingBytesTimeoutMs ?: -1
-        set(value) {
-            _httpNotReceivingBytesTimeoutMs = value
-        }
-
-    var httpErrorRetries: Int
-        get() = _httpErrorRetries ?: -1
-        set(value) {
-            _httpErrorRetries = value
-        }
-
-    var p2pErrorRetries: Int
-        get() = _p2pErrorRetries ?: -1
-        set(value) {
-            _p2pErrorRetries = value
-        }
+    var highDemandTimeWindow: Int = -1
+    var httpDownloadTimeWindow: Int = -1
+    var httpDownloadInitialTimeoutMs: Int = -1
+    var p2pDownloadTimeWindow: Int = -1
+    var simultaneousHttpDownloads: Int = -1
+    var simultaneousP2PDownloads: Int = -1
+    var webRtcMaxMessageSize: Int = -1
+    var p2pNotReceivingBytesTimeoutMs: Int = -1
+    var p2pInactiveLoaderDestroyTimeoutMs: Int = -1
+    var httpNotReceivingBytesTimeoutMs: Int = -1
+    var httpErrorRetries: Int = -1
+    var p2pErrorRetries: Int = -1
 
     @SerialName("isP2PDisabled")
     private var _isP2PDisabled: Boolean? = null
@@ -295,124 +200,22 @@ class DynamicStreamConfig {
  */
 @Serializable
 class DynamicCoreConfig {
-    @SerialName("segmentMemoryStorageLimit")
-    private var _segmentMemoryStorageLimit: Int? = null
+    var segmentMemoryStorageLimit: Int = -1
 
     @Transient var customSegmentStorageFactoryJs: String? = null
 
-    @SerialName("highDemandTimeWindow")
-    private var _highDemandTimeWindow: Int? = null
-
-    @SerialName("httpDownloadTimeWindow")
-    private var _httpDownloadTimeWindow: Int? = null
-
-    @SerialName("httpDownloadInitialTimeoutMs")
-    private var _httpDownloadInitialTimeoutMs: Int? = null
-
-    @SerialName("p2pDownloadTimeWindow")
-    private var _p2pDownloadTimeWindow: Int? = null
-
-    @SerialName("simultaneousHttpDownloads")
-    private var _simultaneousHttpDownloads: Int? = null
-
-    @SerialName("simultaneousP2PDownloads")
-    private var _simultaneousP2PDownloads: Int? = null
-
-    @SerialName("webRtcMaxMessageSize")
-    private var _webRtcMaxMessageSize: Int? = null
-
-    @SerialName("p2pNotReceivingBytesTimeoutMs")
-    private var _p2pNotReceivingBytesTimeoutMs: Int? = null
-
-    @SerialName("p2pInactiveLoaderDestroyTimeoutMs")
-    private var _p2pInactiveLoaderDestroyTimeoutMs: Int? = null
-
-    @SerialName("httpNotReceivingBytesTimeoutMs")
-    private var _httpNotReceivingBytesTimeoutMs: Int? = null
-
-    @SerialName("httpErrorRetries")
-    private var _httpErrorRetries: Int? = null
-
-    @SerialName("p2pErrorRetries")
-    private var _p2pErrorRetries: Int? = null
-
-    var segmentMemoryStorageLimit: Int
-        get() = _segmentMemoryStorageLimit ?: -1
-        set(value) {
-            _segmentMemoryStorageLimit = value
-        }
-
-    var highDemandTimeWindow: Int
-        get() = _highDemandTimeWindow ?: -1
-        set(value) {
-            _highDemandTimeWindow = value
-        }
-
-    var httpDownloadTimeWindow: Int
-        get() = _httpDownloadTimeWindow ?: -1
-        set(value) {
-            _httpDownloadTimeWindow = value
-        }
-
-    var httpDownloadInitialTimeoutMs: Int
-        get() = _httpDownloadInitialTimeoutMs ?: -1
-        set(value) {
-            _httpDownloadInitialTimeoutMs = value
-        }
-
-    var p2pDownloadTimeWindow: Int
-        get() = _p2pDownloadTimeWindow ?: -1
-        set(value) {
-            _p2pDownloadTimeWindow = value
-        }
-
-    var simultaneousHttpDownloads: Int
-        get() = _simultaneousHttpDownloads ?: -1
-        set(value) {
-            _simultaneousHttpDownloads = value
-        }
-
-    var simultaneousP2PDownloads: Int
-        get() = _simultaneousP2PDownloads ?: -1
-        set(value) {
-            _simultaneousP2PDownloads = value
-        }
-
-    var webRtcMaxMessageSize: Int
-        get() = _webRtcMaxMessageSize ?: -1
-        set(value) {
-            _webRtcMaxMessageSize = value
-        }
-
-    var p2pNotReceivingBytesTimeoutMs: Int
-        get() = _p2pNotReceivingBytesTimeoutMs ?: -1
-        set(value) {
-            _p2pNotReceivingBytesTimeoutMs = value
-        }
-
-    var p2pInactiveLoaderDestroyTimeoutMs: Int
-        get() = _p2pInactiveLoaderDestroyTimeoutMs ?: -1
-        set(value) {
-            _p2pInactiveLoaderDestroyTimeoutMs = value
-        }
-
-    var httpNotReceivingBytesTimeoutMs: Int
-        get() = _httpNotReceivingBytesTimeoutMs ?: -1
-        set(value) {
-            _httpNotReceivingBytesTimeoutMs = value
-        }
-
-    var httpErrorRetries: Int
-        get() = _httpErrorRetries ?: -1
-        set(value) {
-            _httpErrorRetries = value
-        }
-
-    var p2pErrorRetries: Int
-        get() = _p2pErrorRetries ?: -1
-        set(value) {
-            _p2pErrorRetries = value
-        }
+    var highDemandTimeWindow: Int = -1
+    var httpDownloadTimeWindow: Int = -1
+    var httpDownloadInitialTimeoutMs: Int = -1
+    var p2pDownloadTimeWindow: Int = -1
+    var simultaneousHttpDownloads: Int = -1
+    var simultaneousP2PDownloads: Int = -1
+    var webRtcMaxMessageSize: Int = -1
+    var p2pNotReceivingBytesTimeoutMs: Int = -1
+    var p2pInactiveLoaderDestroyTimeoutMs: Int = -1
+    var httpNotReceivingBytesTimeoutMs: Int = -1
+    var httpErrorRetries: Int = -1
+    var p2pErrorRetries: Int = -1
 
     @SerialName("isP2PDisabled")
     private var _isP2PDisabled: Boolean? = null
