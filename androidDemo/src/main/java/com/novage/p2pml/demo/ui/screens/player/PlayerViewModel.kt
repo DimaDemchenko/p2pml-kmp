@@ -121,7 +121,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             p2pNotReceivingBytesTimeoutMs = P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS
             validateHTTPSegmentJs = $$"""
                 (url, byteRange, data) => {
-                    console.log(`Validating segment: ${url} Range: ${byteRange}`);
+                    // console.log(`Validating segment: ${url} Range: ${byteRange}`);
                     return data.byteLength > 0;
                 }
             """.trimIndent()

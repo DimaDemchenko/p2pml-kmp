@@ -40,7 +40,7 @@ class PlayerViewModel: ObservableObject {
         coreConfig.p2pNotReceivingBytesTimeoutMs = p2pNotReceivingBytesTimeoutMs
         coreConfig.validateHTTPSegmentJs = """
             (url, byteRange, data) => {
-                console.log(`Validating segment: ${url} Range: ${byteRange}`);
+                // console.log(`Validating segment: ${url} Range: ${byteRange}`);
                 return data.byteLength > 0;
             }
             """
