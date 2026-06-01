@@ -121,35 +121,39 @@ class PlayerViewModel: ObservableObject {
 
             var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0, isAudio: false)]
 
-            if let urlAsset = asset as? AVURLAsset,
-               let variants = try? await urlAsset.load(.variants) {
-                var seenHeights = Set<Int>()
-                let sorted = variants
-                .filter { $0.videoAttributes != nil }
-                .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
+            if let urlAsset = asset as? AVURLAsset {
+                do {
+                    let variants = try await urlAsset.load(.variants)
+                    var seenHeights = Set<Int>()
+                    let sorted = variants
+                    .filter { $0.videoAttributes != nil }
+                    .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
 
-                for variant in sorted {
-                    guard let videoAttrs = variant.videoAttributes,
-                          let peakBitRate = variant.peakBitRate,
-                          peakBitRate > 0 else { continue }
+                    for variant in sorted {
+                        guard let videoAttrs = variant.videoAttributes,
+                              let peakBitRate = variant.peakBitRate,
+                              peakBitRate > 0 else { continue }
 
-                    let size = videoAttrs.presentationSize
-                    let height = Int(size.height)
-                    guard height > 0, seenHeights.insert(height).inserted else { continue }
+                        let size = videoAttrs.presentationSize
+                        let height = Int(size.height)
+                        guard height > 0, seenHeights.insert(height).inserted else { continue }
 
-                    let bitrateKbps = Int(peakBitRate / 1000)
-                    let label = "\(height)p • \(bitrateKbps) kbps"
+                        let bitrateKbps = Int(peakBitRate / 1000)
+                        let label = "\(height)p • \(bitrateKbps) kbps"
 
-                    let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
+                        let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
 
-                    videoTracks.append(MediaTrack(
-                        label: label,
-                        isSelected: isSelected,
-                        isAuto: false,
-                        bitrate: peakBitRate,
-                        resolution: size,
-                        isAudio: false
-                    ))
+                        videoTracks.append(MediaTrack(
+                            label: label,
+                            isSelected: isSelected,
+                            isAuto: false,
+                            bitrate: peakBitRate,
+                            resolution: size,
+                            isAudio: false
+                        ))
+                    }
+                } catch {
+                    logger.warning("Failed to load HLS variants: \(error.localizedDescription)")
                 }
             }
 
@@ -281,16 +285,8 @@ class PlayerViewModel: ObservableObject {
     }
 
     deinit {
-        let player = MainActor.assumeIsolated { self.player }
-        let observer = MainActor.assumeIsolated { self.playerItemObserver }
-        let tasks = MainActor.assumeIsolated { self.eventTasks }
-        let tracksTask = MainActor.assumeIsolated { self.populateTracksTask }
-        let loader = MainActor.assumeIsolated { self.p2pLoader }
-
-        player?.pause()
-        observer?.invalidate()
-        tasks.forEach { $0.cancel() }
-        tracksTask?.cancel()
-        loader?.release()
+        MainActor.assumeIsolated {
+            releaseResources()
+        }
     }
 }
