@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.demo.ui.navigation.Player
 import com.novage.p2pml.demo.ui.navigation.VideoList
 import com.novage.p2pml.demo.ui.screens.list.VideoListScreen
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        P2PMediaLoader.enableLogging()
 
         // Pre-warm the native Chromium engine during Activity startup.
         // On Android 12+, this processing happens cleanly behind the system Splash Screen.

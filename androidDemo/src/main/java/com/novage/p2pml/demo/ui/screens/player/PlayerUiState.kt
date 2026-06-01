@@ -1,8 +1,10 @@
 package com.novage.p2pml.demo.ui.screens.player
 
+import androidx.compose.runtime.Immutable
 import com.novage.p2pml.api.models.PeerDetails
 import com.novage.p2pml.demo.ui.screens.player.models.AvailableTracks
 
+@Immutable
 data class PlayerUiState(
     val isVideoReady: Boolean = false,
     val isP2PActive: Boolean = false,

@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
@@ -86,14 +87,21 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 override fun onTracksChanged(tracks: Tracks) {
                     currentTracks = tracks
 
-                    val tracks = getAvailableTracks(tracks, exoPlayer.trackSelectionParameters)
-                    _uiState.update { it.copy(availableTracks = tracks) }
+                    val availableTracks = getAvailableTracks(tracks, exoPlayer.trackSelectionParameters)
+                    _uiState.update { it.copy(availableTracks = availableTracks) }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState != Player.STATE_READY) return
 
                     _uiState.update { it.copy(isVideoReady = true) }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    val description = error.message ?: error.errorCodeName
+                    _uiState.update {
+                        it.copy(fatalError = "Playback error: $description")
+                    }
                 }
             })
 
@@ -111,8 +119,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         manifestUrl: String,
         customEngineUrl: String?
     ) {
-        P2PMediaLoader.enableLogging()
-
         val coreConfig = CoreConfig().apply {
             highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC
             isP2PDisabled = !shouldAutoPlay
@@ -179,7 +185,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 }
             }
 
-            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> TODO()
+            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> {
+                Log.w("PlayerViewModel", "Segment download error: $msg")
+            }
         }
     }
 

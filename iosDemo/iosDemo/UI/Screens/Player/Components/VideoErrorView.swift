@@ -35,3 +35,10 @@ struct VideoErrorView: View {
         .background(AppTheme.background)
     }
 }
+
+#Preview {
+    VideoErrorView(
+        errorMessage: "Failed to load manifest: Network timeout",
+        onBackClick: {}
+    )
+}

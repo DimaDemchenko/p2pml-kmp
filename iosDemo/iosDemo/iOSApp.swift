@@ -1,9 +1,12 @@
 import SwiftUI
+import P2PML
 
 @main
 struct iOSApp: App {
 
     init() {
+        P2PMediaLoader.companion.enableLogging()
+
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(AppTheme.background)

@@ -30,3 +30,15 @@ struct StatCard: View {
         .cornerRadius(12)
     }
 }
+
+#Preview("Loaded") {
+    StatCard(label: "P2P", value: "1.2 MB", color: AppTheme.primary)
+        .padding()
+        .background(AppTheme.background)
+}
+
+#Preview("Loading") {
+    StatCard(label: "P2P", value: "", color: AppTheme.primary, isLoading: true)
+        .padding()
+        .background(AppTheme.background)
+}

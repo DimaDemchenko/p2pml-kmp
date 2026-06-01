@@ -1,7 +1,10 @@
 import Foundation
 import AVKit
 import Combine
+import os
 import P2PML
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.novage.p2pml", category: "PlayerViewModel")
 
 private let highDemandWindowSec: Int32 = 45
 private let preferredBufferDurationSec = 45.0
@@ -16,6 +19,7 @@ class PlayerViewModel: ObservableObject {
 
     private var p2pLoader: P2PMediaLoader? = nil
     private var eventTasks: [Task<Void, Never>] = []
+    private var populateTracksTask: Task<Void, Never>?
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
     private var shouldAutoPlay = true
@@ -27,10 +31,10 @@ class PlayerViewModel: ObservableObject {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            print("Failed to set audio session category: \(error)")
+            logger.warning("Failed to set audio session category: \(error.localizedDescription)")
         }
 
-        P2PMediaLoader.companion.enableLogging()
+
 
         let coreConfig = CoreConfig()
         coreConfig.highDemandTimeWindow = highDemandWindowSec
@@ -110,41 +114,46 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func populateAvailableTracks(for playerItem: AVPlayerItem) {
-        Task {
+        populateTracksTask?.cancel()
+        populateTracksTask = Task {
             let asset = playerItem.asset
             let currentBitrate = playerItem.preferredPeakBitRate
 
             var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0, isAudio: false)]
 
             if let urlAsset = asset as? AVURLAsset {
-                let variants = try await urlAsset.load(.variants)
-                var seenHeights = Set<Int>()
-                let sorted = variants
-                .filter { $0.videoAttributes != nil }
-                .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
+                do {
+                    let variants = try await urlAsset.load(.variants)
+                    var seenHeights = Set<Int>()
+                    let sorted = variants
+                    .filter { $0.videoAttributes != nil }
+                    .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
 
-                for variant in sorted {
-                    guard let videoAttrs = variant.videoAttributes,
-                          let peakBitRate = variant.peakBitRate,
-                          peakBitRate > 0 else { continue }
+                    for variant in sorted {
+                        guard let videoAttrs = variant.videoAttributes,
+                              let peakBitRate = variant.peakBitRate,
+                              peakBitRate > 0 else { continue }
 
-                    let size = videoAttrs.presentationSize
-                    let height = Int(size.height)
-                    guard height > 0, seenHeights.insert(height).inserted else { continue }
+                        let size = videoAttrs.presentationSize
+                        let height = Int(size.height)
+                        guard height > 0, seenHeights.insert(height).inserted else { continue }
 
-                    let bitrateKbps = Int(peakBitRate / 1000)
-                    let label = "\(height)p • \(bitrateKbps) kbps"
+                        let bitrateKbps = Int(peakBitRate / 1000)
+                        let label = "\(height)p • \(bitrateKbps) kbps"
 
-                    let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
+                        let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
 
-                    videoTracks.append(MediaTrack(
-                        label: label,
-                        isSelected: isSelected,
-                        isAuto: false,
-                        bitrate: peakBitRate,
-                        resolution: size,
-                        isAudio: false
-                    ))
+                        videoTracks.append(MediaTrack(
+                            label: label,
+                            isSelected: isSelected,
+                            isAuto: false,
+                            bitrate: peakBitRate,
+                            resolution: size,
+                            isAudio: false
+                        ))
+                    }
+                } catch {
+                    logger.warning("Failed to load HLS variants: \(error.localizedDescription)")
                 }
             }
 
@@ -164,6 +173,8 @@ class PlayerViewModel: ObservableObject {
                     audioTracks = options
                 }
             }
+
+            guard !Task.isCancelled else { return }
 
             uiState.availableTracks = AvailableTracks(
                 videoTracks: videoTracks,
@@ -253,7 +264,7 @@ class PlayerViewModel: ObservableObject {
         do {
             try loader.applyDynamicConfig(dynamicCoreConfig: config)
         } catch {
-            print("Failed to apply dynamic config: \(error)")
+            logger.warning("Failed to apply dynamic config: \(error.localizedDescription)")
         }
     }
 
@@ -267,8 +278,17 @@ class PlayerViewModel: ObservableObject {
         eventTasks.forEach { $0.cancel() }
         eventTasks.removeAll()
 
+        populateTracksTask?.cancel()
+        populateTracksTask = nil
+
         p2pLoader?.release()
         
         p2pLoader = nil
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            releaseResources()
+        }
     }
 }
