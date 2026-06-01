@@ -19,6 +19,10 @@ internal class P2PEngineManager(
 ) : P2PEngine {
     private val logger = CoreLogger("P2PEngineManager")
 
+    companion object {
+        private const val JS_BRIDGE = "window.p2p"
+    }
+
     override suspend fun loadUrlAndWait(url: String) {
         logger.d { "Loading Web Engine URL: $url" }
         webView.loadUrlAndWait(url)
@@ -32,42 +36,42 @@ internal class P2PEngineManager(
     override fun initCoreEngine(coreConfig: CoreConfig, uploadUrl: String) {
         logger.i { "Initializing JS Core Engine" }
         evaluate(
-            "window.p2p.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, " +
+            "$JS_BRIDGE.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, " +
                 "${json.encodeToString(uploadUrl)});"
         )
     }
 
     override fun requestSegmentBytes(segmentUrl: String) {
         logger.d { "Requesting segment via P2P Engine: $segmentUrl" }
-        evaluate("window.p2p.processSegmentRequest(${json.encodeToString(segmentUrl)});")
+        evaluate("$JS_BRIDGE.processSegmentRequest(${json.encodeToString(segmentUrl)});")
     }
 
     override fun sendStream(stream: UpdateStreamParams) {
         val streamJson = json.encodeToString(stream)
-        evaluate("window.p2p.parseStream($streamJson);")
+        evaluate("$JS_BRIDGE.parseStream($streamJson);")
     }
 
     override fun sendAllStreams(streams: List<Stream>) {
         val streamsJson = json.encodeToString(streams)
-        evaluate("window.p2p.parseAllStreams($streamsJson);")
+        evaluate("$JS_BRIDGE.parseAllStreams($streamsJson);")
     }
 
     override fun unsubscribeFromP2PEvent(eventName: String) {
-        evaluate("window.p2p.unsubscribeFromEvent(${json.encodeToString(eventName)});")
+        evaluate("$JS_BRIDGE.unsubscribeFromEvent(${json.encodeToString(eventName)});")
     }
 
     override fun setManifestUrl(manifestUrl: String) {
         logger.d { "Setting manifest URL in P2P Engine: $manifestUrl" }
-        evaluate("window.p2p.setManifestUrl(${json.encodeToString(manifestUrl)});")
+        evaluate("$JS_BRIDGE.setManifestUrl(${json.encodeToString(manifestUrl)});")
     }
 
     override fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
         logger.i { "Applying dynamic config" }
-        evaluate("window.p2p.applyDynamicP2PCoreConfig(${CoreConfigJsMapper.toJsExpression(dynamicCoreConfig)});")
+        evaluate("$JS_BRIDGE.applyDynamicP2PCoreConfig(${CoreConfigJsMapper.toJsExpression(dynamicCoreConfig)});")
     }
 
     override fun subscribeToP2PEvent(eventName: String) {
-        evaluate("window.p2p.subscribeToEvent(${json.encodeToString(eventName)});")
+        evaluate("$JS_BRIDGE.subscribeToEvent(${json.encodeToString(eventName)});")
     }
 
     private fun evaluate(script: String) {
@@ -76,6 +80,6 @@ internal class P2PEngineManager(
 
     override fun updatePlaybackInfo(info: PlaybackInfo) {
         val jsonString = json.encodeToString(info)
-        evaluate("window.p2p.updatePlaybackInfo($jsonString);")
+        evaluate("$JS_BRIDGE.updatePlaybackInfo($jsonString);")
     }
 }
