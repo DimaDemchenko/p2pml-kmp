@@ -9,13 +9,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class DownloadSource(val value: String) {
     /** The data was loaded via a peer-to-peer connection. */
-    @SerialName("p2p") P2P("p2p"),
+    @SerialName("p2p")
+    P2P("p2p"),
+
     /** The data was loaded via HTTP. */
-    @SerialName("http") HTTP("http");
+    @SerialName("http")
+    HTTP("http");
 
     companion object {
-        fun fromValue(value: String): DownloadSource =
-            entries.first { it.value == value }
+        fun fromValue(value: String): DownloadSource = entries.first { it.value == value }
     }
 }
 

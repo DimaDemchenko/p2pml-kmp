@@ -44,7 +44,8 @@ internal class IosWebViewEventDispatcher(
         val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val downloadSource = dict.objectForKey("downloadSource") as? String ?: return
         val peerId = dict.objectForKey("peerId") as? String
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, DownloadSource.fromValue(downloadSource), peerId))
+        val source = DownloadSource.fromValue(downloadSource)
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
     }
 
     private fun handleChunkUploaded(body: Any?) {

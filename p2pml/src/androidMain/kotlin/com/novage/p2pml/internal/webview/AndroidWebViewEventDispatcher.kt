@@ -21,7 +21,8 @@ internal class AndroidWebViewEventDispatcher(
 
     @JavascriptInterface
     fun onChunkDownloaded(bytesLength: Int, downloadSource: String, peerId: String?) {
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, DownloadSource.fromValue(downloadSource), peerId))
+        val source = DownloadSource.fromValue(downloadSource)
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
     }
 
     @JavascriptInterface

@@ -68,7 +68,8 @@ internal class WebViewMessageRouter(
         val downloadSource = obj["downloadSource"]?.jsonPrimitive?.contentOrNull ?: return
         val peerId = obj["peerId"]?.jsonPrimitive?.contentOrNull
 
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, DownloadSource.fromValue(downloadSource), peerId))
+        val source = DownloadSource.fromValue(downloadSource)
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
     }
 
     private fun handleChunkUploaded(payload: JsonElement?) {
