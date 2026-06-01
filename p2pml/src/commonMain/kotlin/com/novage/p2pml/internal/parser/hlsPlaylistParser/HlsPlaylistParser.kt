@@ -532,9 +532,11 @@ private fun replaceVariableReferences(string: String, vars: Map<String, String>)
     }
 }
 
+private const val ERROR_LINE_PREVIEW_LENGTH = 100
+
 private fun parseStringAttr(line: String, regex: Regex, vars: Map<String, String>): String =
     parseOptionalStringAttr(line, regex, vars)
-        ?: throw NoSuchElementException("Missing required attribute in line: ${line.take(100)}")
+        ?: throw NoSuchElementException("Missing required attribute in line: ${line.take(ERROR_LINE_PREVIEW_LENGTH)}")
 
 private fun parseOptionalStringAttr(
     line: String,

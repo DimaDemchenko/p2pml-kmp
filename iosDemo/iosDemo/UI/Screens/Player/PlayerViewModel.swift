@@ -190,7 +190,7 @@ class PlayerViewModel: ObservableObject {
             for await details in loader.events.onChunkDownloaded {
                 guard let self = self else { return }
                 self.uiState.totalDownloaded += Int64(details.bytesLength)
-                if details.downloadSource == DownloadSource.p2p {
+                if details.downloadSource.value == "p2p" {
                     self.uiState.p2pDownloaded += Int64(details.bytesLength)
                 } else {
                     self.uiState.httpDownloaded += Int64(details.bytesLength)
