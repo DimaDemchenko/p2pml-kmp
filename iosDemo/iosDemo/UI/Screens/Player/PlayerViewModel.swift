@@ -19,6 +19,7 @@ class PlayerViewModel: ObservableObject {
 
     private var p2pLoader: P2PMediaLoader? = nil
     private var eventTasks: [Task<Void, Never>] = []
+    private var populateTracksTask: Task<Void, Never>?
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
     private var shouldAutoPlay = true
@@ -113,7 +114,8 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func populateAvailableTracks(for playerItem: AVPlayerItem) {
-        let task = Task {
+        populateTracksTask?.cancel()
+        populateTracksTask = Task {
             let asset = playerItem.asset
             let currentBitrate = playerItem.preferredPeakBitRate
 
@@ -173,7 +175,6 @@ class PlayerViewModel: ObservableObject {
                 audioTracks: audioTracks
             )
         }
-        eventTasks.append(task)
     }
 
     func changeTrack(_ track: MediaTrack) {
@@ -271,6 +272,9 @@ class PlayerViewModel: ObservableObject {
         eventTasks.forEach { $0.cancel() }
         eventTasks.removeAll()
 
+        populateTracksTask?.cancel()
+        populateTracksTask = nil
+
         p2pLoader?.release()
         
         p2pLoader = nil
@@ -280,11 +284,13 @@ class PlayerViewModel: ObservableObject {
         let player = MainActor.assumeIsolated { self.player }
         let observer = MainActor.assumeIsolated { self.playerItemObserver }
         let tasks = MainActor.assumeIsolated { self.eventTasks }
+        let tracksTask = MainActor.assumeIsolated { self.populateTracksTask }
         let loader = MainActor.assumeIsolated { self.p2pLoader }
 
         player?.pause()
         observer?.invalidate()
         tasks.forEach { $0.cancel() }
+        tracksTask?.cancel()
         loader?.release()
     }
 }

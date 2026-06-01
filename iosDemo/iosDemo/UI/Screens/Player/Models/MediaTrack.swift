@@ -1,7 +1,10 @@
 import Foundation
 
 struct MediaTrack: Identifiable, Equatable {
-    var id: String { "\(label)-\(bitrate)-\(isAudio)" }
+    var id: String {
+        let bitrateKey = bitrate.isFinite ? Int64(bitrate) : 0
+        return "\(label)-\(bitrateKey)-\(isAudio)-\(isAuto)"
+    }
     let label: String
     let isSelected: Bool
     let isAuto: Bool

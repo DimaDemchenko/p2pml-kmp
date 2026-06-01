@@ -41,7 +41,7 @@ struct PlayerScreen: View {
         .onAppear {
             viewModel.initializePlayer(manifestUrl: videoUrl, customEngineUrl: customEngineUrl)
         }
-        .onChange(of: viewModel.uiState.userMessage) { _, newValue in
+        .onChange(of: viewModel.uiState.userMessage) { newValue in
             if newValue != nil { showSnackbar = true }
         }
         .task(id: showSnackbar) {

@@ -98,8 +98,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
+                    val description = error.message ?: error.errorCodeName
                     _uiState.update {
-                        it.copy(fatalError = "Playback error: ${error.message}")
+                        it.copy(fatalError = "Playback error: $description")
                     }
                 }
             })
