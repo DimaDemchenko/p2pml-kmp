@@ -555,7 +555,7 @@ private fun replaceVariableReferences(string: String, vars: Map<String, String>)
 }
 
 private fun parseStringAttr(line: String, regex: Regex, vars: Map<String, String>): String =
-    parseOptionalStringAttr(line, regex, vars) ?: throw NoSuchElementException("Missing required attribute")
+    parseOptionalStringAttr(line, regex, vars) ?: throw NoSuchElementException("Missing required attribute in line: ${line.take(100)}")
 
 private fun parseOptionalStringAttr(
     line: String,
