@@ -62,9 +62,9 @@ internal class HlsPlaylistParser(
 
         var headerLine: String? = null
         while (iterator.hasNext()) {
-            val l = iterator.next()
-            if (l.trim().isNotEmpty()) {
-                headerLine = l
+            val line = iterator.next()
+            if (line.trim().isNotEmpty()) {
+                headerLine = line
                 break
             }
         }
@@ -114,7 +114,7 @@ internal class HlsPlaylistParser(
     }
 
     private fun parseMediaPlaylist(iterator: PlaylistLineIterator, context: ParserContext): ParsedPlaylist {
-        val state = SegmentState()
+        val segmentState = SegmentState()
         val llState = LowLatencyState()
         val segments = mutableListOf<HlsSegment>()
         val builder = StringBuilder("$PLAYLIST_HEADER\n")
@@ -129,25 +129,25 @@ internal class HlsPlaylistParser(
 
             var rewrittenLine = originalLine
             if (trimmed.startsWith("#")) {
-                rewrittenLine = processMediaTag(originalLine, trimmed, state, llState, context)
+                rewrittenLine = processMediaTag(originalLine, trimmed, segmentState, llState, context)
             } else {
-                val seg = createSegment(trimmed, context.baseUri, context.vars, state)
+                val seg = createSegment(trimmed, context.baseUri, context.vars, segmentState)
                 segments.add(seg)
                 urlRewriter.rewriteSegmentUrl(seg.url, seg.byteRange).let { newUrl ->
                     rewrittenLine = originalLine.replaceFirst(trimmed, newUrl)
                 }
-                if (state.length != -1L) state.offset += state.length
-                state.durationUs = 0L
-                state.length = -1L
-                state.programDateTimeUs = null
+                if (segmentState.length != -1L) segmentState.offset += segmentState.length
+                segmentState.durationUs = 0L
+                segmentState.length = -1L
+                segmentState.programDateTimeUs = null
             }
             builder.append(rewrittenLine).append("\n")
         }
 
         val playlist = HlsMediaPlaylist(
             context.baseUri,
-            state.mediaSequence,
-            state.hasEndTag,
+            segmentState.mediaSequence,
+            segmentState.hasEndTag,
             segments,
             llState.parts,
             llState.preloadHints,
@@ -202,15 +202,15 @@ internal class HlsPlaylistParser(
         }
 
         trimmedLine.startsWith(TAG_PART) -> {
-            processPartTag(originalLine, trimmedLine, llState, context)
+            processLowLatencyTag(originalLine, trimmedLine, llState.parts, context)
         }
 
         trimmedLine.startsWith(TAG_PRELOAD_HINT) -> {
-            processPreloadHintTag(originalLine, trimmedLine, llState, context)
+            processLowLatencyTag(originalLine, trimmedLine, llState.preloadHints, context)
         }
 
         trimmedLine.startsWith(TAG_RENDITION_REPORT) -> {
-            processRenditionReportTag(originalLine, trimmedLine, llState, context)
+            processLowLatencyTag(originalLine, trimmedLine, llState.renditionReports, context)
         }
 
         else -> originalLine
@@ -231,39 +231,15 @@ internal class HlsPlaylistParser(
         rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
     )
 
-    private fun processPartTag(
+    private fun processLowLatencyTag(
         originalLine: String,
         trimmedLine: String,
-        llState: LowLatencyState,
+        targetList: MutableList<ParsedUrl>,
         context: ParserContext
     ): String = processUrlTag(
         line = originalLine,
         urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { llState.parts.add(it) },
-        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-    )
-
-    private fun processPreloadHintTag(
-        originalLine: String,
-        trimmedLine: String,
-        llState: LowLatencyState,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { llState.preloadHints.add(it) },
-        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-    )
-
-    private fun processRenditionReportTag(
-        originalLine: String,
-        trimmedLine: String,
-        llState: LowLatencyState,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { llState.renditionReports.add(it) },
+        stateUpdater = { targetList.add(it) },
         rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
     )
 
@@ -331,13 +307,15 @@ internal class HlsPlaylistParser(
             builder.append(rewrittenLine).append("\n")
         }
 
+        val grouped = renditions.groupBy({ it.type }, { it.rendition })
+
         val playlist = HlsMultivariantPlaylist(
             baseUri = context.baseUri,
             variants = variants,
-            videos = renditions.filter { it.type == TYPE_VIDEO }.map { it.rendition },
-            audios = renditions.filter { it.type == TYPE_AUDIO }.map { it.rendition },
-            subtitles = renditions.filter { it.type == TYPE_SUBTITLES }.map { it.rendition },
-            closedCaptions = renditions.filter { it.type == TYPE_CLOSED_CAPTIONS }.map { it.rendition },
+            videos = grouped[TYPE_VIDEO].orEmpty(),
+            audios = grouped[TYPE_AUDIO].orEmpty(),
+            subtitles = grouped[TYPE_SUBTITLES].orEmpty(),
+            closedCaptions = grouped[TYPE_CLOSED_CAPTIONS].orEmpty(),
             sessionKeyUrls = sessionKeys
         )
         return ParsedPlaylist(playlist, builder.toString())
@@ -554,8 +532,11 @@ private fun replaceVariableReferences(string: String, vars: Map<String, String>)
     }
 }
 
+private const val ERROR_LINE_PREVIEW_LENGTH = 100
+
 private fun parseStringAttr(line: String, regex: Regex, vars: Map<String, String>): String =
-    parseOptionalStringAttr(line, regex, vars) ?: throw NoSuchElementException("Missing required attribute")
+    parseOptionalStringAttr(line, regex, vars)
+        ?: throw NoSuchElementException("Missing required attribute in line: ${line.take(ERROR_LINE_PREVIEW_LENGTH)}")
 
 private fun parseOptionalStringAttr(
     line: String,

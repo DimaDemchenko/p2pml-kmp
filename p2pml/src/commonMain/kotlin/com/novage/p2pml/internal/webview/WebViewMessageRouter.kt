@@ -3,6 +3,7 @@ package com.novage.p2pml.internal.webview
 import com.novage.p2pml.api.events.P2PEventRegistry
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
+import com.novage.p2pml.api.models.DownloadSource
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -67,7 +68,8 @@ internal class WebViewMessageRouter(
         val downloadSource = obj["downloadSource"]?.jsonPrimitive?.contentOrNull ?: return
         val peerId = obj["peerId"]?.jsonPrimitive?.contentOrNull
 
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, downloadSource, peerId))
+        val source = DownloadSource.fromValue(downloadSource)
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
     }
 
     private fun handleChunkUploaded(payload: JsonElement?) {
