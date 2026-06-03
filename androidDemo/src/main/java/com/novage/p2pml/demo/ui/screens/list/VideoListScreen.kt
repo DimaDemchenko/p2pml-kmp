@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -109,6 +110,8 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
             Button(
                 onClick = { onVideoSelected(customUrl.trim(), null) },
                 enabled = canPlay,
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -117,7 +120,7 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
                     .fillMaxWidth()
                     .padding(vertical = 12.dp)
             ) {
-                Text("Play URL")
+                Text("Play URL", fontWeight = FontWeight.Bold)
             }
 
             HorizontalDivider(

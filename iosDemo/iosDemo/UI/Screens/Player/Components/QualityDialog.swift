@@ -27,7 +27,7 @@ struct QualityDialog: View {
                         }
                     }
 
-                    if !availableTracks.audioTracks.isEmpty {
+                    if availableTracks.audioTracks.count > 1 {
                         Text("Audio Track")
                             .font(.subheadline)
                             .foregroundColor(AppTheme.primary)
