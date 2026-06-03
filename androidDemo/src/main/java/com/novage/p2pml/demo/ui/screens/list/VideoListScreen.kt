@@ -118,7 +118,7 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp)
+                    .padding(vertical = 8.dp)
             ) {
                 Text("Play URL", fontWeight = FontWeight.Bold)
             }
