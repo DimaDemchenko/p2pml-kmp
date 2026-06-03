@@ -23,7 +23,7 @@ struct VideoStreams {
             title: "Bunny (Invalid P2P Engine)",
             uri: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
             description: "Tests fallback when P2P engine is unreachable",
-            customEngineUrl: "https://invalid-p2p-engine.example.com/"
+            customEngineUrl: "https://invalid-p2p-tracker.example.com/websocket"
         ),
         MediaSample(
             title: "Tears of Steel (HLS)",

@@ -154,7 +154,7 @@ private fun StreamListItem(stream: MediaSample, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier
             .clickable { onClick() }
-            .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.small),
+            .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp)),
         headlineContent = {
             Text(stream.title, fontWeight = FontWeight.Bold)
         },

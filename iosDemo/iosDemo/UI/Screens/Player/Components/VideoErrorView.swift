@@ -5,7 +5,7 @@ struct VideoErrorView: View {
     let onBackClick: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 64))
                 .foregroundColor(AppTheme.error)
@@ -14,11 +14,13 @@ struct VideoErrorView: View {
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(AppTheme.onBackground)
+                .padding(.top, 16)
 
             Text(errorMessage)
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .foregroundColor(AppTheme.onSurfaceVariant)
+                .padding(.top, 8)
 
             Button(action: onBackClick) {
                 Text("Go Back")
@@ -28,7 +30,7 @@ struct VideoErrorView: View {
                     .foregroundColor(AppTheme.onError)
                     .cornerRadius(8)
             }
-            .padding(.top, 16)
+            .padding(.top, 32)
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
