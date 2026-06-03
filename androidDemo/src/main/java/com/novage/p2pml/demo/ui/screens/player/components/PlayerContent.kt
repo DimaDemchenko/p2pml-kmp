@@ -15,11 +15,7 @@ import com.novage.p2pml.demo.ui.screens.player.PlayerUiState
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 
 @Composable
-fun PlayerContent(
-    uiState: PlayerUiState,
-    player: Player?,
-    onQualitySelected: (MediaTrack) -> Unit
-) {
+fun PlayerContent(uiState: PlayerUiState, player: Player?, onQualitySelected: (MediaTrack) -> Unit) {
     var showQualityDialog by remember { mutableStateOf(false) }
     val isInitialLoading = !uiState.isVideoReady
 
@@ -52,4 +48,3 @@ fun PlayerContent(
         )
     }
 }
-

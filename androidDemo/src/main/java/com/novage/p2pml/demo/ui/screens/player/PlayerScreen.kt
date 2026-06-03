@@ -78,4 +78,3 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
         }
     }
 }
-
