@@ -7,7 +7,6 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.webview.HeadlessWebView
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 internal class P2PEngineManager(
