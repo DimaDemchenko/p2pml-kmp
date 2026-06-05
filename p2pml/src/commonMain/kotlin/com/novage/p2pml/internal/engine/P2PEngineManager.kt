@@ -30,6 +30,7 @@ internal class P2PEngineManager(
 
     override fun destroy() {
         logger.d { "Destroying P2PEngineManager..." }
+        evaluate("$JS_BRIDGE.destroyP2PEngine();")
         webView.destroy()
     }
 
