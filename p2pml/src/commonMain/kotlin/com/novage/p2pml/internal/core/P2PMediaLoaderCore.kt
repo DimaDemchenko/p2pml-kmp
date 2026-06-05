@@ -73,7 +73,7 @@ internal class P2PMediaLoaderCore(
 
     private val pendingDynamicConfig = MutableStateFlow<DynamicCoreConfig?>(null)
 
-    val fatalErrors = errorDispatcher.errors
+    val runtimeErrors = errorDispatcher.errors
     val events: P2PEventRegistry = P2PEventRegistry(
         coreScope = coreScope,
         onSubscribe = { eventName -> activeSession?.subscribeToEvent(eventName) },

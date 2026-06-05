@@ -22,7 +22,7 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     private var defaultProvider: AVPlayerPlaybackProvider? = null
 
     val events get() = core.events
-    val fatalErrors get() = core.fatalErrors
+    val runtimeErrors get() = core.runtimeErrors
 
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
