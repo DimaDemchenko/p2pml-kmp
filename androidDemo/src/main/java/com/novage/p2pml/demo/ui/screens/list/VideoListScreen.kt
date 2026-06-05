@@ -66,13 +66,22 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("P2P Media Loader") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+            Column {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            "P2P Media Loader",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -92,7 +101,12 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
                     OutlinedTextField(
                         value = customUrl,
                         onValueChange = { customUrl = it },
-                        placeholder = { Text("Paste Your Manifest URL") },
+                        placeholder = {
+                            Text(
+                                "Paste Your Manifest URL",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
@@ -102,8 +116,9 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             errorContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            errorBorderColor = MaterialTheme.colorScheme.error
+                            focusedBorderColor = Color.Transparent,
+                            errorBorderColor = MaterialTheme.colorScheme.error,
+                            cursorColor = MaterialTheme.colorScheme.primary
                         )
                     )
 
@@ -132,7 +147,10 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
             }
 
             item {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
 
             item {
