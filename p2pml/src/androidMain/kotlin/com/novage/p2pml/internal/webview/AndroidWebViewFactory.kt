@@ -11,7 +11,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
-import com.novage.p2pml.api.events.P2PEventRegistry
+import com.novage.p2pml.api.events.P2PEvents
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellableContinuation
@@ -20,14 +20,14 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 internal class AndroidWebViewFactory(private val context: Context) : WebViewFactory {
     override fun createHeadlessWebView(
-        events: P2PEventRegistry,
+        events: P2PEvents,
         onFatalError: (P2PMediaLoaderException) -> Unit
     ): HeadlessWebView = AndroidHeadlessWebView(context, events, onFatalError)
 }
 
 private class AndroidHeadlessWebView(
     context: Context,
-    private val events: P2PEventRegistry,
+    private val events: P2PEvents,
     private val onFatalError: (P2PMediaLoaderException) -> Unit
 ) : HeadlessWebView {
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null

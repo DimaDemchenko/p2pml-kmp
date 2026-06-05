@@ -23,13 +23,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 
-class P2PEventRegistry internal constructor(
+class P2PEvents internal constructor(
     private val coreScope: CoroutineScope,
     private val onSubscribe: (String) -> Unit,
     private val onUnsubscribe: (String) -> Unit,
     private val isCoreActive: () -> Boolean
 ) {
-    private val logger = CoreLogger("P2PEventRegistry")
+    private val logger = CoreLogger("P2PEvents")
 
     private fun <T> createFlow(capacity: Int = 64): MutableSharedFlow<T> = MutableSharedFlow(
         extraBufferCapacity = capacity,

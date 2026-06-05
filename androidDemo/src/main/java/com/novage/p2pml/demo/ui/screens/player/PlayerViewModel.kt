@@ -217,7 +217,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
     private fun setupP2PEvents(loader: P2PMediaLoader) {
         viewModelScope.launch {
-            loader.events.onChunkDownloaded.collect { chunk ->
+            loader.p2pEvents.onChunkDownloaded.collect { chunk ->
                 _uiState.update { state ->
                     state.copy(
                         totalDownloaded = state.totalDownloaded + chunk.bytesLength,
@@ -237,7 +237,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         }
 
         viewModelScope.launch {
-            loader.events.onChunkUploaded.collect { chunk ->
+            loader.p2pEvents.onChunkUploaded.collect { chunk ->
                 _uiState.update { state ->
                     state.copy(uploadTotal = state.uploadTotal + chunk.bytesLength)
                 }
@@ -245,7 +245,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         }
 
         viewModelScope.launch {
-            loader.events.onPeerConnect.collect { peer ->
+            loader.p2pEvents.onPeerConnect.collect { peer ->
                 _uiState.update { state ->
                     state.copy(peers = state.peers + peer)
                 }
@@ -253,7 +253,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         }
 
         viewModelScope.launch {
-            loader.events.onPeerClose.collect { peer ->
+            loader.p2pEvents.onPeerClose.collect { peer ->
                 _uiState.update { state ->
                     state.copy(peers = state.peers.filter { it.peerId != peer.peerId })
                 }

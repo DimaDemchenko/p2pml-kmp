@@ -30,7 +30,7 @@ class P2PMediaLoader @JvmOverloads constructor(
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
     private var defaultProvider: ExoPlayerPlaybackProvider? = null
 
-    val events get() = core.events
+    val p2pEvents get() = core.p2pEvents
     val runtimeErrors get() = core.runtimeErrors
 
     @Throws(P2PMediaLoaderException::class)

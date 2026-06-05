@@ -49,17 +49,17 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
      */
     fun addListener(listener: P2PEventListener): AutoCloseable {
         val jobs = listOf(
-            loader.events.onSegmentLoaded.onEach(listener::onSegmentLoaded).launchIn(scope),
-            loader.events.onSegmentStart.onEach(listener::onSegmentStart).launchIn(scope),
-            loader.events.onSegmentError.onEach(listener::onSegmentError).launchIn(scope),
-            loader.events.onSegmentAbort.onEach(listener::onSegmentAbort).launchIn(scope),
-            loader.events.onPeerConnect.onEach(listener::onPeerConnect).launchIn(scope),
-            loader.events.onPeerClose.onEach(listener::onPeerClose).launchIn(scope),
-            loader.events.onPeerError.onEach(listener::onPeerError).launchIn(scope),
-            loader.events.onChunkDownloaded.onEach(listener::onChunkDownloaded).launchIn(scope),
-            loader.events.onChunkUploaded.onEach(listener::onChunkUploaded).launchIn(scope),
-            loader.events.onTrackerError.onEach(listener::onTrackerError).launchIn(scope),
-            loader.events.onTrackerWarning.onEach(listener::onTrackerWarning).launchIn(scope)
+            loader.p2pEvents.onSegmentLoaded.onEach(listener::onSegmentLoaded).launchIn(scope),
+            loader.p2pEvents.onSegmentStart.onEach(listener::onSegmentStart).launchIn(scope),
+            loader.p2pEvents.onSegmentError.onEach(listener::onSegmentError).launchIn(scope),
+            loader.p2pEvents.onSegmentAbort.onEach(listener::onSegmentAbort).launchIn(scope),
+            loader.p2pEvents.onPeerConnect.onEach(listener::onPeerConnect).launchIn(scope),
+            loader.p2pEvents.onPeerClose.onEach(listener::onPeerClose).launchIn(scope),
+            loader.p2pEvents.onPeerError.onEach(listener::onPeerError).launchIn(scope),
+            loader.p2pEvents.onChunkDownloaded.onEach(listener::onChunkDownloaded).launchIn(scope),
+            loader.p2pEvents.onChunkUploaded.onEach(listener::onChunkUploaded).launchIn(scope),
+            loader.p2pEvents.onTrackerError.onEach(listener::onTrackerError).launchIn(scope),
+            loader.p2pEvents.onTrackerWarning.onEach(listener::onTrackerWarning).launchIn(scope)
         )
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }

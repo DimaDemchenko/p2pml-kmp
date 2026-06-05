@@ -2,7 +2,7 @@ package com.novage.p2pml.internal.core
 
 import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
-import com.novage.p2pml.api.events.P2PEventRegistry
+import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
@@ -74,7 +74,7 @@ internal class P2PMediaLoaderCore(
     private val pendingDynamicConfig = MutableStateFlow<DynamicCoreConfig?>(null)
 
     val runtimeErrors = errorDispatcher.errors
-    val events: P2PEventRegistry = P2PEventRegistry(
+    val p2pEvents: P2PEvents = P2PEvents(
         coreScope = coreScope,
         onSubscribe = { eventName -> activeSession?.subscribeToEvent(eventName) },
         onUnsubscribe = { eventName -> activeSession?.unsubscribeFromEvent(eventName) },
@@ -107,7 +107,7 @@ internal class P2PMediaLoaderCore(
         val session = sessionFactory.createSession(
             provider = provider,
             webViewFactory = webViewFactory,
-            events = events
+            events = p2pEvents
         )
 
         this@P2PMediaLoaderCore.activeSession = session
@@ -139,7 +139,7 @@ internal class P2PMediaLoaderCore(
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
-        events.syncEarlySubscriptions()
+        p2pEvents.syncEarlySubscriptions()
     }
 
     private fun handleInitializationException(e: Exception): Exception = when (e) {

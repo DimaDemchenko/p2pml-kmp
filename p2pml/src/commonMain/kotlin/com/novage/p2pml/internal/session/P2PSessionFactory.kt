@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.session
 
-import com.novage.p2pml.api.events.P2PEventRegistry
+import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.internal.engine.P2PEngine
@@ -31,7 +31,7 @@ internal class P2PSessionFactory(
     private val httpClientProvider: () -> HttpClient = ::createHttpClient,
     private val engineProvider: suspend (
         WebViewFactory,
-        P2PEventRegistry
+        P2PEvents
     ) -> P2PEngine = { webViewFactory, events ->
         withContext(Dispatchers.Main) {
             val webView = webViewFactory.createHeadlessWebView(events) { exception ->
@@ -50,7 +50,7 @@ internal class P2PSessionFactory(
     suspend fun createSession(
         provider: PlaybackProvider,
         webViewFactory: WebViewFactory,
-        events: P2PEventRegistry
+        events: P2PEvents
     ): P2PSession {
         val cleanupTasks = mutableListOf<suspend () -> Unit>()
 

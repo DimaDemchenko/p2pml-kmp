@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.webview
 
-import com.novage.p2pml.api.events.P2PEventRegistry
+import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.models.ChunkDownloadedDetails
 import com.novage.p2pml.api.models.ChunkUploadedDetails
 import com.novage.p2pml.api.models.DownloadSource
@@ -19,7 +19,7 @@ import kotlinx.serialization.json.jsonPrimitive
 internal data class JsEventEnvelope(val type: String, val payload: JsonElement? = null)
 
 internal class WebViewMessageRouter(
-    private val events: P2PEventRegistry,
+    private val events: P2PEvents,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val onPageReady: (() -> Unit)? = null
 ) {
