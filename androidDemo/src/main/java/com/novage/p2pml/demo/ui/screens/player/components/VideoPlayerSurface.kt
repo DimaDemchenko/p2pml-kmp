@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
@@ -82,16 +83,23 @@ fun VideoPlayerSurface(player: Player?, isP2PActive: Boolean, isVideoReady: Bool
                 MaterialTheme.colorScheme.error
             }
             val badgeText = if (isP2PActive) "P2P ON" else "P2P OFF"
+            val textColor = if (isP2PActive) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onError
+            }
 
-            Badge(
-                containerColor = badgeColor.copy(alpha = 0.8f),
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+            Text(
+                text = badgeText,
+                color = textColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(8.dp)
-            ) {
-                Text(badgeText, modifier = Modifier.padding(4.dp))
-            }
+                    .background(badgeColor.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            )
         }
     }
 }

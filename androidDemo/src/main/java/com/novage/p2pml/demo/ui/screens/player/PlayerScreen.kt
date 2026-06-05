@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -43,7 +44,7 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = { Text("P2P Media Loader") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
