@@ -234,11 +234,28 @@
             const view = new Uint8Array(buffer);
             for (let i = 0; i < 16; i++) view[i] = i;
 
-            console.log("[BINARY-TEST] Sending ArrayBuffer of 16 bytes...");
+            // Test 1: raw ArrayBuffer
+            console.log("[BINARY-TEST] Test 1: Sending raw ArrayBuffer of 16 bytes...");
             window.webkit.messageHandlers.p2pml_binaryTest.postMessage(buffer);
-            console.log("[BINARY-TEST] postMessage returned without error");
+            console.log("[BINARY-TEST] Test 1: postMessage returned without error");
           } catch (e) {
-            console.error("[BINARY-TEST] postMessage threw:", e.message);
+            console.error("[BINARY-TEST] Test 1 threw:", e.message);
+          }
+
+          try {
+            const buffer2 = new ArrayBuffer(8);
+            const view2 = new Uint8Array(buffer2);
+            for (let i = 0; i < 8; i++) view2[i] = i + 100;
+
+            // Test 2: object with id + ArrayBuffer
+            console.log("[BINARY-TEST] Test 2: Sending {id, data: ArrayBuffer}...");
+            window.webkit.messageHandlers.p2pml_binaryTest.postMessage({
+              id: "test-segment-1",
+              data: buffer2
+            });
+            console.log("[BINARY-TEST] Test 2: postMessage returned without error");
+          } catch (e) {
+            console.error("[BINARY-TEST] Test 2 threw:", e.message);
           }
         }
       });
