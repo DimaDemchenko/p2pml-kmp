@@ -4,11 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,12 +15,7 @@ import com.novage.p2pml.demo.ui.screens.player.PlayerUiState
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 
 @Composable
-fun PlayerContent(
-    uiState: PlayerUiState,
-    player: Player?,
-    onBackClick: () -> Unit,
-    onQualitySelected: (MediaTrack) -> Unit
-) {
+fun PlayerContent(uiState: PlayerUiState, player: Player?, onQualitySelected: (MediaTrack) -> Unit) {
     var showQualityDialog by remember { mutableStateOf(false) }
     val isInitialLoading = !uiState.isVideoReady
 
@@ -34,14 +24,6 @@ fun PlayerContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        IconButton(onClick = onBackClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
         VideoPlayerSurface(
             player = player,
             isP2PActive = uiState.isP2PActive,
