@@ -15,6 +15,9 @@ import platform.AVFoundation.AVPlayer
  *
  * This class is **single-use**: after [release] is called, this instance cannot be re-initialized.
  * Create a new [P2PMediaLoader] instance if you need to restart P2P streaming.
+ *
+ * @param coreConfig Engine configuration. Defaults are used when omitted.
+ * @param customEngineUrl URL to a custom-hosted engine page. Uses the bundled asset by default.
  */
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
