@@ -211,7 +211,7 @@ class PlayerViewModel: ObservableObject {
 
     private func setupP2PEvents(_ loader: P2PMediaLoader) {
         eventTasks.append(Task { [weak self] in
-            for await details in loader.events.onChunkDownloaded {
+            for await details in loader.p2pEvents.onChunkDownloaded {
                 guard let self = self else { return }
                 self.uiState.totalDownloaded += Int64(details.bytesLength)
                 if details.downloadSource == .p2p {
@@ -222,12 +222,12 @@ class PlayerViewModel: ObservableObject {
             }
         })
         eventTasks.append(Task { [weak self] in
-            for await details in loader.events.onChunkUploaded {
+            for await details in loader.p2pEvents.onChunkUploaded {
                 self?.uiState.uploadTotal += Int64(details.bytesLength)
             }
         })
         eventTasks.append(Task { [weak self] in
-            for await details in loader.events.onPeerConnect {
+            for await details in loader.p2pEvents.onPeerConnect {
                 guard let self = self else { return }
                 if !self.uiState.peers.contains(details.peerId) {
                     self.uiState.peers.append(details.peerId)
@@ -235,7 +235,7 @@ class PlayerViewModel: ObservableObject {
             }
         })
         eventTasks.append(Task { [weak self] in
-            for await details in loader.events.onPeerClose {
+            for await details in loader.p2pEvents.onPeerClose {
                 self?.uiState.peers.removeAll { $0 == details.peerId }
             }
         })
