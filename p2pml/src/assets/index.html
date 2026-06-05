@@ -226,6 +226,21 @@
         window.p2p = p2p;
         console.log("document loaded");
         bridge.sendMessage("onWebViewLoaded");
+
+        // === BINARY TEST ===
+        if (window.webkit?.messageHandlers?.p2pml_binaryTest) {
+          try {
+            const buffer = new ArrayBuffer(16);
+            const view = new Uint8Array(buffer);
+            for (let i = 0; i < 16; i++) view[i] = i;
+
+            console.log("[BINARY-TEST] Sending ArrayBuffer of 16 bytes...");
+            window.webkit.messageHandlers.p2pml_binaryTest.postMessage(buffer);
+            console.log("[BINARY-TEST] postMessage returned without error");
+          } catch (e) {
+            console.error("[BINARY-TEST] postMessage threw:", e.message);
+          }
+        }
       });
     </script>
   </head>

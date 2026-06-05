@@ -15,8 +15,9 @@ internal object IosBridgeChannels {
     const val GENERIC_EVENTS = "p2pml"
     const val CHUNK_DOWNLOADED = "p2pml_onChunkDownloaded"
     const val CHUNK_UPLOADED = "p2pml_onChunkUploaded"
+    const val BINARY_TEST = "p2pml_binaryTest"
 
-    val all = listOf(GENERIC_EVENTS, CHUNK_DOWNLOADED, CHUNK_UPLOADED)
+    val all = listOf(GENERIC_EVENTS, CHUNK_DOWNLOADED, CHUNK_UPLOADED, BINARY_TEST)
 }
 
 internal class IosWebViewEventDispatcher(
@@ -36,6 +37,7 @@ internal class IosWebViewEventDispatcher(
             IosBridgeChannels.CHUNK_DOWNLOADED -> handleChunkDownloaded(didReceiveScriptMessage.body)
             IosBridgeChannels.CHUNK_UPLOADED -> handleChunkUploaded(didReceiveScriptMessage.body)
             IosBridgeChannels.GENERIC_EVENTS -> handleGenericMessage(didReceiveScriptMessage.body)
+            IosBridgeChannels.BINARY_TEST -> handleBinaryTest(didReceiveScriptMessage.body)
         }
     }
 
@@ -58,5 +60,19 @@ internal class IosWebViewEventDispatcher(
     private fun handleGenericMessage(body: Any?) {
         val messageString = body as? String ?: return
         router.handleMessage(messageString)
+    }
+
+    private fun handleBinaryTest(body: Any?) {
+        println("[BINARY-TEST] body is null: ${body == null}")
+        println("[BINARY-TEST] body type: ${body?.let { it::class.simpleName }}")
+        println("[BINARY-TEST] body toString: $body")
+        println("[BINARY-TEST] body is NSData: ${body is platform.Foundation.NSData}")
+        println("[BINARY-TEST] body is NSArray: ${body is platform.Foundation.NSArray}")
+        println("[BINARY-TEST] body is NSString: ${body is String}")
+        println("[BINARY-TEST] body is NSDictionary: ${body is NSDictionary}")
+        println("[BINARY-TEST] body is NSNumber: ${body is Number}")
+        if (body is platform.Foundation.NSData) {
+            println("[BINARY-TEST] SUCCESS! NSData length: ${body.length}")
+        }
     }
 }
