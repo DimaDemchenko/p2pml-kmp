@@ -65,12 +65,32 @@ internal class IosWebViewEventDispatcher(
     private fun handleBinaryTest(body: Any?) {
         println("[BINARY-TEST] body is null: ${body == null}")
         println("[BINARY-TEST] body type: ${body?.let { it::class.simpleName }}")
-        println("[BINARY-TEST] body toString: $body")
         println("[BINARY-TEST] body is NSData: ${body is platform.Foundation.NSData}")
         println("[BINARY-TEST] body is NSArray: ${body is platform.Foundation.NSArray}")
         println("[BINARY-TEST] body is NSString: ${body is String}")
         println("[BINARY-TEST] body is NSDictionary: ${body is NSDictionary}")
         println("[BINARY-TEST] body is NSNumber: ${body is Number}")
+
+        if (body is NSDictionary) {
+            println("[BINARY-TEST] NSDictionary key count: ${body.count}")
+            val keys = body.allKeys
+            println("[BINARY-TEST] keys: $keys")
+            for (key in keys) {
+                val value = body.objectForKey(key)
+                println("[BINARY-TEST]   key='$key' valueType=${value?.let { it::class.simpleName }} value=$value")
+                if (value is platform.Foundation.NSData) {
+                    println("[BINARY-TEST]   -> NSData length: ${value.length}")
+                }
+                if (value is platform.Foundation.NSArray) {
+                    println("[BINARY-TEST]   -> NSArray count: ${value.count}")
+                    if (value.count > 0u) {
+                        val first = value.objectAtIndex(0u)
+                        println("[BINARY-TEST]   -> first element type: ${first?.let { it::class.simpleName }} value: $first")
+                    }
+                }
+            }
+        }
+
         if (body is platform.Foundation.NSData) {
             println("[BINARY-TEST] SUCCESS! NSData length: ${body.length}")
         }
