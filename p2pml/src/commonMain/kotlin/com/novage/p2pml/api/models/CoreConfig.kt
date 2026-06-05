@@ -4,6 +4,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
+/**
+ * Sentinel value indicating "use the JS engine's built-in default."
+ *
+ * Numeric config properties default to this value. When serialized to JSON,
+ * the JS engine recognizes it and applies its own default instead.
+ */
+const val USE_ENGINE_DEFAULT = -1
+
 @Serializable
 data class IceServer(val urls: List<String>, val username: String? = null, val credential: String? = null)
 
@@ -12,8 +20,8 @@ data class RtcConfig(val iceServers: List<IceServer>? = null)
 
 /**
  * Per-stream P2P configuration. Override specific properties to customize behavior for
- * a single stream type; any property left at its default value (`-1` for numeric fields,
- * `false` for booleans) will use the JS engine's default.
+ * a single stream type; any property left at its default value ([USE_ENGINE_DEFAULT] for
+ * numeric fields, `false` for booleans) will use the JS engine's default.
  *
  * Properties are declared as class-body `var` fields (rather than constructor parameters)
  * so that Kotlin/Native exports a true no-arg `init()` to Swift/ObjC.
@@ -39,18 +47,18 @@ data class RtcConfig(val iceServers: List<IceServer>? = null)
 class StreamConfig {
     var isP2PUploadDisabled: Boolean = false
     var isP2PDisabled: Boolean = false
-    var highDemandTimeWindow: Int = -1
-    var httpDownloadTimeWindow: Int = -1
-    var httpDownloadInitialTimeoutMs: Int = -1
-    var p2pDownloadTimeWindow: Int = -1
-    var simultaneousHttpDownloads: Int = -1
-    var simultaneousP2PDownloads: Int = -1
-    var webRtcMaxMessageSize: Int = -1
-    var p2pNotReceivingBytesTimeoutMs: Int = -1
-    var p2pInactiveLoaderDestroyTimeoutMs: Int = -1
-    var httpNotReceivingBytesTimeoutMs: Int = -1
-    var httpErrorRetries: Int = -1
-    var p2pErrorRetries: Int = -1
+    var highDemandTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadInitialTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var simultaneousHttpDownloads: Int = USE_ENGINE_DEFAULT
+    var simultaneousP2PDownloads: Int = USE_ENGINE_DEFAULT
+    var webRtcMaxMessageSize: Int = USE_ENGINE_DEFAULT
+    var p2pNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pInactiveLoaderDestroyTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpErrorRetries: Int = USE_ENGINE_DEFAULT
+    var p2pErrorRetries: Int = USE_ENGINE_DEFAULT
     var announceTrackers: List<String>? = null
     var rtcConfig: RtcConfig? = null
     var trackerClientVersionPrefix: String? = null
@@ -66,8 +74,9 @@ class StreamConfig {
 /**
  * Core P2P engine configuration passed to [P2PMediaLoader] at initialization.
  * Set only the properties you want to override; properties that remain at their Kotlin
- * defaults (`-1` for numeric fields, `false` for booleans) are omitted during JSON
- * serialization (`encodeDefaults = false`) and the JS engine fills in its own defaults.
+ * defaults ([USE_ENGINE_DEFAULT] for numeric fields, `false` for booleans) are omitted
+ * during JSON serialization (`encodeDefaults = false`) and the JS engine fills in its
+ * own defaults.
  *
  * **Note on mutability:** Properties are `var` for cross-platform interop (Kotlin/Native
  * does not export constructor default values to Swift/ObjC). The config is serialized
@@ -97,24 +106,24 @@ class StreamConfig {
  */
 @Serializable
 class CoreConfig {
-    var segmentMemoryStorageLimit: Int = -1
+    var segmentMemoryStorageLimit: Int = USE_ENGINE_DEFAULT
 
     @Transient var customSegmentStorageFactoryJs: String? = null
 
     var isP2PUploadDisabled: Boolean = false
     var isP2PDisabled: Boolean = false
-    var highDemandTimeWindow: Int = -1
-    var httpDownloadTimeWindow: Int = -1
-    var httpDownloadInitialTimeoutMs: Int = -1
-    var p2pDownloadTimeWindow: Int = -1
-    var simultaneousHttpDownloads: Int = -1
-    var simultaneousP2PDownloads: Int = -1
-    var webRtcMaxMessageSize: Int = -1
-    var p2pNotReceivingBytesTimeoutMs: Int = -1
-    var p2pInactiveLoaderDestroyTimeoutMs: Int = -1
-    var httpNotReceivingBytesTimeoutMs: Int = -1
-    var httpErrorRetries: Int = -1
-    var p2pErrorRetries: Int = -1
+    var highDemandTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadInitialTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var simultaneousHttpDownloads: Int = USE_ENGINE_DEFAULT
+    var simultaneousP2PDownloads: Int = USE_ENGINE_DEFAULT
+    var webRtcMaxMessageSize: Int = USE_ENGINE_DEFAULT
+    var p2pNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pInactiveLoaderDestroyTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpErrorRetries: Int = USE_ENGINE_DEFAULT
+    var p2pErrorRetries: Int = USE_ENGINE_DEFAULT
     var announceTrackers: List<String>? = null
     var rtcConfig: RtcConfig? = null
     var trackerClientVersionPrefix: String? = null
@@ -138,18 +147,18 @@ class CoreConfig {
  */
 @Serializable
 class DynamicStreamConfig {
-    var highDemandTimeWindow: Int = -1
-    var httpDownloadTimeWindow: Int = -1
-    var httpDownloadInitialTimeoutMs: Int = -1
-    var p2pDownloadTimeWindow: Int = -1
-    var simultaneousHttpDownloads: Int = -1
-    var simultaneousP2PDownloads: Int = -1
-    var webRtcMaxMessageSize: Int = -1
-    var p2pNotReceivingBytesTimeoutMs: Int = -1
-    var p2pInactiveLoaderDestroyTimeoutMs: Int = -1
-    var httpNotReceivingBytesTimeoutMs: Int = -1
-    var httpErrorRetries: Int = -1
-    var p2pErrorRetries: Int = -1
+    var highDemandTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadInitialTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var simultaneousHttpDownloads: Int = USE_ENGINE_DEFAULT
+    var simultaneousP2PDownloads: Int = USE_ENGINE_DEFAULT
+    var webRtcMaxMessageSize: Int = USE_ENGINE_DEFAULT
+    var p2pNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pInactiveLoaderDestroyTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpErrorRetries: Int = USE_ENGINE_DEFAULT
+    var p2pErrorRetries: Int = USE_ENGINE_DEFAULT
 
     @SerialName("isP2PDisabled")
     private var _isP2PDisabled: Boolean? = null
@@ -200,22 +209,22 @@ class DynamicStreamConfig {
  */
 @Serializable
 class DynamicCoreConfig {
-    var segmentMemoryStorageLimit: Int = -1
+    var segmentMemoryStorageLimit: Int = USE_ENGINE_DEFAULT
 
     @Transient var customSegmentStorageFactoryJs: String? = null
 
-    var highDemandTimeWindow: Int = -1
-    var httpDownloadTimeWindow: Int = -1
-    var httpDownloadInitialTimeoutMs: Int = -1
-    var p2pDownloadTimeWindow: Int = -1
-    var simultaneousHttpDownloads: Int = -1
-    var simultaneousP2PDownloads: Int = -1
-    var webRtcMaxMessageSize: Int = -1
-    var p2pNotReceivingBytesTimeoutMs: Int = -1
-    var p2pInactiveLoaderDestroyTimeoutMs: Int = -1
-    var httpNotReceivingBytesTimeoutMs: Int = -1
-    var httpErrorRetries: Int = -1
-    var p2pErrorRetries: Int = -1
+    var highDemandTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var httpDownloadInitialTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pDownloadTimeWindow: Int = USE_ENGINE_DEFAULT
+    var simultaneousHttpDownloads: Int = USE_ENGINE_DEFAULT
+    var simultaneousP2PDownloads: Int = USE_ENGINE_DEFAULT
+    var webRtcMaxMessageSize: Int = USE_ENGINE_DEFAULT
+    var p2pNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var p2pInactiveLoaderDestroyTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var httpErrorRetries: Int = USE_ENGINE_DEFAULT
+    var p2pErrorRetries: Int = USE_ENGINE_DEFAULT
 
     @SerialName("isP2PDisabled")
     private var _isP2PDisabled: Boolean? = null
