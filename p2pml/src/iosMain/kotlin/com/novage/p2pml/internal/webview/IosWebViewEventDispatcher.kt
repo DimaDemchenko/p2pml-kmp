@@ -94,10 +94,9 @@ internal class BinaryTestHandler : NSObject(), WKScriptMessageHandlerWithReplyPr
 
         if (body is NSDictionary) {
             println("[BINARY-TEST-v2] NSDictionary key count: ${body.count}")
-            val keys = body.allKeys
-            println("[BINARY-TEST-v2] keys: $keys")
-            for (key in keys) {
-                val value = body.objectForKey(key)
+            val map = body as Map<*, *>
+            println("[BINARY-TEST-v2] keys: ${map.keys}")
+            for ((key, value) in map) {
                 println("[BINARY-TEST-v2]   key='$key' valueType=${value?.let { it::class.simpleName }} value=$value")
                 if (value is platform.Foundation.NSData) {
                     println("[BINARY-TEST-v2]   -> NSData length: ${value.length}")
