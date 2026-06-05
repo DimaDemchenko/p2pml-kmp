@@ -75,6 +75,7 @@ fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
                             fontWeight = FontWeight.SemiBold
                         )
                     },
+                    expandedHeight = 44.dp,
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
                         titleContentColor = MaterialTheme.colorScheme.onBackground

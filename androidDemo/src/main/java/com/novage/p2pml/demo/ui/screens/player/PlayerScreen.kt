@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.novage.p2pml.demo.ui.screens.player.components.PlayerContent
 import com.novage.p2pml.demo.ui.screens.player.components.VideoErrorView
@@ -64,6 +65,7 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
                             )
                         }
                     },
+                    expandedHeight = 44.dp,
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background
                     )
