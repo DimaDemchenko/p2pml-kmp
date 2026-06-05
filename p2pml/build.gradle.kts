@@ -16,6 +16,8 @@ skie {
     features {
         group {
             co.touchlab.skie.configuration.SealedInterop.Enabled(false)
+        }
+        classOrPackage("com.novage.p2pml.api.models") {
             co.touchlab.skie.configuration.DefaultArgumentInterop.Enabled(false)
         }
     }
