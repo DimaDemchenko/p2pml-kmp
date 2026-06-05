@@ -23,6 +23,7 @@ import platform.WebKit.WKNavigationDelegateProtocol
 import platform.WebKit.WKPreferences
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
+import platform.WebKit.WKContentWorld
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
@@ -72,8 +73,18 @@ private class IosHeadlessWebView(
             onPageReadyCallback?.invoke()
         }
 
-        IosBridgeChannels.all.forEach { channel ->
+        IosBridgeChannels.standard.forEach { channel ->
             configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, channel)
+        }
+
+        // Register binary test channel with WKScriptMessageHandlerWithReply (iOS 14+)
+        val binaryTestHandler = BinaryTestHandler()
+        IosBridgeChannels.withReply.forEach { channel ->
+            configuration.userContentController.addScriptMessageHandler(
+                binaryTestHandler,
+                WKContentWorld.pageWorld,
+                channel
+            )
         }
 
         val frame = CGRectZero.readValue()
