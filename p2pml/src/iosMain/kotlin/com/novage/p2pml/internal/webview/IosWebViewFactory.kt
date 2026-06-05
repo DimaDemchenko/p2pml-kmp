@@ -80,10 +80,10 @@ private class IosHeadlessWebView(
         // Register binary test channel with WKScriptMessageHandlerWithReply (iOS 14+)
         val binaryTestHandler = BinaryTestHandler()
         IosBridgeChannels.withReply.forEach { channel ->
-            configuration.userContentController.addScriptMessageHandler(
-                binaryTestHandler,
-                WKContentWorld.pageWorld,
-                channel
+            configuration.userContentController.addScriptMessageHandlerWithReply(
+                scriptMessageHandlerWithReply = binaryTestHandler,
+                contentWorld = WKContentWorld.pageWorld,
+                name = channel
             )
         }
 
