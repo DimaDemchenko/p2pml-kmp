@@ -139,6 +139,11 @@ internal class P2PMediaLoaderCore(
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
+        pendingDynamicConfig.getAndUpdate { null }?.let { late ->
+            logger.i { "Applying dynamic config that arrived during initialization handoff." }
+            session.applyDynamicConfig(late)
+        }
+
         p2pEvents.syncEarlySubscriptions()
     }
 
