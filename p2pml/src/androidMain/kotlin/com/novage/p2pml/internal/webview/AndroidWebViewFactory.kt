@@ -32,6 +32,7 @@ private class AndroidHeadlessWebView(
 ) : HeadlessWebView {
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
+    private var isDestroyed = false
 
     init {
         require(Looper.myLooper() == Looper.getMainLooper()) {
@@ -121,6 +122,7 @@ private class AndroidHeadlessWebView(
 
     override fun destroy() {
         runOnUiThread {
+            isDestroyed = true
             loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
             loadUrlContinuation = null
             onPageReadyCallback = null
@@ -147,8 +149,10 @@ private class AndroidHeadlessWebView(
             }
             loadUrlContinuation = null
             onPageReadyCallback = null
-        } else {
+        } else if (!isDestroyed) {
             onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
         }
+        // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
+        // aborting the in-flight load) — not a runtime fault, so it must not be surfaced as fatal.
     }
 }
