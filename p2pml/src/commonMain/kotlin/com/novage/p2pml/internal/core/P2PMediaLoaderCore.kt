@@ -225,8 +225,6 @@ internal class P2PMediaLoaderCore(
         val sessionToDestroy = activeSession.exchange(null)
         pendingDynamicConfig.value = null
 
-        coreScope.cancel()
-
         cleanupScope.launch {
             try {
                 sessionToDestroy?.destroy()
@@ -242,5 +240,7 @@ internal class P2PMediaLoaderCore(
                 cleanupScope.cancel()
             }
         }
+
+        coreScope.cancel()
     }
 }
