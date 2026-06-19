@@ -55,7 +55,7 @@ internal class ServerModule(
         logger.d { "Starting local P2P Server..." }
 
         try {
-            val serverInstance = embeddedServer(CIO, port = 0, watchPaths = emptyList()) {
+            val serverInstance = embeddedServer(CIO, host = "127.0.0.1", port = 0, watchPaths = emptyList()) {
                 if (enableCors) configureCORS()
                 configureRoutes(client, manifestService, hlsManifestManager, segmentService, errorDispatcher)
             }
