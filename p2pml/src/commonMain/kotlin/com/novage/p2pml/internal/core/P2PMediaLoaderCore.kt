@@ -13,7 +13,8 @@ import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
-import kotlin.concurrent.Volatile
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASE
  * Core orchestrator for P2P media streaming. Single-use: once [release] is called,
  * the internal [CoroutineScope] is cancelled permanently and this instance must be discarded.
  */
+@OptIn(ExperimentalAtomicApi::class)
 internal class P2PMediaLoaderCore(
     private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
@@ -66,8 +68,7 @@ internal class P2PMediaLoaderCore(
         )
     }
 
-    @Volatile
-    private var activeSession: P2PSession? = null
+    private val activeSession = AtomicReference<P2PSession?>(null)
 
     private val status = MutableStateFlow(LoaderStatus.IDLE)
 
@@ -76,8 +77,8 @@ internal class P2PMediaLoaderCore(
     val runtimeErrors = errorDispatcher.errors
     val p2pEvents: P2PEvents = P2PEvents(
         coreScope = coreScope,
-        onSubscribe = { eventName -> activeSession?.subscribeToEvent(eventName) },
-        onUnsubscribe = { eventName -> activeSession?.unsubscribeFromEvent(eventName) },
+        onSubscribe = { eventName -> activeSession.load()?.subscribeToEvent(eventName) },
+        onUnsubscribe = { eventName -> activeSession.load()?.unsubscribeFromEvent(eventName) },
         isCoreActive = { status.value == LoaderStatus.ACTIVE }
     )
 
@@ -110,7 +111,7 @@ internal class P2PMediaLoaderCore(
             events = p2pEvents
         )
 
-        this@P2PMediaLoaderCore.activeSession = session
+        activeSession.store(session)
 
         val configToApply = pendingDynamicConfig.getAndUpdate { null }
         if (configToApply != null) {
@@ -119,12 +120,7 @@ internal class P2PMediaLoaderCore(
         }
 
         if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
-            val orphanedSession = if (this@P2PMediaLoaderCore.activeSession === session) {
-                this@P2PMediaLoaderCore.activeSession = null
-                session
-            } else {
-                null
-            }
+            val orphanedSession = if (activeSession.compareAndSet(session, null)) session else null
 
             logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
 
@@ -184,7 +180,7 @@ internal class P2PMediaLoaderCore(
 
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String): String {
-        val session = activeSession ?: throw P2PMediaLoaderException(
+        val session = activeSession.load() ?: throw P2PMediaLoaderException(
             P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
             "P2PMediaLoader is not ready. Current state: ${status.value}"
         )
@@ -204,7 +200,7 @@ internal class P2PMediaLoaderCore(
             return
         }
 
-        val session = activeSession
+        val session = activeSession.load()
         if (session == null) {
             logger.w { "Session was null during ACTIVE state; release likely in progress. Ignoring." }
             return
@@ -226,8 +222,7 @@ internal class P2PMediaLoaderCore(
 
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
-        val sessionToDestroy = activeSession
-        activeSession = null
+        val sessionToDestroy = activeSession.exchange(null)
         pendingDynamicConfig.value = null
 
         coreScope.cancel()
