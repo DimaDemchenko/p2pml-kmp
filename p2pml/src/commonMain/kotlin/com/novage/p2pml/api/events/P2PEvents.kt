@@ -83,8 +83,6 @@ class P2PEvents internal constructor(
             "onPeerError" -> _onPeerError.tryEmit(json.decodeFromJsonElement(payload))
             "onTrackerError" -> _onTrackerError.tryEmit(json.decodeFromJsonElement(payload))
             "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromJsonElement(payload))
-            "onChunkDownloaded" -> _onChunkDownloaded.tryEmit(json.decodeFromJsonElement(payload))
-            "onChunkUploaded" -> _onChunkUploaded.tryEmit(json.decodeFromJsonElement(payload))
             else -> logger.w { "No dispatcher found for event: $eventName" }
         }
     }
