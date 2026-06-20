@@ -44,6 +44,7 @@ private class IosHeadlessWebView(
 
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
+    private var isDestroyed = false
 
     init {
         require(NSThread.isMainThread) { "IosHeadlessWebView must be instantiated on the main thread" }
@@ -87,9 +88,11 @@ private class IosHeadlessWebView(
                 }
                 loadUrlContinuation = null
                 onPageReadyCallback = null
-            } else {
+            } else if (!isDestroyed) {
                 onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
             }
+            // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
+            // aborting navigation) — not a runtime fault, so it must not be surfaced as fatal.
         }
 
         this.navigationDelegate = delegate
@@ -159,6 +162,7 @@ private class IosHeadlessWebView(
 
     override fun destroy() {
         runOnMainThread {
+            isDestroyed = true
             loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
             loadUrlContinuation = null
             onPageReadyCallback = null

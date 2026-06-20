@@ -63,20 +63,22 @@ internal class SequenceStateTracker(
     }
 
     private suspend fun processPlaybackUpdate(actualInfo: PlaybackInfo) {
-        val effectiveInfo = mutex.withLock {
-            val forcedPos = forcedPlaybackPosition ?: return@withLock actualInfo
-            val diff = abs(actualInfo.currentPlayPosition - forcedPos)
+        mutex.withLock {
+            val forcedPos = forcedPlaybackPosition
+            val effectiveInfo = when {
+                forcedPos == null -> actualInfo
 
-            if (diff <= catchUpThresholdSec) {
-                logger.i { "Native player caught up to seek target ($forcedPos). Resuming standard tracking." }
-                resumeStandardTrackingLocked()
-                actualInfo
-            } else {
-                actualInfo.copy(currentPlayPosition = forcedPos)
+                abs(actualInfo.currentPlayPosition - forcedPos) <= catchUpThresholdSec -> {
+                    logger.i { "Native player caught up to seek target ($forcedPos). Resuming standard tracking." }
+                    resumeStandardTrackingLocked()
+                    actualInfo
+                }
+
+                else -> actualInfo.copy(currentPlayPosition = forcedPos)
             }
-        }
 
-        updateEnginePlaybackInfoSafely(effectiveInfo)
+            updateEnginePlaybackInfoSafely(effectiveInfo)
+        }
     }
 
     suspend fun onSegmentRequested(runtimeId: String) {
@@ -85,7 +87,7 @@ internal class SequenceStateTracker(
             return
         }
 
-        val needsForcedUpdate = mutex.withLock {
+        mutex.withLock {
             val lastState = trackStates[manifestUrl]
 
             val isFirstRequest = lastState == null
@@ -98,19 +100,14 @@ internal class SequenceStateTracker(
 
             trackStates[manifestUrl] = TrackState(segment.externalId, segment.startTime)
 
-            if (isSequential) {
-                false
-            } else {
+            if (!isSequential) {
                 val duration = (segment.endTime - segment.startTime).coerceAtLeast(DEFAULT_CATCH_UP_THRESHOLD_SEC)
                 logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
                 suspendPollingLocked(segment.startTime, duration)
-                true
-            }
-        }
 
-        if (needsForcedUpdate) {
-            val info = playbackInfoFlow.value
-            updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
+                val info = playbackInfoFlow.value
+                updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
+            }
         }
     }
 

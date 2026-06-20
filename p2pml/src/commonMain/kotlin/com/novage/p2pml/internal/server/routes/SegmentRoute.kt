@@ -54,7 +54,13 @@ private fun Route.segmentDownloadRoute(
             return@get
         }
 
-        val segmentUrl = decodeFromUrlSafeBase64(encodedSegmentUrl)
+        val segmentUrl = try {
+            decodeFromUrlSafeBase64(encodedSegmentUrl)
+        } catch (_: IllegalArgumentException) {
+            logger.w { "Rejected malformed (non-base64) segment URL parameter." }
+            call.respondText("Malformed segment URL", status = HttpStatusCode.BadRequest)
+            return@get
+        }
 
         logger.d { "Player requested segment: $segmentUrl" }
 
