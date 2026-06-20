@@ -9,6 +9,7 @@ import kotlin.native.ref.WeakReference
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
+import platform.AVFoundation.AVPlayerItemStatusReadyToPlay
 import platform.AVFoundation.addPeriodicTimeObserverForInterval
 import platform.AVFoundation.currentItem
 import platform.AVFoundation.duration
@@ -90,7 +91,10 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
         }
 
         val durationSec = CMTimeGetSeconds(currentItem.duration)
-        val isLive = durationSec.isNaN() || durationSec.isInfinite() || durationSec <= 0.0
+        val isDurationIndefinite = durationSec.isNaN() || durationSec.isInfinite() || durationSec <= 0.0
+
+        val isReady = currentItem.status == AVPlayerItemStatusReadyToPlay
+        val isLive = isDurationIndefinite && isReady
 
         if (isLive) {
             if (syntheticWindowStartSec == null) {
