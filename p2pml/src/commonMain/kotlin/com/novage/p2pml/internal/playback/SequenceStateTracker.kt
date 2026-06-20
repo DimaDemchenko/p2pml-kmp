@@ -67,11 +67,13 @@ internal class SequenceStateTracker(
             val forcedPos = forcedPlaybackPosition
             val effectiveInfo = when {
                 forcedPos == null -> actualInfo
+
                 abs(actualInfo.currentPlayPosition - forcedPos) <= catchUpThresholdSec -> {
                     logger.i { "Native player caught up to seek target ($forcedPos). Resuming standard tracking." }
                     resumeStandardTrackingLocked()
                     actualInfo
                 }
+
                 else -> actualInfo.copy(currentPlayPosition = forcedPos)
             }
 
