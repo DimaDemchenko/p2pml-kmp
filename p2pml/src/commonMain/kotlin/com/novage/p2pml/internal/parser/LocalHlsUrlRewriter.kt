@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.parser
 
-import com.novage.p2pml.api.models.ByteRange
+import com.novage.p2pml.api.events.ByteRange
 import com.novage.p2pml.internal.parser.buildSegmentRuntimeId
 import com.novage.p2pml.internal.parser.encoding.encodeToUrlSafeBase64
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsUrlRewriter

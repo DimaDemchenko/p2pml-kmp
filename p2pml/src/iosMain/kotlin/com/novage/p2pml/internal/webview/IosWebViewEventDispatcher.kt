@@ -1,9 +1,9 @@
 package com.novage.p2pml.internal.webview
 
+import com.novage.p2pml.api.events.ChunkDownloadedDetails
+import com.novage.p2pml.api.events.ChunkUploadedDetails
+import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.P2PEvents
-import com.novage.p2pml.api.models.ChunkDownloadedDetails
-import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.api.models.DownloadSource
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage

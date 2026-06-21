@@ -1,4 +1,4 @@
-package com.novage.p2pml.api.models
+package com.novage.p2pml.api.playback
 
 import kotlinx.serialization.Serializable
 

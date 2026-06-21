@@ -1,8 +1,8 @@
 package com.novage.p2pml.internal.playback
 
-import com.novage.p2pml.api.interfaces.PlaybackListener
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackListener
+import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.utils.getCurrentEpochSeconds
 import kotlin.concurrent.Volatile
 import kotlin.native.ref.WeakReference

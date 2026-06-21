@@ -2,9 +2,9 @@ package com.novage.p2pml.api.java
 
 import androidx.media3.exoplayer.ExoPlayer
 import com.novage.p2pml.P2PMediaLoader
+import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.DynamicCoreConfig
+import com.novage.p2pml.api.playback.PlaybackProvider
 import java.lang.AutoCloseable
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CoroutineScope

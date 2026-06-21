@@ -1,15 +1,15 @@
 package com.novage.p2pml.api.java
 
-import com.novage.p2pml.api.models.ChunkDownloadedDetails
-import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.api.models.PeerDetails
-import com.novage.p2pml.api.models.PeerErrorDetails
-import com.novage.p2pml.api.models.SegmentAbortDetails
-import com.novage.p2pml.api.models.SegmentErrorDetails
-import com.novage.p2pml.api.models.SegmentLoadDetails
-import com.novage.p2pml.api.models.SegmentStartDetails
-import com.novage.p2pml.api.models.TrackerErrorDetails
-import com.novage.p2pml.api.models.TrackerWarningDetails
+import com.novage.p2pml.api.events.ChunkDownloadedDetails
+import com.novage.p2pml.api.events.ChunkUploadedDetails
+import com.novage.p2pml.api.events.PeerDetails
+import com.novage.p2pml.api.events.PeerErrorDetails
+import com.novage.p2pml.api.events.SegmentAbortDetails
+import com.novage.p2pml.api.events.SegmentErrorDetails
+import com.novage.p2pml.api.events.SegmentLoadDetails
+import com.novage.p2pml.api.events.SegmentStartDetails
+import com.novage.p2pml.api.events.TrackerErrorDetails
+import com.novage.p2pml.api.events.TrackerWarningDetails
 
 @JvmDefaultWithCompatibility
 interface P2PEventListener {

@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.session
 
-import com.novage.p2pml.api.models.DynamicCoreConfig
+import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 

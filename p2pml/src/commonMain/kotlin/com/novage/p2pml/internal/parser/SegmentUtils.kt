@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.parser
 
-import com.novage.p2pml.api.models.ByteRange
+import com.novage.p2pml.api.events.ByteRange
 
 /**
  * Builds the runtime identifier for a segment, encoding the byte range into the URL string.

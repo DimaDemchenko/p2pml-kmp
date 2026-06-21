@@ -1,9 +1,9 @@
 package com.novage.p2pml.internal.session
 
+import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.CoreConfig
+import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
 import com.novage.p2pml.internal.http.createHttpClient

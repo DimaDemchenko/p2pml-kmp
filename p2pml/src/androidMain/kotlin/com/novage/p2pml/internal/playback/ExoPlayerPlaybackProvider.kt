@@ -7,9 +7,9 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
-import com.novage.p2pml.api.interfaces.PlaybackListener
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackListener
+import com.novage.p2pml.api.playback.PlaybackProvider
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

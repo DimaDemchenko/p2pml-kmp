@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
-import com.novage.p2pml.api.models.ByteRange
+import com.novage.p2pml.api.events.ByteRange
 import com.novage.p2pml.internal.parser.HlsStreamStateTracker
 import com.novage.p2pml.internal.utils.Clock
 import kotlin.test.Test

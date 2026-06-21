@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.engine
 
-import com.novage.p2pml.api.models.CoreConfig
-import com.novage.p2pml.api.models.DynamicCoreConfig
+import com.novage.p2pml.api.config.CoreConfig
+import com.novage.p2pml.api.config.DynamicCoreConfig
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 

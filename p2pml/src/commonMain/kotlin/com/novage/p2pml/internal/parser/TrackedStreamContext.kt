@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.parser
 
-import com.novage.p2pml.api.models.Segment
+import com.novage.p2pml.api.events.Segment
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
 import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 import kotlin.time.TimeMark

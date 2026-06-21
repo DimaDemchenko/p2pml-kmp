@@ -1,7 +1,7 @@
 package com.novage.p2pml.demo.ui.screens.player
 
 import androidx.compose.runtime.Immutable
-import com.novage.p2pml.api.models.PeerDetails
+import com.novage.p2pml.api.events.PeerDetails
 import com.novage.p2pml.demo.ui.screens.player.models.AvailableTracks
 
 @Immutable

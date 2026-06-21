@@ -1,6 +1,6 @@
-package com.novage.p2pml.api.interfaces
+package com.novage.p2pml.api.playback
 
-import com.novage.p2pml.api.models.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackInfo
 
 interface PlaybackListener {
     fun onPlaybackInfoUpdated(info: PlaybackInfo)
