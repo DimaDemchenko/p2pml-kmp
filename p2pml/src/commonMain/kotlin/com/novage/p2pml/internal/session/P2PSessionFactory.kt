@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.session
 
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
@@ -13,7 +14,6 @@ import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
@@ -26,7 +26,7 @@ import kotlinx.coroutines.withTimeout
 
 internal class P2PSessionFactory(
     private val coreConfig: CoreConfig,
-    private val errorDispatcher: RuntimeErrorDispatcher,
+    private val onFatalError: (P2PMediaLoaderException) -> Unit,
     private val customEngineUrl: String?,
     private val httpClientProvider: () -> HttpClient = ::createHttpClient,
     private val engineProvider: suspend (
@@ -35,7 +35,7 @@ internal class P2PSessionFactory(
     ) -> P2PEngine = { webViewFactory, events ->
         withContext(Dispatchers.Main) {
             val webView = webViewFactory.createHeadlessWebView(events) { exception ->
-                errorDispatcher.tryEmit(exception.type, exception.message ?: "Unknown error")
+                onFatalError(exception)
             }
             P2PEngineManager(webView)
         }
@@ -65,7 +65,7 @@ internal class P2PSessionFactory(
 
             val hlsManifestManager = HlsManifestManager(urlFactory)
 
-            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, errorDispatcher)
+            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, onFatalError)
             cleanupTasks.add { sequenceStateTracker.destroy() }
 
             val manifestService = ManifestService(hlsManifestManager, engine) {
@@ -83,8 +83,7 @@ internal class P2PSessionFactory(
                 hlsManifestManager = hlsManifestManager,
                 manifestService = manifestService,
                 segmentService = segmentService,
-                enableCors = customEngineUrl != null,
-                errorDispatcher = errorDispatcher
+                enableCors = customEngineUrl != null
             )
             cleanupTasks.add { serverModule.destroy() }
 

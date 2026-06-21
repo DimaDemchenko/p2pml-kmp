@@ -1,16 +1,17 @@
 package com.novage.p2pml.internal.core
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DynamicCoreConfig
+import com.novage.p2pml.api.state.P2PMediaLoaderState
+import com.novage.p2pml.api.state.P2PMediaLoaderStatus
 import com.novage.p2pml.internal.session.P2PSession
 import com.novage.p2pml.internal.session.P2PSessionFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.LogConfig
-import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlin.concurrent.atomics.AtomicReference
@@ -25,14 +26,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
-
-private enum class LoaderStatus { IDLE, INITIALIZING, ACTIVE, RELEASING, RELEASED }
 
 /**
  * Core orchestrator for P2P media streaming. Single-use: once [release] is called,
@@ -53,10 +52,9 @@ internal class P2PMediaLoaderCore(
     }
 
     private val logger = CoreLogger("P2PMediaLoaderCore")
-    private val errorDispatcher = RuntimeErrorDispatcher()
     private val sessionFactory = P2PSessionFactory(
         coreConfig = coreConfig,
-        errorDispatcher = errorDispatcher,
+        onFatalError = { release(failure = it) },
         customEngineUrl = customEngineUrl
     )
     private val coreScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -70,35 +68,42 @@ internal class P2PMediaLoaderCore(
 
     private val activeSession = AtomicReference<P2PSession?>(null)
 
-    private val status = MutableStateFlow(LoaderStatus.IDLE)
-
     private val pendingDynamicConfig = MutableStateFlow<DynamicCoreConfig?>(null)
 
-    val runtimeErrors = errorDispatcher.errors
+    private val _state = MutableStateFlow(P2PMediaLoaderState(P2PMediaLoaderStatus.IDLE))
+
+    /** Observable, latched loader state. On [P2PMediaLoaderStatus.FAILED], fall back to the origin URL. */
+    val state: StateFlow<P2PMediaLoaderState> = _state.asStateFlow()
     val p2pEvents: P2PEvents = P2PEvents(
         coreScope = coreScope,
         onSubscribe = { eventName -> activeSession.load()?.subscribeToEvent(eventName) },
         onUnsubscribe = { eventName -> activeSession.load()?.unsubscribeFromEvent(eventName) },
-        isCoreActive = { status.value == LoaderStatus.ACTIVE }
+        isCoreActive = { _state.value.status == P2PMediaLoaderStatus.ACTIVE }
     )
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         withContext(Dispatchers.Default) {
-            if (!status.compareAndSet(LoaderStatus.IDLE, LoaderStatus.INITIALIZING)) {
-                val message = "Initialization skipped: Core is already in state ${status.value}"
+            if (!_state.compareAndSet(
+                    P2PMediaLoaderState(P2PMediaLoaderStatus.IDLE),
+                    P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING)
+                )
+            ) {
+                val message = "Initialization skipped: Core is already in state ${_state.value.status}"
                 logger.w { message }
-                throw P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, message)
+                throw P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED, message)
             }
 
             logger.d { "Initializing P2PMediaLoaderCore..." }
-            monitorRuntimeErrors()
 
             runCatching {
                 performSessionInitialization(provider, webViewFactory)
             }.onFailure { e ->
-                release()
                 val mappedException = if (e !is Exception) e else handleInitializationException(e)
+                when (mappedException) {
+                    is P2PMediaLoaderException -> release(failure = mappedException)
+                    else -> release()
+                }
                 throw mappedException
             }
         }
@@ -119,10 +124,16 @@ internal class P2PMediaLoaderCore(
             session.applyDynamicConfig(configToApply)
         }
 
-        if (!status.compareAndSet(LoaderStatus.INITIALIZING, LoaderStatus.ACTIVE)) {
+        if (!_state.compareAndSet(
+                P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING),
+                P2PMediaLoaderState(P2PMediaLoaderStatus.ACTIVE)
+            )
+        ) {
             val orphanedSession = if (activeSession.compareAndSet(session, null)) session else null
 
-            logger.w { "Initialization aborted: Core state changed to ${status.value} during session creation." }
+            logger.w {
+                "Initialization aborted: Core state changed to ${_state.value.status} during session creation."
+            }
 
             if (orphanedSession != null) {
                 withContext(NonCancellable + Dispatchers.IO) {
@@ -146,7 +157,11 @@ internal class P2PMediaLoaderCore(
     private fun handleInitializationException(e: Exception): Exception = when (e) {
         is TimeoutCancellationException -> {
             logger.e { "Initialization timed out waiting for WebView." }
-            P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, "WebView timeout", e)
+            P2PMediaLoaderException(
+                P2PMediaLoaderErrorCode.ENGINE_LOAD_TIMEOUT,
+                "Engine page did not load within the startup timeout.",
+                cause = e
+            )
         }
 
         is CancellationException -> {
@@ -162,40 +177,30 @@ internal class P2PMediaLoaderCore(
         else -> {
             logger.e { "Initialization failed due to system error: ${e.message}" }
             P2PMediaLoaderException(
-                P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED,
                 e.message ?: "System error",
-                e
+                cause = e
             )
         }
-    }
-
-    private fun monitorRuntimeErrors() {
-        errorDispatcher.errors.onEach { exception ->
-            logger.e { "Runtime System Error Caught: ${exception.type} - ${exception.message}" }
-            if (exception.type == P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR) {
-                release()
-            }
-        }.launchIn(coreScope)
     }
 
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String): String {
         val session = activeSession.load() ?: throw P2PMediaLoaderException(
-            P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR,
-            "P2PMediaLoader is not ready. Current state: ${status.value}"
+            P2PMediaLoaderErrorCode.NOT_INITIALIZED,
+            "P2PMediaLoader is not ready. Current state: ${_state.value.status}"
         )
         return session.createPlaybackUrl(manifestUrl.encodeURLParameter())
     }
 
-    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
-        val currentStatus = status.value
-        if (currentStatus == LoaderStatus.RELEASING || currentStatus == LoaderStatus.RELEASED) {
+        val currentStatus = _state.value.status
+        if (currentStatus == P2PMediaLoaderStatus.FAILED || currentStatus == P2PMediaLoaderStatus.RELEASED) {
             logger.w { "Ignored dynamic config. Core state: $currentStatus." }
             return
         }
 
-        if (currentStatus == LoaderStatus.IDLE || currentStatus == LoaderStatus.INITIALIZING) {
+        if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
             pendingDynamicConfig.value = dynamicCoreConfig
             return
         }
@@ -208,18 +213,32 @@ internal class P2PMediaLoaderCore(
         session.applyDynamicConfig(dynamicCoreConfig)
     }
 
-    fun release() {
-        val previousStatus = status.getAndUpdate { current ->
-            if (current != LoaderStatus.ACTIVE && current != LoaderStatus.INITIALIZING) {
-                current
-            } else {
-                LoaderStatus.RELEASING
+    /**
+     * Terminally tears down the loader. Atomically claims the transition from a live state
+     * ([P2PMediaLoaderStatus.STARTING]/[P2PMediaLoaderStatus.ACTIVE]) to a terminal one — [P2PMediaLoaderStatus.FAILED]
+     * when [failure] is non-null, otherwise [P2PMediaLoaderStatus.RELEASED] — so teardown runs exactly once
+     * and the fatal cause is latched for observers. A no-op if already terminal or never started.
+     */
+    fun release(failure: P2PMediaLoaderException? = null) {
+        val previous = _state.getAndUpdate { current ->
+            when (current.status) {
+                P2PMediaLoaderStatus.STARTING, P2PMediaLoaderStatus.ACTIVE ->
+                    if (failure != null) {
+                        P2PMediaLoaderState(P2PMediaLoaderStatus.FAILED, failure)
+                    } else {
+                        P2PMediaLoaderState(P2PMediaLoaderStatus.RELEASED)
+                    }
+
+                else -> current
             }
         }
-        if (previousStatus != LoaderStatus.ACTIVE && previousStatus != LoaderStatus.INITIALIZING) {
+        if (previous.status != P2PMediaLoaderStatus.STARTING && previous.status != P2PMediaLoaderStatus.ACTIVE) {
             return
         }
 
+        if (failure != null) {
+            logger.e { "Fatal error — releasing P2PMediaLoaderCore: ${failure.code} - ${failure.message}" }
+        }
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
         val sessionToDestroy = activeSession.exchange(null)
@@ -235,7 +254,6 @@ internal class P2PMediaLoaderCore(
             } catch (e: IllegalArgumentException) {
                 logger.e { "Arg Error during session teardown: ${e.message}" }
             } finally {
-                status.value = LoaderStatus.RELEASED
                 logger.d { "Release complete." }
                 cleanupScope.cancel()
             }

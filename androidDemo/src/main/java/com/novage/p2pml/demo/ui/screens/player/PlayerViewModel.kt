@@ -18,11 +18,11 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
 import androidx.navigation.toRoute
 import com.novage.p2pml.P2PMediaLoader
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.models.CoreConfig
 import com.novage.p2pml.api.models.DownloadSource
 import com.novage.p2pml.api.models.DynamicCoreConfig
+import com.novage.p2pml.api.state.P2PMediaLoaderStatus
 import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 import com.novage.p2pml.demo.ui.screens.player.utils.applyTrackSelection
@@ -60,6 +60,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
     private var p2pLoader: P2PMediaLoader? = null
     private var playerInitializationJob: Job? = null
+
+    private var originalManifestUrl: String? = null
+    private var hasFallenBackToHttp = false
 
     init {
         val args = savedStateHandle.toRoute<PlayerRoute>()
@@ -139,7 +142,9 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             customEngineUrl = customEngineUrl
         )
 
+        originalManifestUrl = manifestUrl
         setupP2PEvents(loader)
+        observeLoaderState(loader)
         p2pLoader = loader
 
         try {
@@ -151,7 +156,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             startPlayback(exoPlayer, p2pUrl)
             _uiState.update { it.copy(isP2PActive = true) }
         } catch (e: P2PMediaLoaderException) {
-            handleP2PError(e.type, e.message ?: "Unknown Error", manifestUrl)
+            fallBackToHttp("initialize threw ${e.code}: ${e.message}")
         }
     }
 
@@ -159,35 +164,32 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         _uiState.update { it.copy(userMessage = null) }
     }
 
-    private fun handleP2PError(type: P2PMediaLoaderErrorType, msg: String, originalUrl: String) {
+    /**
+     * Observes loader [com.novage.p2pml.api.state.P2PMediaLoaderState]. A terminal `FAILED` (startup failure
+     * or a runtime engine crash) means the local proxy is gone — switch the player to the origin URL.
+     * Manifest/segment load failures are NOT surfaced here; the player raises its own playback error.
+     */
+    private fun observeLoaderState(loader: P2PMediaLoader) {
+        viewModelScope.launch {
+            loader.state.collect { state ->
+                if (state.status == P2PMediaLoaderStatus.FAILED) {
+                    fallBackToHttp("state=FAILED code=${state.error?.code}")
+                }
+            }
+        }
+    }
+
+    private fun fallBackToHttp(reason: String) {
+        if (hasFallenBackToHttp) return
+
         val exoPlayer = player ?: return
+        val originUrl = originalManifestUrl ?: return
+        hasFallenBackToHttp = true
 
-        when (type) {
-            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
-            P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
-            P2PMediaLoaderErrorType.CORE_NOT_INITIALIZED_ERROR -> {
-                startPlayback(exoPlayer, originalUrl)
-
-                _uiState.update {
-                    it.copy(
-                        isP2PActive = false,
-                        userMessage = "P2P Engine failed. Switched to HTTP mode."
-                    )
-                }
-            }
-
-            P2PMediaLoaderErrorType.MANIFEST_LOAD_ERROR,
-            P2PMediaLoaderErrorType.MANIFEST_PARSE_ERROR -> {
-                _uiState.update {
-                    it.copy(
-                        fatalError = "Video unavailable: $msg"
-                    )
-                }
-            }
-
-            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR -> {
-                Log.w("PlayerViewModel", "Segment download error: $msg")
-            }
+        Log.w("PlayerViewModel", "Falling back to HTTP playback: $reason")
+        startPlayback(exoPlayer, originUrl)
+        _uiState.update {
+            it.copy(isP2PActive = false, userMessage = "P2P Engine failed. Switched to HTTP mode.")
         }
     }
 
@@ -294,5 +296,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         p2pLoader?.release()
         p2pLoader = null
+
+        originalManifestUrl = null
+        hasFallenBackToHttp = false
     }
 }

@@ -9,7 +9,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import kotlin.coroutines.resume
@@ -145,12 +145,14 @@ private class AndroidHeadlessWebView(
         val cont = loadUrlContinuation
         if (cont != null) {
             if (cont.isActive) {
-                cont.resumeWithException(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR, msg))
+                cont.resumeWithException(
+                    P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
+                )
             }
             loadUrlContinuation = null
             onPageReadyCallback = null
         } else if (!isDestroyed) {
-            onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR, msg))
+            onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
         }
         // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
         // aborting the in-flight load) — not a runtime fault, so it must not be surfaced as fatal.

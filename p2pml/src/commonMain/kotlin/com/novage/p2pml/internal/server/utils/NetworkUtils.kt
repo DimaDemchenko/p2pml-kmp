@@ -1,8 +1,7 @@
 package com.novage.p2pml.internal.server.utils
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
 import com.novage.p2pml.internal.server.services.SegmentPayload
-import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
+import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
@@ -24,6 +23,8 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.copyTo
 import kotlinx.io.IOException
+
+private val logger = CoreLogger("NetworkUtils")
 
 private val EXCLUDED_PROXY_HEADERS =
     setOf(
@@ -111,11 +112,7 @@ internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentP
     )
 }
 
-internal suspend fun ApplicationCall.respondFallback(
-    httpClient: HttpClient,
-    segmentUrl: String,
-    errorDispatcher: RuntimeErrorDispatcher
-) {
+internal suspend fun ApplicationCall.respondFallback(httpClient: HttpClient, segmentUrl: String) {
     val cleanUrl = segmentUrl.substringBeforeLast("|")
     try {
         httpClient.prepareGet(cleanUrl) {
@@ -144,19 +141,11 @@ internal suspend fun ApplicationCall.respondFallback(
         }
     } catch (e: ResponseException) {
         val status = e.response.status
-
-        errorDispatcher.tryEmit(
-            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
-            "Fallback failed (HTTP $status) for: [$segmentUrl]"
-        )
-        respond(HttpStatusCode.BadGateway, "Upstream error: $status")
+        logger.w { "Segment fallback failed (HTTP $status) for: [$segmentUrl]" }
+        respond(status, "Upstream error: $status")
     } catch (e: IOException) {
         val errorDetail = e.message ?: "Connection lost"
-
-        errorDispatcher.tryEmit(
-            P2PMediaLoaderErrorType.SEGMENT_DOWNLOAD_ERROR,
-            "Fallback network failure: $errorDetail for: [$segmentUrl]"
-        )
+        logger.w { "Segment fallback network failure: $errorDetail for: [$segmentUrl]" }
         respond(HttpStatusCode.BadGateway, "Network failure: $errorDetail")
     }
 }

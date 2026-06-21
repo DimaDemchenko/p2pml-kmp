@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.server
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.server.plugins.configureCORS
@@ -8,7 +8,6 @@ import com.novage.p2pml.internal.server.routes.configureRoutes
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
@@ -27,8 +26,7 @@ internal class ServerModule(
     private val hlsManifestManager: HlsManifestManager,
     private val manifestService: ManifestService,
     private val segmentService: SegmentService,
-    private val enableCors: Boolean,
-    private val errorDispatcher: RuntimeErrorDispatcher
+    private val enableCors: Boolean
 ) {
     private val logger = CoreLogger("ServerModule")
 
@@ -45,7 +43,7 @@ internal class ServerModule(
         if (server != null) {
             val port = server?.engine?.resolvedConnectors()?.firstOrNull()?.port
                 ?: throw P2PMediaLoaderException(
-                    P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+                    P2PMediaLoaderErrorCode.SERVER_START_FAILED,
                     "Server running but port unknown."
                 )
             logger.w { "Server is already running on port $port." }
@@ -57,7 +55,7 @@ internal class ServerModule(
         try {
             val serverInstance = embeddedServer(CIO, host = "127.0.0.1", port = 0, watchPaths = emptyList()) {
                 if (enableCors) configureCORS()
-                configureRoutes(client, manifestService, hlsManifestManager, segmentService, errorDispatcher)
+                configureRoutes(client, manifestService, hlsManifestManager, segmentService)
             }
             server = serverInstance
 
@@ -88,9 +86,9 @@ internal class ServerModule(
         stopServer()
 
         throw P2PMediaLoaderException(
-            P2PMediaLoaderErrorType.ENGINE_STARTUP_ERROR,
+            P2PMediaLoaderErrorCode.SERVER_START_FAILED,
             message,
-            e
+            cause = e
         )
     }
 

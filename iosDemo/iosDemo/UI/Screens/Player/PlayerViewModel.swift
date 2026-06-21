@@ -23,6 +23,8 @@ class PlayerViewModel: ObservableObject {
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
     private var shouldAutoPlay = true
+    private var originalManifestUrl: String? = nil
+    private var hasFallenBackToHttp = false
 
     func initializePlayer(manifestUrl: String, customEngineUrl: String?) {
         guard player == nil else { return }
@@ -54,9 +56,11 @@ class PlayerViewModel: ObservableObject {
             customEngineUrl: customEngineUrl
         )
 
+        originalManifestUrl = manifestUrl
         setupP2PEvents(loader)
+        observeLoaderState(loader)
         self.p2pLoader = loader
-        
+
         let newPlayer = AVPlayer()
         newPlayer.automaticallyWaitsToMinimizeStalling = true
         self.player = newPlayer
@@ -70,21 +74,33 @@ class PlayerViewModel: ObservableObject {
                 self.startPlayback(url: p2pUrl)
                 self.uiState.isP2PActive = true
             } catch let error as P2PMediaLoaderException {
-                self.handleP2PError(type: error.type, errorMessage: error.message ?? "Unknown Error", originalUrl: manifestUrl)
+                self.fallBackToHttp(reason: "initialize threw \(error.code): \(error.message)")
             } catch {
-                self.handleP2PError(errorMessage: error.localizedDescription, originalUrl: manifestUrl)
+                self.fallBackToHttp(reason: error.localizedDescription)
             }
         }
     }
 
-    private func handleP2PError(type: P2PMediaLoaderErrorType? = nil, errorMessage: String, originalUrl: String) {
-        if type == .manifestLoadError || type == .manifestParseError {
-            uiState.fatalError = "Video unavailable: \(errorMessage)"
-        } else {
-            startPlayback(url: originalUrl)
-            uiState.isP2PActive = false
-            uiState.userMessage = "P2P Engine failed. Switched to HTTP mode."
-        }
+    private func observeLoaderState(_ loader: P2PMediaLoader) {
+        eventTasks.append(Task { [weak self] in
+            for await state in loader.state {
+                guard let self = self else { return }
+                if state.status == .failed {
+                    self.fallBackToHttp(reason: "state=FAILED code=\(String(describing: state.error?.code))")
+                }
+            }
+        })
+    }
+
+    private func fallBackToHttp(reason: String) {
+        guard !hasFallenBackToHttp, let originUrl = originalManifestUrl else { return }
+
+        hasFallenBackToHttp = true
+
+        logger.warning("Falling back to HTTP playback: \(reason)")
+        startPlayback(url: originUrl)
+        uiState.isP2PActive = false
+        uiState.userMessage = "P2P Engine failed. Switched to HTTP mode."
     }
 
     private func startPlayback(url: String) {
@@ -261,11 +277,7 @@ class PlayerViewModel: ObservableObject {
         let config = DynamicCoreConfig()
         config.isP2PDisabled = !enabled
 
-        do {
-            try loader.applyDynamicConfig(dynamicCoreConfig: config)
-        } catch {
-            logger.warning("Failed to apply dynamic config: \(error.localizedDescription)")
-        }
+        loader.applyDynamicConfig(dynamicCoreConfig: config)
     }
 
     func releaseResources() {
@@ -282,8 +294,11 @@ class PlayerViewModel: ObservableObject {
         populateTracksTask = nil
 
         p2pLoader?.release()
-        
+
         p2pLoader = nil
+
+        originalManifestUrl = nil
+        hasFallenBackToHttp = false
     }
 
     deinit {
