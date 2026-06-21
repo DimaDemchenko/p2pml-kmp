@@ -64,6 +64,23 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
+    /**
+     * Observes loader [com.novage.p2pml.api.state.P2PMediaLoaderState] changes (lifecycle + fatal errors).
+     *
+     * The current state is delivered immediately on subscription (latched), so a listener added after
+     * a terminal `FAILED` still observes it. On `FAILED`, fall back to the origin URL.
+     *
+     * Callbacks run on a background thread (`Dispatchers.Default`); hop to the main thread before
+     * touching UI. Note: [release] cancels this subscription, so a `RELEASED` emitted by your own
+     * [release] call is not guaranteed to be delivered.
+     *
+     * @return An [AutoCloseable] that stops delivery when closed.
+     */
+    fun addStateListener(listener: P2PMediaLoaderStateListener): AutoCloseable {
+        val job = loader.state.onEach(listener::onStateChanged).launchIn(scope)
+        return AutoCloseable { job.cancel() }
+    }
+
     fun initialize(provider: PlaybackProvider): CompletableFuture<Void?> = scope.future {
         loader.initialize(provider)
         null
@@ -77,7 +94,6 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String): String = loader.createPlaybackUrl(manifestUrl)
 
-    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() {

@@ -11,7 +11,6 @@ import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.server.utils.respondFallback
 import com.novage.p2pml.internal.server.utils.respondVideoSegmentStream
 import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -33,18 +32,16 @@ private const val P2P_ENGINE_TIMEOUT_MS = 30_000L
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestManager,
-    errorDispatcher: RuntimeErrorDispatcher
+    parser: HlsManifestManager
 ) {
-    segmentDownloadRoute(httpClient, segmentService, parser, errorDispatcher)
+    segmentDownloadRoute(httpClient, segmentService, parser)
     segmentUploadRoute(segmentService)
 }
 
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestManager,
-    errorDispatcher: RuntimeErrorDispatcher
+    parser: HlsManifestManager
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
@@ -66,7 +63,7 @@ private fun Route.segmentDownloadRoute(
 
         if (!parser.isCurrentSegment(segmentUrl)) {
             logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
+            call.respondFallback(httpClient, segmentUrl)
             return@get
         }
 
@@ -86,16 +83,16 @@ private fun Route.segmentDownloadRoute(
             call.respondVideoSegmentStream(payload)
         } catch (_: TimeoutCancellationException) {
             logger.w { "P2P Engine timed out providing segment. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
+            call.respondFallback(httpClient, segmentUrl)
         } catch (_: SegmentReplacedException) {
             logger.i { "Request replaced. Terminating old request." }
             call.respond(HttpStatusCode.RequestTimeout)
         } catch (_: TooManyRetriesException) {
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
+            call.respondFallback(httpClient, segmentUrl)
         } catch (e: SegmentProcessingException) {
             logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
-            call.respondFallback(httpClient, segmentUrl, errorDispatcher)
+            call.respondFallback(httpClient, segmentUrl)
         } catch (_: SegmentAbortedException) {
             logger.w { "P2P Engine aborted segment (Abandoned by ABR/Seek). Terminating cleanly." }
             call.respond(HttpStatusCode.RequestTimeout)

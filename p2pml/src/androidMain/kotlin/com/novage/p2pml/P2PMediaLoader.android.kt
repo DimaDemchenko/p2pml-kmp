@@ -31,12 +31,16 @@ class P2PMediaLoader @JvmOverloads constructor(
     private var defaultProvider: ExoPlayerPlaybackProvider? = null
 
     val p2pEvents get() = core.p2pEvents
-    val runtimeErrors get() = core.runtimeErrors
+
+    /**
+     * Observable, latched loader state. On [com.novage.p2pml.api.state.P2PMediaLoaderStatus.FAILED],
+     * the local proxy is gone — fall back to the origin URL.
+     */
+    val state get() = core.state
 
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
-    @Throws(P2PMediaLoaderException::class)
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() {

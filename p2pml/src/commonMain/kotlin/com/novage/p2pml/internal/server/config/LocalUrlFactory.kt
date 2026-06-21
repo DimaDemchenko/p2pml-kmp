@@ -1,5 +1,7 @@
 package com.novage.p2pml.internal.server.config
 
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.internal.server.routes.RoutePaths
 import kotlin.concurrent.Volatile
 
@@ -12,7 +14,12 @@ internal class LocalUrlFactory {
     }
 
     private fun getBaseUrl(): String {
-        check(port != -1) { "P2P Server not ready" }
+        if (port == -1) {
+            throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorCode.NOT_INITIALIZED,
+                "P2P Server not ready"
+            )
+        }
         return "http://127.0.0.1:$port"
     }
 

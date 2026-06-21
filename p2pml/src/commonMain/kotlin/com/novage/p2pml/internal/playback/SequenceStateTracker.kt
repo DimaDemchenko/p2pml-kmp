@@ -1,13 +1,13 @@
 package com.novage.p2pml.internal.playback
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorType
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
+import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.interfaces.PlaybackListener
 import com.novage.p2pml.api.interfaces.PlaybackProvider
 import com.novage.p2pml.api.models.PlaybackInfo
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.RuntimeErrorDispatcher
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +25,7 @@ internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
     private val p2pEngine: P2PEngine,
     private val hlsManifestManager: HlsManifestManager,
-    private val errorDispatcher: RuntimeErrorDispatcher
+    private val onFatalError: (P2PMediaLoaderException) -> Unit
 ) : PlaybackListener {
     private val logger = CoreLogger("SequenceStateTracker")
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -153,9 +153,12 @@ internal class SequenceStateTracker(
             logger.e { "Serialization error updating P2P engine (e.g. NaN/Infinity): ${e.message}" }
         } catch (e: IllegalStateException) {
             logger.e { "Fatal state error updating P2P engine: ${e.message}" }
-            errorDispatcher.tryEmit(
-                P2PMediaLoaderErrorType.ENGINE_RUNTIME_ERROR,
-                "Engine bridge broken during playback sync: ${e.message}"
+            onFatalError(
+                P2PMediaLoaderException(
+                    code = P2PMediaLoaderErrorCode.ENGINE_CRASHED,
+                    message = "Engine bridge broken during playback sync: ${e.message}",
+                    cause = e
+                )
             )
         } catch (e: IllegalArgumentException) {
             logger.e { "Argument error updating P2P engine: ${e.message}" }
