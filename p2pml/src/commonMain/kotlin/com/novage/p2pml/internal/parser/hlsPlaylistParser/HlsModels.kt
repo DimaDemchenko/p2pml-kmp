@@ -1,7 +1,7 @@
 package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
-import com.novage.p2pml.api.models.ByteRange
-import com.novage.p2pml.api.models.Segment
+import com.novage.p2pml.api.events.ByteRange
+import com.novage.p2pml.api.events.Segment
 import com.novage.p2pml.internal.parser.buildSegmentRuntimeId
 import kotlinx.serialization.Serializable
 

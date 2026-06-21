@@ -3,10 +3,10 @@ package com.novage.p2pml.internal.webview
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
+import com.novage.p2pml.api.events.ChunkDownloadedDetails
+import com.novage.p2pml.api.events.ChunkUploadedDetails
+import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.P2PEvents
-import com.novage.p2pml.api.models.ChunkDownloadedDetails
-import com.novage.p2pml.api.models.ChunkUploadedDetails
-import com.novage.p2pml.api.models.DownloadSource
 import kotlinx.serialization.json.Json
 
 internal class AndroidWebViewEventDispatcher(

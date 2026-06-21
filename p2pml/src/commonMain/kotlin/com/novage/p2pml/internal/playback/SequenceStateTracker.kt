@@ -2,9 +2,9 @@ package com.novage.p2pml.internal.playback
 
 import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
-import com.novage.p2pml.api.interfaces.PlaybackListener
-import com.novage.p2pml.api.interfaces.PlaybackProvider
-import com.novage.p2pml.api.models.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackInfo
+import com.novage.p2pml.api.playback.PlaybackListener
+import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
