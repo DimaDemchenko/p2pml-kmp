@@ -65,15 +65,17 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
                     }
                 }
             } else {
-                if (isListening) {
-                    isListening = false
-                    timeObserverToken?.let { token ->
-                        player.removeTimeObserver(token)
-                    }
-                    timeObserverToken = null
-                }
+                stopObserving()
             }
         }
+    }
+
+    private fun stopObserving() {
+        if (!isListening) return
+
+        isListening = false
+        timeObserverToken?.let { token -> player.removeTimeObserver(token) }
+        timeObserverToken = null
     }
 
     private fun resolveAbsolutePosition(currentItem: AVPlayerItem?, relativePositionSec: Double): Double {
@@ -115,13 +117,7 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
     override fun release() {
         listener = null
         dispatch_async(dispatch_get_main_queue()) {
-            if (isListening) {
-                isListening = false
-                timeObserverToken?.let { token ->
-                    player.removeTimeObserver(token)
-                }
-                timeObserverToken = null
-            }
+            stopObserving()
         }
     }
 }
