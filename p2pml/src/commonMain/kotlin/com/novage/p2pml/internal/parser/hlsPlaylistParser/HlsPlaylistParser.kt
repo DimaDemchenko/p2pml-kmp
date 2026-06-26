@@ -9,7 +9,7 @@ private const val BYTERANGE_SEPARATOR = '@'
 
 private data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
 
-private data class SegmentState(
+private class SegmentState(
     var mediaSequence: Long = 0L,
     var hasEndTag: Boolean = false,
     var durationUs: Long = 0L,
@@ -133,9 +133,8 @@ internal class HlsPlaylistParser(
             } else {
                 val seg = createSegment(trimmed, context.baseUri, context.vars, segmentState)
                 segments.add(seg)
-                urlRewriter.rewriteSegmentUrl(seg.url, seg.byteRange).let { newUrl ->
-                    rewrittenLine = originalLine.replaceFirst(trimmed, newUrl)
-                }
+                val newUrl = urlRewriter.rewriteSegmentUrl(seg.url, seg.byteRange)
+                rewrittenLine = originalLine.replaceFirst(trimmed, newUrl)
                 if (segmentState.length != -1L) segmentState.offset += segmentState.length
                 segmentState.durationUs = 0L
                 segmentState.length = -1L

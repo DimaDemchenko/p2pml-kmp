@@ -208,9 +208,10 @@ internal class HlsStreamStateTracker(
     private fun calculateInitialStartTime(isLive: Boolean, segments: List<HlsSegment>): Double {
         if (!isLive || segments.isEmpty()) return 0.0
 
-        val anchorIndex = segments.indexOfFirst { it.programDateTimeUs != null }
-        if (anchorIndex != -1) {
-            val anchorTimeUs = segments[anchorIndex].programDateTimeUs!!
+        val anchor = segments.withIndex()
+            .firstNotNullOfOrNull { (index, segment) -> segment.programDateTimeUs?.let { index to it } }
+        if (anchor != null) {
+            val (anchorIndex, anchorTimeUs) = anchor
             val precedingDurationUs = segments.subList(0, anchorIndex).sumOf { it.durationUs }
             return (anchorTimeUs - precedingDurationUs) / MICROSECONDS_IN_SECOND
         }

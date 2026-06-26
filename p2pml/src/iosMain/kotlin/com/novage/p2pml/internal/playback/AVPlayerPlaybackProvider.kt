@@ -99,10 +99,9 @@ internal class AVPlayerPlaybackProvider(private val player: AVPlayer) : Playback
         val isLive = isDurationIndefinite && isReady
 
         if (isLive) {
-            if (syntheticWindowStartSec == null) {
-                syntheticWindowStartSec = getCurrentEpochSeconds() - relativePositionSec
-            }
-            return syntheticWindowStartSec!! + relativePositionSec
+            val startSec = syntheticWindowStartSec
+                ?: (getCurrentEpochSeconds() - relativePositionSec).also { syntheticWindowStartSec = it }
+            return startSec + relativePositionSec
         }
 
         syntheticWindowStartSec = null
