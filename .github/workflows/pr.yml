@@ -23,7 +23,7 @@ jobs:
         run: ./gradlew spotlessCheck detekt
 
   build-android:
-    name: Build Android Demo
+    name: Build & Test
     runs-on: macos-latest
     steps:
       - name: Checkout Code
@@ -37,6 +37,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Build Android Demo
         run: ./gradlew :androidDemo:assembleDebug
+      - name: Run tests
+        run: ./gradlew :p2pml:allTests
 
   build-ios:
     name: Build iOS Demo
