@@ -38,7 +38,7 @@ jobs:
         run: >
           docker run --rm -v "$PWD/iosDemo:/work" -w /work
           ghcr.io/realm/swiftlint:0.65.0
-          swiftlint --strict --reporter github-actions-logging
+          --strict --reporter github-actions-logging
 
   build-android:
     name: Build & Test
