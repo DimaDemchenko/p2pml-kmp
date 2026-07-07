@@ -4,10 +4,10 @@ struct MediaSample: Hashable {
     let title: String
     let uri: String
     let description: String
-    var customEngineUrl: String? = nil
+    var customEngineUrl: String?
 }
 
-struct VideoStreams {
+enum VideoStreams {
     static let samples: [MediaSample] = [
         MediaSample(
             title: "Big Buck Bunny (HLS)",
@@ -59,6 +59,6 @@ struct VideoStreams {
             title: "Bitmovin 4K Test",
             uri: "https://cdn.bitmovin.com/content/demos/4k/38e843e0-1998-11e9-8a92-c734cd79b4dc/video_25000000.m3u8",
             description: "High bitrate 4K content for performance testing."
-        )
+        ),
     ]
 }

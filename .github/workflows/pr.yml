@@ -22,6 +22,24 @@ jobs:
       - name: Run Detekt and Spotless
         run: ./gradlew spotlessCheck detekt
 
+  lint-ios:
+    name: SwiftFormat & SwiftLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Run SwiftFormat (check)
+        run: >
+          docker run --rm -v "$PWD/iosDemo:/work"
+          ghcr.io/nicklockwood/swiftformat:0.62.1
+          --lint /work --reporter github-actions-log
+      - name: Run SwiftLint
+        if: success() || failure()
+        run: >
+          docker run --rm -v "$PWD/iosDemo:/work" -w /work
+          ghcr.io/realm/swiftlint:0.65.0
+          swiftlint --strict --reporter github-actions-logging
+
   build-android:
     name: Build & Test
     runs-on: macos-latest

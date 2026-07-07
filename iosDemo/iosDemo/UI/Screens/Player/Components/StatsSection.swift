@@ -8,8 +8,7 @@ struct StatsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if !uiState.isP2PActive && !isInitialLoading {
-
+            if !uiState.isP2PActive, !isInitialLoading {
                 HStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(AppTheme.onErrorContainer)
@@ -30,10 +29,30 @@ struct StatsSection: View {
                     .foregroundColor(AppTheme.onBackground)
 
                 LazyVGrid(columns: columns, spacing: 8) {
-                    StatCard(label: "HTTP", value: formatBytes(uiState.httpDownloaded), color: AppTheme.secondary, isLoading: isInitialLoading)
-                    StatCard(label: "P2P", value: formatBytes(uiState.p2pDownloaded), color: AppTheme.primary, isLoading: isInitialLoading)
-                    StatCard(label: "Upload", value: formatBytes(uiState.uploadTotal), color: AppTheme.onSurfaceVariant, isLoading: isInitialLoading)
-                    StatCard(label: "Peers", value: "\(uiState.peers.count)", color: AppTheme.onSurface, isLoading: isInitialLoading)
+                    StatCard(
+                        label: "HTTP",
+                        value: formatBytes(uiState.httpDownloaded),
+                        color: AppTheme.secondary,
+                        isLoading: isInitialLoading
+                    )
+                    StatCard(
+                        label: "P2P",
+                        value: formatBytes(uiState.p2pDownloaded),
+                        color: AppTheme.primary,
+                        isLoading: isInitialLoading
+                    )
+                    StatCard(
+                        label: "Upload",
+                        value: formatBytes(uiState.uploadTotal),
+                        color: AppTheme.onSurfaceVariant,
+                        isLoading: isInitialLoading
+                    )
+                    StatCard(
+                        label: "Peers",
+                        value: "\(uiState.peers.count)",
+                        color: AppTheme.onSurface,
+                        isLoading: isInitialLoading
+                    )
                 }
             }
         }
@@ -42,7 +61,9 @@ struct StatsSection: View {
 
     private func formatBytes(_ bytes: Int64) -> String {
         let bytesPerKB = 1024.0
-        if bytes < Int64(bytesPerKB) { return "\(bytes) B" }
+        if bytes < Int64(bytesPerKB) {
+            return "\(bytes) B"
+        }
         let prefixes = ["K", "M", "G", "T", "P", "E"]
         let exp = min(Int(log(Double(bytes)) / log(bytesPerKB)), prefixes.count)
         let pre = prefixes[exp - 1]

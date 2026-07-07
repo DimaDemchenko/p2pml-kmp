@@ -1,0 +1,11 @@
+# SwiftFormat configuration for the iOS demo.
+# Run locally: swiftformat iosDemo
+# Check only:  swiftformat --lint iosDemo
+
+--swiftversion 5.10
+
+# Formatting
+--maxwidth 120
+--indent 4
+
+--exclude iosDemo.xcodeproj

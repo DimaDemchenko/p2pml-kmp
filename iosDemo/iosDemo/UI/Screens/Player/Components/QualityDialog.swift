@@ -52,9 +52,10 @@ struct QualityDialog: View {
         .padding(32)
     }
 
-    @ViewBuilder
     private func trackRow(_ track: MediaTrack) -> some View {
-        Button(action: { onTrackSelected(track) }) {
+        Button {
+            onTrackSelected(track)
+        } label: {
             HStack {
                 Image(systemName: track.isSelected ? "largecircle.fill.circle" : "circle")
                     .foregroundColor(track.isSelected ? AppTheme.primary : AppTheme.onSurfaceVariant)

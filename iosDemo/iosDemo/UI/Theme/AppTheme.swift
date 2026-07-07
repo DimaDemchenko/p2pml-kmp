@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct AppTheme {
+enum AppTheme {
     static let primary = AppColors.green500
     static let secondary = AppColors.blue500
     static let error = AppColors.red500

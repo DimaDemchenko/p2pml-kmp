@@ -1,0 +1,38 @@
+# SwiftLint configuration for the iOS demo.
+# Run locally: swiftlint (from iosDemo/)
+# CI runs with --strict, so warnings fail the build.
+
+excluded:
+  - iosDemo.xcodeproj
+
+opt_in_rules:
+  - closure_spacing
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+
+# SwiftFormat owns comma style; the two tools disagree on some layouts.
+disabled_rules:
+  - trailing_comma
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_urls: true
+
+identifier_name:
+  min_length: 2
+
+# SwiftUI view bodies get long quickly; keep the defaults reasonable for a demo app.
+type_body_length:
+  warning: 300
+
+function_body_length:
+  warning: 60

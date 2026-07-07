@@ -7,11 +7,14 @@ struct VideoListScreen: View {
         guard !customUrl.isEmpty else { return true }
         guard let url = URL(string: customUrl),
               let scheme = url.scheme,
-              (scheme == "http" || scheme == "https"),
+              scheme == "http" || scheme == "https",
               url.host != nil else { return false }
         return true
     }
-    var canPlay: Bool { !customUrl.isEmpty && isUrlValid }
+
+    var canPlay: Bool {
+        !customUrl.isEmpty && isUrlValid
+    }
 
     var body: some View {
         ScrollView {
@@ -29,13 +32,16 @@ struct VideoListScreen: View {
                                 .stroke(!isUrlValid && !customUrl.isEmpty ? AppTheme.error : Color.clear, lineWidth: 1)
                         )
 
-                    if !isUrlValid && !customUrl.isEmpty {
+                    if !isUrlValid, !customUrl.isEmpty {
                         Text("Enter a valid URL starting with http:// or https://")
                             .font(.caption)
                             .foregroundColor(AppTheme.error)
                     }
 
-                    NavigationLink(value: AppRoute.player(videoUrl: customUrl.trimmingCharacters(in: .whitespacesAndNewlines), customEngineUrl: nil)) {
+                    NavigationLink(value: AppRoute.player(
+                        videoUrl: customUrl.trimmingCharacters(in: .whitespacesAndNewlines),
+                        customEngineUrl: nil
+                    )) {
                         Text("Play URL")
                             .fontWeight(.bold)
                             .frame(maxWidth: .infinity)
@@ -57,7 +63,10 @@ struct VideoListScreen: View {
 
                 LazyVStack(spacing: 8) {
                     ForEach(VideoStreams.samples, id: \.self) { stream in
-                        NavigationLink(value: AppRoute.player(videoUrl: stream.uri, customEngineUrl: stream.customEngineUrl)) {
+                        NavigationLink(value: AppRoute.player(
+                            videoUrl: stream.uri,
+                            customEngineUrl: stream.customEngineUrl
+                        )) {
                             HStack(spacing: 16) {
                                 Image(systemName: "play.circle")
                                     .foregroundColor(AppTheme.primary)
