@@ -21,6 +21,6 @@ struct SkeletonModifier: ViewModifier {
 
 extension View {
     func skeleton(isLoading: Bool) -> some View {
-        self.modifier(SkeletonModifier(isLoading: isLoading))
+        modifier(SkeletonModifier(isLoading: isLoading))
     }
 }

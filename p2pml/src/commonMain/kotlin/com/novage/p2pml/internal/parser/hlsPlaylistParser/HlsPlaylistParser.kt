@@ -9,6 +9,7 @@ private const val BYTERANGE_SEPARATOR = '@'
 
 private data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
 
+@Suppress("LongParameterList")
 private class SegmentState(
     var mediaSequence: Long = 0L,
     var hasEndTag: Boolean = false,

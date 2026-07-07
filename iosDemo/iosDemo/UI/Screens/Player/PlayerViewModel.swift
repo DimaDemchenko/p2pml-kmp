@@ -1,6 +1,6 @@
-import Foundation
 import AVKit
 import Combine
+import Foundation
 import os
 import P2PML
 
@@ -15,15 +15,15 @@ private let p2pNotReceivingBytesTimeoutMs: Int32 = 1000
 @MainActor
 class PlayerViewModel: ObservableObject {
     @Published var uiState = PlayerUiState()
-    @Published var player: AVPlayer? = nil
+    @Published var player: AVPlayer?
 
-    private var p2pLoader: P2PMediaLoader? = nil
+    private var p2pLoader: P2PMediaLoader?
     private var eventTasks: [Task<Void, Never>] = []
     private var populateTracksTask: Task<Void, Never>?
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
     private var shouldAutoPlay = true
-    private var originalManifestUrl: String? = nil
+    private var originalManifestUrl: String?
     private var hasFallenBackToHttp = false
 
     func initializePlayer(manifestUrl: String, customEngineUrl: String?) {
@@ -36,8 +36,6 @@ class PlayerViewModel: ObservableObject {
             logger.warning("Failed to set audio session category: \(error.localizedDescription)")
         }
 
-
-
         let coreConfig = CoreConfig()
         coreConfig.highDemandTimeWindow = highDemandWindowSec
         coreConfig.isP2PDisabled = !shouldAutoPlay
@@ -45,11 +43,11 @@ class PlayerViewModel: ObservableObject {
         coreConfig.webRtcMaxMessageSize = webRtcMaxMessageSize
         coreConfig.p2pNotReceivingBytesTimeoutMs = p2pNotReceivingBytesTimeoutMs
         coreConfig.validateHTTPSegmentJs = """
-            (url, byteRange, data) => {
-                // console.log(`Validating segment: ${url} Range: ${byteRange}`);
-                return data.byteLength > 0;
-            }
-            """
+        (url, byteRange, data) => {
+            // console.log(`Validating segment: ${url} Range: ${byteRange}`);
+            return data.byteLength > 0;
+        }
+        """
 
         let loader = P2PMediaLoader(
             coreConfig: coreConfig,
@@ -59,24 +57,24 @@ class PlayerViewModel: ObservableObject {
         originalManifestUrl = manifestUrl
         setupP2PEvents(loader)
         observeLoaderState(loader)
-        self.p2pLoader = loader
+        p2pLoader = loader
 
         let newPlayer = AVPlayer()
         newPlayer.automaticallyWaitsToMinimizeStalling = true
-        self.player = newPlayer
+        player = newPlayer
 
         Task { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
             do {
                 try await loader.initialize(player: newPlayer)
 
-                let p2pUrl = try self.p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
-                self.startPlayback(url: p2pUrl)
-                self.uiState.isP2PActive = true
+                let p2pUrl = try p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                startPlayback(url: p2pUrl)
+                uiState.isP2PActive = true
             } catch let error as P2PMediaLoaderException {
                 self.fallBackToHttp(reason: "initialize threw \(error.code): \(error.message)")
             } catch {
-                self.fallBackToHttp(reason: error.localizedDescription)
+                fallBackToHttp(reason: error.localizedDescription)
             }
         }
     }
@@ -84,9 +82,9 @@ class PlayerViewModel: ObservableObject {
     private func observeLoaderState(_ loader: P2PMediaLoader) {
         eventTasks.append(Task { [weak self] in
             for await state in loader.state {
-                guard let self = self else { return }
+                guard let self else { return }
                 if state.status == .failed {
-                    self.fallBackToHttp(reason: "state=FAILED code=\(String(describing: state.error?.code))")
+                    fallBackToHttp(reason: "state=FAILED code=\(String(describing: state.error?.code))")
                 }
             }
         })
@@ -111,9 +109,9 @@ class PlayerViewModel: ObservableObject {
 
         let playerItem = AVPlayerItem(url: urlObj)
         playerItem.preferredForwardBufferDuration = preferredBufferDurationSec
-        
+
         // Replace the item on the existing player created during initialization
-        self.player?.replaceCurrentItem(with: playerItem)
+        player?.replaceCurrentItem(with: playerItem)
 
         playerItemObserver = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
@@ -121,60 +119,24 @@ class PlayerViewModel: ObservableObject {
                     self?.uiState.isVideoReady = true
                     self?.populateAvailableTracks(for: item)
                 } else if item.status == .failed {
-                    self?.uiState.fatalError = "Video unavailable: \(item.error?.localizedDescription ?? "Unknown error")"
+                    let reason = item.error?.localizedDescription ?? "Unknown error"
+                    self?.uiState.fatalError = "Video unavailable: \(reason)"
                 }
             }
         }
 
-        if shouldAutoPlay { self.player?.play() }
+        if shouldAutoPlay {
+            player?.play()
+        }
     }
 
     private func populateAvailableTracks(for playerItem: AVPlayerItem) {
         populateTracksTask?.cancel()
         populateTracksTask = Task {
-            let asset = playerItem.asset
-            let currentBitrate = playerItem.preferredPeakBitRate
-
-            var videoTracks = [MediaTrack(label: "Auto", isSelected: currentBitrate == 0, isAuto: true, bitrate: 0, isAudio: false)]
-
-            if let urlAsset = asset as? AVURLAsset {
-                do {
-                    let variants = try await urlAsset.load(.variants)
-                    var seenHeights = Set<Int>()
-                    let sorted = variants
-                    .filter { $0.videoAttributes != nil }
-                    .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
-
-                    for variant in sorted {
-                        guard let videoAttrs = variant.videoAttributes,
-                              let peakBitRate = variant.peakBitRate,
-                              peakBitRate > 0 else { continue }
-
-                        let size = videoAttrs.presentationSize
-                        let height = Int(size.height)
-                        guard height > 0, seenHeights.insert(height).inserted else { continue }
-
-                        let bitrateKbps = Int(peakBitRate / 1000)
-                        let label = "\(height)p • \(bitrateKbps) kbps"
-
-                        let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
-
-                        videoTracks.append(MediaTrack(
-                            label: label,
-                            isSelected: isSelected,
-                            isAuto: false,
-                            bitrate: peakBitRate,
-                            resolution: size,
-                            isAudio: false
-                        ))
-                    }
-                } catch {
-                    logger.warning("Failed to load HLS variants: \(error.localizedDescription)")
-                }
-            }
+            let videoTracks = await loadVideoTracks(for: playerItem)
 
             var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true, isAudio: true)]
-            if let audioGroup = try? await asset.loadMediaSelectionGroup(for: .audible) {
+            if let audioGroup = try? await playerItem.asset.loadMediaSelectionGroup(for: .audible) {
                 self.audioSelectionGroup = audioGroup
                 let selectedOption = playerItem.currentMediaSelection.selectedMediaOption(in: audioGroup)
                 let options = audioGroup.options.map { option in
@@ -197,6 +159,56 @@ class PlayerViewModel: ObservableObject {
                 audioTracks: audioTracks
             )
         }
+    }
+
+    private func loadVideoTracks(for playerItem: AVPlayerItem) async -> [MediaTrack] {
+        let currentBitrate = playerItem.preferredPeakBitRate
+
+        var videoTracks = [MediaTrack(
+            label: "Auto",
+            isSelected: currentBitrate == 0,
+            isAuto: true,
+            bitrate: 0,
+            isAudio: false
+        )]
+
+        guard let urlAsset = playerItem.asset as? AVURLAsset else { return videoTracks }
+
+        do {
+            let variants = try await urlAsset.load(.variants)
+            var seenHeights = Set<Int>()
+            let sorted = variants
+                .filter { $0.videoAttributes != nil }
+                .sorted { ($0.peakBitRate ?? 0) > ($1.peakBitRate ?? 0) }
+
+            for variant in sorted {
+                guard let videoAttrs = variant.videoAttributes,
+                      let peakBitRate = variant.peakBitRate,
+                      peakBitRate > 0 else { continue }
+
+                let size = videoAttrs.presentationSize
+                let height = Int(size.height)
+                guard height > 0, seenHeights.insert(height).inserted else { continue }
+
+                let bitrateKbps = Int(peakBitRate / 1000)
+                let label = "\(height)p • \(bitrateKbps) kbps"
+
+                let isSelected = currentBitrate > 0 && Int(currentBitrate) == Int(peakBitRate)
+
+                videoTracks.append(MediaTrack(
+                    label: label,
+                    isSelected: isSelected,
+                    isAuto: false,
+                    bitrate: peakBitRate,
+                    resolution: size,
+                    isAudio: false
+                ))
+            }
+        } catch {
+            logger.warning("Failed to load HLS variants: \(error.localizedDescription)")
+        }
+
+        return videoTracks
     }
 
     func changeTrack(_ track: MediaTrack) {
@@ -228,12 +240,12 @@ class PlayerViewModel: ObservableObject {
     private func setupP2PEvents(_ loader: P2PMediaLoader) {
         eventTasks.append(Task { [weak self] in
             for await details in loader.p2pEvents.onChunkDownloaded {
-                guard let self = self else { return }
-                self.uiState.totalDownloaded += Int64(details.bytesLength)
+                guard let self else { return }
+                uiState.totalDownloaded += Int64(details.bytesLength)
                 if details.downloadSource == .p2p {
-                    self.uiState.p2pDownloaded += Int64(details.bytesLength)
+                    uiState.p2pDownloaded += Int64(details.bytesLength)
                 } else {
-                    self.uiState.httpDownloaded += Int64(details.bytesLength)
+                    uiState.httpDownloaded += Int64(details.bytesLength)
                 }
             }
         })
@@ -244,9 +256,9 @@ class PlayerViewModel: ObservableObject {
         })
         eventTasks.append(Task { [weak self] in
             for await details in loader.p2pEvents.onPeerConnect {
-                guard let self = self else { return }
-                if !self.uiState.peers.contains(details.peerId) {
-                    self.uiState.peers.append(details.peerId)
+                guard let self else { return }
+                if !uiState.peers.contains(details.peerId) {
+                    uiState.peers.append(details.peerId)
                 }
             }
         })
@@ -257,7 +269,9 @@ class PlayerViewModel: ObservableObject {
         })
     }
 
-    func onMessageConsumed() { uiState.userMessage = nil }
+    func onMessageConsumed() {
+        uiState.userMessage = nil
+    }
 
     func play() {
         shouldAutoPlay = true

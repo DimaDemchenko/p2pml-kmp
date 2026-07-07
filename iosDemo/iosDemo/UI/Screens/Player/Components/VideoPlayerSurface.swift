@@ -1,5 +1,5 @@
-import SwiftUI
 import AVKit
+import SwiftUI
 
 struct VideoPlayerSurface: View {
     let player: AVPlayer?
@@ -9,11 +9,11 @@ struct VideoPlayerSurface: View {
 
     var body: some View {
         ZStack {
-            Color.black.aspectRatio(16/9, contentMode: .fit)
+            Color.black.aspectRatio(16 / 9, contentMode: .fit)
 
-            if let player = player {
+            if let player {
                 VideoPlayer(player: player)
-                    .aspectRatio(16/9, contentMode: .fit)
+                    .aspectRatio(16 / 9, contentMode: .fit)
             }
 
             if !isVideoReady {
@@ -48,6 +48,6 @@ struct VideoPlayerSurface: View {
                 Spacer()
             }
         }
-        .aspectRatio(16/9, contentMode: .fit)
+        .aspectRatio(16 / 9, contentMode: .fit)
     }
 }

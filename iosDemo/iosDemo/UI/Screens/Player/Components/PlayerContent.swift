@@ -1,5 +1,5 @@
-import SwiftUI
 import AVKit
+import SwiftUI
 
 struct PlayerContent: View {
     let uiState: PlayerUiState
