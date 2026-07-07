@@ -34,11 +34,11 @@ internal class WebViewMessageRouter(
 
             events.dispatchEvent(envelope.type, payload, json)
         } catch (e: SerializationException) {
-            logger.e { "Failed to parse WebView JSON message: ${e.message}. Raw message: $message" }
+            logger.e(e) { "Failed to parse WebView JSON message. Raw message: $message" }
         } catch (e: IllegalArgumentException) {
-            logger.e { "Invalid argument in WebView JSON message: ${e.message}. Raw message: $message" }
+            logger.e(e) { "Invalid argument in WebView JSON message. Raw message: $message" }
         } catch (e: IllegalStateException) {
-            logger.e { "Invalid state in WebView JSON message: ${e.message}. Raw message: $message" }
+            logger.e(e) { "Invalid state in WebView JSON message. Raw message: $message" }
         }
     }
 }

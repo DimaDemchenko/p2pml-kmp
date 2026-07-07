@@ -125,7 +125,7 @@ internal class P2PSessionFactory(
     private suspend fun cleanupSafely(actions: Iterable<suspend () -> Unit>) = withContext(NonCancellable) {
         for (action in actions) {
             runCatching { action() }.onFailure {
-                logger.w { "Failed to clean up resource: $it" }
+                logger.w(it) { "Failed to clean up resource" }
             }
         }
     }
@@ -136,7 +136,7 @@ internal class P2PSessionFactory(
         if (e is TimeoutCancellationException) {
             logger.e { "Session boot timed out waiting for WebView." }
         } else if (e !is CancellationException) {
-            logger.e { "Session boot failed: ${e.message}" }
+            logger.e(e) { "Session boot failed" }
         }
 
         cleanupSafely(cleanupTasks.reversed())

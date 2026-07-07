@@ -150,9 +150,9 @@ internal class SequenceStateTracker(
         try {
             p2pEngine.updatePlaybackInfo(info)
         } catch (e: SerializationException) {
-            logger.e { "Serialization error updating P2P engine (e.g. NaN/Infinity): ${e.message}" }
+            logger.e(e) { "Serialization error updating P2P engine (e.g. NaN/Infinity)" }
         } catch (e: IllegalStateException) {
-            logger.e { "Fatal state error updating P2P engine: ${e.message}" }
+            logger.e(e) { "Fatal state error updating P2P engine" }
             onFatalError(
                 P2PMediaLoaderException(
                     code = P2PMediaLoaderErrorCode.ENGINE_CRASHED,
@@ -161,7 +161,7 @@ internal class SequenceStateTracker(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            logger.e { "Argument error updating P2P engine: ${e.message}" }
+            logger.e(e) { "Argument error updating P2P engine" }
         }
     }
 }

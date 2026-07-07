@@ -41,8 +41,7 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             logger.w { "Upstream error fetching manifest [$manifestUrl]: $status" }
             call.respondText("Upstream returned $status", status = status)
         } catch (e: IOException) {
-            val errorMsg = e.message ?: "Connection lost"
-            logger.e { "Network error fetching manifest [$manifestUrl]: $errorMsg" }
+            logger.e(e) { "Network error fetching manifest [$manifestUrl]" }
             call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)
         } catch (e: IllegalStateException) {
             logger.e(e) { "Parser crashed on manifest [$manifestUrl]" }

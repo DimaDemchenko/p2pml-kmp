@@ -42,6 +42,10 @@ android {
 dependencies {
     implementation(projects.p2pml)
 
+    // SLF4J binding for Ktor's internal logs. The library itself ships no binding —
+    // host apps choose their own (or none, in which case Ktor logging is a no-op).
+    runtimeOnly(libs.slf4j.simple)
+
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.ui)

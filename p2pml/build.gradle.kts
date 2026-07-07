@@ -106,7 +106,10 @@ kotlin {
             jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
         }
 
-        withHostTest {}
+        withHostTest {
+            // android.util.Log is a throwing stub on the JVM; logging at WARN+ is on by default
+            isReturnDefaultValues = true
+        }
     }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
@@ -140,7 +143,6 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.slf4j.simple)
             compileOnly(libs.androidx.media3.exoplayer)
             compileOnly(libs.androidx.media3.exoplayer.hls)
         }

@@ -44,7 +44,17 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     }
 
     companion object {
+        /**
+         * Lowers [com.novage.p2pml.api.logging.P2PLogging.minLevel] to DEBUG for full diagnostics.
+         * Call before [initialize] so the internal WebView is also created inspectable.
+         * Debug output includes manifest and segment URLs, which may carry signed query parameters.
+         */
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
+
+        /**
+         * Restores the default log verbosity (WARN and above). To silence the library entirely,
+         * set [com.novage.p2pml.api.logging.P2PLogging.sink] to null instead.
+         */
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 
