@@ -1,9 +1,8 @@
-import SwiftUI
 import P2PML
+import SwiftUI
 
 @main
-struct iOSApp: App {
-
+struct IOSDemoApp: App {
     init() {
         P2PMediaLoader.companion.enableLogging()
         P2PFileLogSink.install()
@@ -26,7 +25,7 @@ struct iOSApp: App {
                 VideoListScreen()
                     .navigationDestination(for: AppRoute.self) { route in
                         switch route {
-                        case .player(let videoUrl, let customEngineUrl):
+                        case let .player(videoUrl, customEngineUrl):
                             PlayerScreen(videoUrl: videoUrl, customEngineUrl: customEngineUrl)
                         }
                     }
