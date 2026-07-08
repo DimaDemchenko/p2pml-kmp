@@ -18,6 +18,8 @@ import platform.AVFoundation.AVPlayer
  *
  * @param coreConfig Engine configuration. Defaults are used when omitted.
  * @param customEngineUrl URL to a custom-hosted engine page. Uses the bundled asset by default.
+ *   Custom pages do not include the bundled page's log bridge, so engine console output and
+ *   uncaught JS errors are not forwarded to the native log unless the page replicates it.
  */
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 

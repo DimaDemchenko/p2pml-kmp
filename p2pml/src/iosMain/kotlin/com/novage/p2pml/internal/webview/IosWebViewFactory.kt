@@ -29,7 +29,7 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 private val isDebugLoggingEnabled: Boolean
-    get() = P2PLogging.minLevel == LogLevel.DEBUG
+    get() = P2PLogging.minLevel <= LogLevel.DEBUG
 
 internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(

@@ -91,7 +91,7 @@ private fun Route.segmentDownloadRoute(
             logger.w { "Max retries hit for P2P. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl)
         } catch (e: SegmentProcessingException) {
-            logger.e(e) { "P2P Error: ${e.message}. Falling back to HTTP." }
+            logger.e(e) { "P2P Error. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl)
         } catch (_: SegmentAbortedException) {
             logger.w { "P2P Engine aborted segment (Abandoned by ABR/Seek). Terminating cleanly." }

@@ -139,7 +139,7 @@ internal class P2PMediaLoaderCore(
             if (orphanedSession != null) {
                 withContext(NonCancellable + Dispatchers.IO) {
                     runCatching { orphanedSession.destroy() }.onFailure { e ->
-                        logger.e(e) { "Error destroying orphaned session: ${e.message}" }
+                        logger.e(e) { "Error destroying orphaned session" }
                     }
                 }
             }

@@ -15,8 +15,8 @@ internal class CoreLogger(className: String) {
     inline fun e(throwable: Throwable? = null, message: () -> String) = log(LogLevel.ERROR, throwable, message)
 
     inline fun log(level: LogLevel, throwable: Throwable?, message: () -> String) {
-        val sink = P2PLogging.sink ?: return
-        if (level >= P2PLogging.minLevel) sink.log(level, tag, message(), throwable)
+        if (level < P2PLogging.minLevel) return
+        P2PLogging.sink?.log(level, tag, message(), throwable)
     }
 }
 

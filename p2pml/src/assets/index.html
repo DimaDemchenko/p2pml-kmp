@@ -4,6 +4,152 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>P2P Media Loader KMP</title>
+    <script>
+      (function () {
+        var MAX_ENTRY_LENGTH = 4096;
+        var MAX_BUFFERED_ENTRIES = 200;
+        var FLUSH_INTERVAL_MS = 200;
+
+        var debugSpec = new URLSearchParams(location.search).get("debug");
+
+        function applyDebugSpec() {
+          try {
+            if (debugSpec) localStorage.setItem("debug", debugSpec);
+            else localStorage.removeItem("debug");
+          } catch (e) {
+            if (debugSpec) {
+              enqueue(
+                "warn",
+                "[log bridge] localStorage unavailable; engine debug logs stay off",
+              );
+            }
+          }
+        }
+
+        var pendingEntries = [];
+        var droppedCount = 0;
+        var flushTimer = null;
+
+        function sendToNative(message) {
+          if (window.P2PMLAndroid) {
+            window.P2PMLAndroid.postMessage(message);
+          } else if (window.webkit?.messageHandlers?.p2pml) {
+            window.webkit.messageHandlers.p2pml.postMessage(message);
+          }
+        }
+
+        function flush() {
+          flushTimer = null;
+          if (droppedCount > 0) {
+            pendingEntries.push({
+              level: "warn",
+              text: "[log bridge] dropped " + droppedCount + " entries",
+            });
+            droppedCount = 0;
+          }
+
+          var message = JSON.stringify({
+            type: "onEngineLog",
+            payload: { entries: pendingEntries.splice(0) },
+          });
+
+          try {
+            sendToNative(message);
+          } catch (e) {
+            // Never log from in here, console is hooked below.
+          }
+        }
+
+        function enqueue(level, text) {
+          if (pendingEntries.length >= MAX_BUFFERED_ENTRIES) {
+            droppedCount++;
+          } else {
+            pendingEntries.push({
+              level: level,
+              text: text.slice(0, MAX_ENTRY_LENGTH),
+            });
+          }
+
+          if (flushTimer === null) {
+            flushTimer = setTimeout(flush, FLUSH_INTERVAL_MS);
+          }
+        }
+
+        function stringify(value) {
+          if (typeof value === "string") return value;
+          if (value instanceof Error) {
+            return value.stack || value.name + ": " + value.message;
+          }
+
+          try {
+            return JSON.stringify(value);
+          } catch (e) {
+            return String(value);
+          }
+        }
+
+        function applyFormatDirectives(template, args) {
+          var nextArg = 0;
+
+          var text = template.replace(/%([%cdifsoOj])/g, function (match, directive) {
+            if (directive === "%") return "%";
+            if (nextArg >= args.length) return match;
+            var arg = args[nextArg++];
+            return directive === "c" ? "" : stringify(arg);
+          });
+
+          return { text: text, unusedArgs: args.slice(nextArg) };
+        }
+
+        function formatConsoleArgs(rawArgs) {
+          var args = Array.prototype.slice.call(rawArgs);
+          var formatted = "";
+
+          if (typeof args[0] === "string" && args[0].indexOf("%") !== -1) {
+            var result = applyFormatDirectives(args[0], args.slice(1));
+            formatted = result.text;
+            args = result.unusedArgs;
+          }
+
+          return [formatted].concat(args.map(stringify)).filter(Boolean).join(" ");
+        }
+
+        function hookConsoleMethod(name) {
+          var original = console[name];
+          console[name] = function () {
+            enqueue(name, formatConsoleArgs(arguments));
+            if (original) original.apply(console, arguments);
+          };
+        }
+
+        function forwardUncaughtErrors() {
+          window.addEventListener("error", function (event) {
+            enqueue(
+              "error",
+              event.message + " (" + event.filename + ":" + event.lineno + ")",
+            );
+          });
+          window.addEventListener("unhandledrejection", function (event) {
+            enqueue(
+              "error",
+              "Unhandled promise rejection: " + stringify(event.reason),
+            );
+          });
+        }
+
+        applyDebugSpec();
+
+        hookConsoleMethod("warn");
+        hookConsoleMethod("error");
+        forwardUncaughtErrors();
+
+        if (debugSpec) {
+          hookConsoleMethod("debug");
+          hookConsoleMethod("log");
+          hookConsoleMethod("info");
+        }
+      })();
+    </script>
     <script type="importmap">
       {
         "imports": {
