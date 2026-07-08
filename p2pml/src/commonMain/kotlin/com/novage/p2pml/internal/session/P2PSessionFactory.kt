@@ -3,6 +3,8 @@ package com.novage.p2pml.internal.session
 import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
+import com.novage.p2pml.api.logging.LogLevel
+import com.novage.p2pml.api.logging.P2PLogging
 import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
 import com.novage.p2pml.internal.engine.P2PEngineManager
@@ -16,6 +18,7 @@ import com.novage.p2pml.internal.server.services.SegmentService
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.client.HttpClient
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -43,6 +46,9 @@ internal class P2PSessionFactory(
 ) {
     companion object {
         private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
+
+        /** `debug` library namespaces enabled in the engine page when debug logging is on. */
+        private const val ENGINE_DEBUG_NAMESPACES = "p2pml-core:*"
     }
 
     private val logger = CoreLogger("P2PSessionFactory")
@@ -111,7 +117,7 @@ internal class P2PSessionFactory(
         val port = withContext(Dispatchers.IO) { serverModule.start() }
         urlFactory.setPort(port)
 
-        val engineFileUrl = customEngineUrl ?: urlFactory.buildStaticPageUrl()
+        val engineFileUrl = customEngineUrl ?: buildEnginePageUrl(urlFactory)
         withTimeout(WEBVIEW_LOAD_TIMEOUT_MS) {
             engine.loadUrlAndWait(engineFileUrl)
         }
@@ -122,10 +128,25 @@ internal class P2PSessionFactory(
         )
     }
 
+    /**
+     * The `debug` flag makes the engine page enable the bundled `debug` library (via
+     * localStorage, before the module evaluates) and forward verbose console output
+     * to the native log bridge. Without it only warnings, errors and uncaught
+     * exceptions are forwarded.
+     */
+    private fun buildEnginePageUrl(urlFactory: LocalUrlFactory): String {
+        val base = urlFactory.buildStaticPageUrl()
+        return if (P2PLogging.minLevel == LogLevel.DEBUG) {
+            "$base?debug=${ENGINE_DEBUG_NAMESPACES.encodeURLParameter()}"
+        } else {
+            base
+        }
+    }
+
     private suspend fun cleanupSafely(actions: Iterable<suspend () -> Unit>) = withContext(NonCancellable) {
         for (action in actions) {
             runCatching { action() }.onFailure {
-                logger.w { "Failed to clean up resource: $it" }
+                logger.w(it) { "Failed to clean up resource" }
             }
         }
     }
@@ -136,7 +157,7 @@ internal class P2PSessionFactory(
         if (e is TimeoutCancellationException) {
             logger.e { "Session boot timed out waiting for WebView." }
         } else if (e !is CancellationException) {
-            logger.e { "Session boot failed: ${e.message}" }
+            logger.e(e) { "Session boot failed" }
         }
 
         cleanupSafely(cleanupTasks.reversed())

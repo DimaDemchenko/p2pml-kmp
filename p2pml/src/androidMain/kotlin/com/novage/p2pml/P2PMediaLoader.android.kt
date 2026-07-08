@@ -20,6 +20,8 @@ import kotlinx.coroutines.CancellationException
  * @param context Android context.
  * @param coreConfig Engine configuration. Defaults are used when omitted.
  * @param customEngineUrl URL to a custom-hosted engine page. Uses the bundled asset by default.
+ *   Custom pages do not include the bundled page's log bridge, so engine console output and
+ *   uncaught JS errors are not forwarded to the native log unless the page replicates it.
  */
 class P2PMediaLoader @JvmOverloads constructor(
     context: Context,
@@ -50,7 +52,16 @@ class P2PMediaLoader @JvmOverloads constructor(
     }
 
     companion object {
+        /**
+         * Lowers [com.novage.p2pml.api.logging.P2PLogging.minLevel] to DEBUG for full diagnostics.
+         * Debug output includes manifest and segment URLs, which may carry signed query parameters.
+         */
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
+
+        /**
+         * Restores the default log verbosity (WARN and above). To silence the library entirely,
+         * set [com.novage.p2pml.api.logging.P2PLogging.sink] to null instead.
+         */
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 

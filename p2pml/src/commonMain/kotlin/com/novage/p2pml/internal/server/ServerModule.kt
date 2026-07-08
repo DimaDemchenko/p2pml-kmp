@@ -82,7 +82,7 @@ internal class ServerModule(
     }
 
     private suspend fun handleStartupError(message: String, e: Exception): Nothing {
-        logger.e { "Failed to start Ktor server. Forcing aggressive shutdown." }
+        logger.e(e) { "Failed to start Ktor server. Forcing aggressive shutdown." }
         stopServer()
 
         throw P2PMediaLoaderException(

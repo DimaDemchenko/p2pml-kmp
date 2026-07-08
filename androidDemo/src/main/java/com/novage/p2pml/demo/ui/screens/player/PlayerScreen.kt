@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -24,9 +25,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.novage.p2pml.demo.logging.P2PFileLogSink
 import com.novage.p2pml.demo.ui.screens.player.components.PlayerContent
 import com.novage.p2pml.demo.ui.screens.player.components.VideoErrorView
 
@@ -35,6 +38,7 @@ import com.novage.p2pml.demo.ui.screens.player.components.VideoErrorView
 fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     PlayerLifecycleObserver(viewModel)
 
@@ -61,6 +65,15 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { P2PFileLogSink.share(context) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Share,
+                                contentDescription = "Share P2P logs",
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
                         }

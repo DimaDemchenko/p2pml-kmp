@@ -5,13 +5,14 @@ import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
+import com.novage.p2pml.api.logging.LogLevel
+import com.novage.p2pml.api.logging.P2PLogging
 import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.api.state.P2PMediaLoaderState
 import com.novage.p2pml.api.state.P2PMediaLoaderStatus
 import com.novage.p2pml.internal.session.P2PSession
 import com.novage.p2pml.internal.session.P2PSessionFactory
 import com.novage.p2pml.internal.utils.CoreLogger
-import com.novage.p2pml.internal.utils.LogConfig
 import com.novage.p2pml.internal.webview.WebViewFactory
 import io.ktor.http.encodeURLParameter
 import kotlin.concurrent.atomics.AtomicReference
@@ -44,10 +45,10 @@ internal class P2PMediaLoaderCore(
 ) {
     companion object {
         fun enableLogging() {
-            LogConfig.isEnabled = true
+            P2PLogging.minLevel = LogLevel.DEBUG
         }
         fun disableLogging() {
-            LogConfig.isEnabled = false
+            P2PLogging.minLevel = LogLevel.WARN
         }
     }
 
@@ -61,7 +62,7 @@ internal class P2PMediaLoaderCore(
     private val cleanupScope by lazy {
         CoroutineScope(
             Dispatchers.IO + CoroutineExceptionHandler { _, e ->
-                logger.e { "Uncaught error during session teardown: ${e.message}" }
+                logger.e(e) { "Uncaught error during session teardown" }
             }
         )
     }
@@ -138,7 +139,7 @@ internal class P2PMediaLoaderCore(
             if (orphanedSession != null) {
                 withContext(NonCancellable + Dispatchers.IO) {
                     runCatching { orphanedSession.destroy() }.onFailure { e ->
-                        logger.e(e) { "Error destroying orphaned session: ${e.message}" }
+                        logger.e(e) { "Error destroying orphaned session" }
                     }
                 }
             }
@@ -170,12 +171,12 @@ internal class P2PMediaLoaderCore(
         }
 
         is P2PMediaLoaderException -> {
-            logger.e { "Initialization failed: ${e.message}" }
+            logger.e(e) { "Initialization failed" }
             e
         }
 
         else -> {
-            logger.e { "Initialization failed due to system error: ${e.message}" }
+            logger.e(e) { "Initialization failed due to system error" }
             P2PMediaLoaderException(
                 P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED,
                 e.message ?: "System error",
@@ -237,7 +238,7 @@ internal class P2PMediaLoaderCore(
         }
 
         if (failure != null) {
-            logger.e { "Fatal error — releasing P2PMediaLoaderCore: ${failure.code} - ${failure.message}" }
+            logger.e(failure) { "Fatal error — releasing P2PMediaLoaderCore: ${failure.code}" }
         }
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
@@ -248,11 +249,11 @@ internal class P2PMediaLoaderCore(
             try {
                 sessionToDestroy?.destroy()
             } catch (e: IOException) {
-                logger.e { "IO Error during session teardown: ${e.message}" }
+                logger.e(e) { "IO Error during session teardown" }
             } catch (e: IllegalStateException) {
-                logger.e { "State Error during session teardown: ${e.message}" }
+                logger.e(e) { "State Error during session teardown" }
             } catch (e: IllegalArgumentException) {
-                logger.e { "Arg Error during session teardown: ${e.message}" }
+                logger.e(e) { "Arg Error during session teardown" }
             } finally {
                 logger.d { "Release complete." }
                 cleanupScope.cancel()

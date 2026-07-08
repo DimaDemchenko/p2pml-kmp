@@ -18,6 +18,8 @@ import platform.AVFoundation.AVPlayer
  *
  * @param coreConfig Engine configuration. Defaults are used when omitted.
  * @param customEngineUrl URL to a custom-hosted engine page. Uses the bundled asset by default.
+ *   Custom pages do not include the bundled page's log bridge, so engine console output and
+ *   uncaught JS errors are not forwarded to the native log unless the page replicates it.
  */
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
@@ -44,7 +46,17 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     }
 
     companion object {
+        /**
+         * Lowers [com.novage.p2pml.api.logging.P2PLogging.minLevel] to DEBUG for full diagnostics.
+         * Call before [initialize] so the internal WebView is also created inspectable.
+         * Debug output includes manifest and segment URLs, which may carry signed query parameters.
+         */
         fun enableLogging() = P2PMediaLoaderCore.enableLogging()
+
+        /**
+         * Restores the default log verbosity (WARN and above). To silence the library entirely,
+         * set [com.novage.p2pml.api.logging.P2PLogging.sink] to null instead.
+         */
         fun disableLogging() = P2PMediaLoaderCore.disableLogging()
     }
 
