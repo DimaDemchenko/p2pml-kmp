@@ -41,6 +41,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1B1D55E12F4B8202001FEB76 /* Data */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Data; sourceTree = "<group>"; };
 		1B1D55E42F4B8237001FEB76 /* UI */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = UI; sourceTree = "<group>"; };
+		1B1D55E92F4B9999001FEB76 /* Logging */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Logging; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +95,7 @@
 			children = (
 				1B1D55E42F4B8237001FEB76 /* UI */,
 				1B1D55E12F4B8202001FEB76 /* Data */,
+				1B1D55E92F4B9999001FEB76 /* Logging */,
 				058557BA273AAA24004C7B11 /* Assets.xcassets */,
 				7555FF8C242A565B00829871 /* Info.plist */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
@@ -131,6 +133,7 @@
 			fileSystemSynchronizedGroups = (
 				1B1D55E12F4B8202001FEB76 /* Data */,
 				1B1D55E42F4B8237001FEB76 /* UI */,
+				1B1D55E92F4B9999001FEB76 /* Logging */,
 			);
 			name = iosDemo;
 			packageProductDependencies = (

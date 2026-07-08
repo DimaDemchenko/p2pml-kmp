@@ -7,6 +7,7 @@ struct PlayerScreen: View {
     @StateObject private var viewModel = PlayerViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var showSnackbar = false
+    @State private var showLogShareSheet = false
 
     var body: some View {
         ZStack {
@@ -38,6 +39,22 @@ struct PlayerScreen: View {
         }
         .modifier(PlayerLifecycleObserver(viewModel: viewModel))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showLogShareSheet = true
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .disabled(P2PFileLogSink.currentLogURL == nil)
+                .accessibilityLabel("Share P2P logs")
+            }
+        }
+        .sheet(isPresented: $showLogShareSheet) {
+            if let logURL = P2PFileLogSink.currentLogURL {
+                ShareSheet(activityItems: [logURL])
+            }
+        }
         .onAppear {
             viewModel.initializePlayer(manifestUrl: videoUrl, customEngineUrl: customEngineUrl)
         }

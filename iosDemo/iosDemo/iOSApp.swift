@@ -6,6 +6,7 @@ struct iOSApp: App {
 
     init() {
         P2PMediaLoader.companion.enableLogging()
+        P2PFileLogSink.install()
 
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
