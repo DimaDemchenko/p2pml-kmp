@@ -80,13 +80,7 @@ object P2PFileLogSink {
         File(dir, "p2pml-$sessionStamp.log")
     }.getOrNull()
 
-    private fun writeEntry(
-        timestampMs: Long,
-        level: LogLevel,
-        tag: String,
-        message: String,
-        throwable: Throwable?
-    ) {
+    private fun writeEntry(timestampMs: Long, level: LogLevel, tag: String, message: String, throwable: Throwable?) {
         writeExecutor.execute {
             writer?.apply {
                 val time = lineTimeFormat.format(Date(timestampMs))
