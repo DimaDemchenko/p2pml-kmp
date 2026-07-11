@@ -23,25 +23,24 @@ internal class ManifestService(
      * requests (signed-URL refresh, multi-CDN steering); treating the redirect target as the
      * identity would reset all P2P state on every such fetch.
      */
-    suspend fun processManifest(requestUrl: String, responseUrl: String, manifest: String): String =
-        mutex.withLock {
-            if (!parser.isManifestTracked(requestUrl)) {
-                logger.i { "Untracked manifest detected. Resetting ManifestService state for: $requestUrl" }
-                isInitialManifestProcessed = false
-                onManifestChanged()
-            }
-
-            val modifiedManifest = parser.getModifiedManifest(manifest, requestUrl, responseUrl)
-
-            val needsInitialSetup = !isInitialManifestProcessed
-            if (needsInitialSetup) {
-                isInitialManifestProcessed = true
-            }
-
-            syncWithEngine(requestUrl, needsInitialSetup)
-
-            modifiedManifest
+    suspend fun processManifest(requestUrl: String, responseUrl: String, manifest: String): String = mutex.withLock {
+        if (!parser.isManifestTracked(requestUrl)) {
+            logger.i { "Untracked manifest detected. Resetting ManifestService state for: $requestUrl" }
+            isInitialManifestProcessed = false
+            onManifestChanged()
         }
+
+        val modifiedManifest = parser.getModifiedManifest(manifest, requestUrl, responseUrl)
+
+        val needsInitialSetup = !isInitialManifestProcessed
+        if (needsInitialSetup) {
+            isInitialManifestProcessed = true
+        }
+
+        syncWithEngine(requestUrl, needsInitialSetup)
+
+        modifiedManifest
+    }
 
     private suspend fun syncWithEngine(manifestUrl: String, needsInitialSetup: Boolean) {
         val updateStreamParams = parser.getUpdateStreamParams(manifestUrl)

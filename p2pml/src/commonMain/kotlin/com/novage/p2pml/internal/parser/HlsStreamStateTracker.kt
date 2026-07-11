@@ -40,10 +40,9 @@ internal class HlsStreamStateTracker(
     fun isCurrentSegment(segmentUrl: String): Boolean =
         trackedStreams.values.any { it.currentSegmentRuntimeIds.contains(segmentUrl) }
 
-    fun isManifestTracked(manifestUrl: String): Boolean =
-        currentMasterManifestUrl == manifestUrl ||
-            manifestUrl in masterDeclaredUrls ||
-            trackedStreams.containsKey(manifestUrl)
+    fun isManifestTracked(manifestUrl: String): Boolean = currentMasterManifestUrl == manifestUrl ||
+        manifestUrl in masterDeclaredUrls ||
+        trackedStreams.containsKey(manifestUrl)
 
     fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = trackedStreams[variantUrl]?.updateParams
 

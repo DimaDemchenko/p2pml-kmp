@@ -213,38 +213,29 @@ internal class HlsPlaylistParser(
         else -> originalLine
     }
 
-    private fun processInitSegmentTag(
-        originalLine: String,
-        trimmedLine: String,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = {
-            parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
-                ?: throw NoSuchElementException("Missing URI")
-        },
-        rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
-    )
+    private fun processInitSegmentTag(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = {
+                parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
+                    ?: throw NoSuchElementException("Missing URI")
+            },
+            rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
+        )
 
-    private fun processLowLatencyTag(
-        originalLine: String,
-        trimmedLine: String,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-    )
+    private fun processLowLatencyTag(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+            rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
+        )
 
-    private fun processKeyTag(
-        originalLine: String,
-        trimmedLine: String,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        rewriter = { urlRewriter.rewriteKeyUrl(it) }
-    )
+    private fun processKeyTag(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+            rewriter = { urlRewriter.rewriteKeyUrl(it) }
+        )
 
     /**
      * Tags are still parsed and their URIs rewritten (relative URIs must not resolve against
@@ -369,15 +360,12 @@ internal class HlsPlaylistParser(
         return rewriteUriAttribute(originalLine, url.original, newUrl)
     }
 
-    private fun processSessionKeyLine(
-        originalLine: String,
-        trimmedLine: String,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        rewriter = { urlRewriter.rewriteSessionKeyUrl(it) }
-    )
+    private fun processSessionKeyLine(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+            rewriter = { urlRewriter.rewriteSessionKeyUrl(it) }
+        )
 }
 
 private fun cleanBOM(data: String): String = if (data.startsWith("\uFEFF")) data.substring(1) else data
