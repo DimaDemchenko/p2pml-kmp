@@ -115,7 +115,8 @@ internal class HlsStreamStateTracker(
             newSegment?.let { segmentsToAdd.add(it) }
         }
 
-        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
+        val removeUntilId = if (isStreamLive) newMediaSequence else 0L
+        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, removeUntilId, isStreamLive)
 
         context.updateParams = UpdateStreamParams(
             streamRuntimeId = manifestUrl,
