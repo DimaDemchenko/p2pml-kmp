@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
+import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.utils.fetchManifest
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -43,6 +44,9 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
         } catch (e: IOException) {
             logger.e(e) { "Network error fetching manifest [$manifestUrl]" }
             call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)
+        } catch (e: ManifestParseException) {
+            logger.e(e) { "Upstream returned invalid manifest content [$manifestUrl]" }
+            call.respondText("Invalid manifest", status = HttpStatusCode.InternalServerError)
         } catch (e: IllegalStateException) {
             logger.e(e) { "Parser crashed on manifest [$manifestUrl]" }
             call.respondText("Invalid manifest state", status = HttpStatusCode.InternalServerError)

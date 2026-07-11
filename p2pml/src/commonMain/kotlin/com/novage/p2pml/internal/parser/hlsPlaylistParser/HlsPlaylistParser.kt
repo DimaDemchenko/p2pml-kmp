@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
+import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.parser.ManifestParser
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.math.roundToLong
@@ -56,7 +57,24 @@ internal class HlsPlaylistParser(
         }
     }
 
-    override fun parse(manifestUrl: String, manifestData: String): ParsedPlaylist {
+    /**
+     * Parse failures surface as [ManifestParseException] so callers handle a single type.
+     * The individual parsing helpers throw [IllegalArgumentException] (`require`, number
+     * parsing), [IllegalStateException] (`check`/`error`) and [NoSuchElementException]
+     * (missing required attributes) — an origin serving an HTML error page with HTTP 200
+     * is the most common real-world trigger.
+     */
+    override fun parse(manifestUrl: String, manifestData: String): ParsedPlaylist = try {
+        parsePlaylist(manifestUrl, manifestData)
+    } catch (e: IllegalArgumentException) {
+        throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
+    } catch (e: IllegalStateException) {
+        throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
+    } catch (e: NoSuchElementException) {
+        throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
+    }
+
+    private fun parsePlaylist(manifestUrl: String, manifestData: String): ParsedPlaylist {
         val cleaned = cleanBOM(manifestData)
         val iterator = PlaylistLineIterator(cleaned.lineSequence())
         val context = ParserContext(baseUri = manifestUrl)
