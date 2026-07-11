@@ -47,7 +47,7 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)
         } catch (e: ManifestParseException) {
             logger.e(e) { "Upstream returned invalid manifest content [$manifestUrl]" }
-            call.respondText("Invalid manifest", status = HttpStatusCode.InternalServerError)
+            call.respondText("Invalid manifest from upstream", status = HttpStatusCode.BadGateway)
         } catch (e: IllegalStateException) {
             logger.e(e) { "Parser crashed on manifest [$manifestUrl]" }
             call.respondText("Invalid manifest state", status = HttpStatusCode.InternalServerError)

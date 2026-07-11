@@ -2,6 +2,7 @@ package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
 import com.novage.p2pml.api.events.ByteRange
 import com.novage.p2pml.internal.parser.HlsStreamStateTracker
+import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.utils.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -89,7 +90,7 @@ class HlsPlaylistParserTest {
             #EXT-X-VERSION:3
         """.trimIndent()
 
-        assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<ManifestParseException> {
             parser.parse("http://example.com/manifest.m3u8", missingHeader)
         }
 
@@ -99,9 +100,45 @@ class HlsPlaylistParserTest {
             #EXT-X-VERSION:3
         """.trimIndent()
 
-        assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<ManifestParseException> {
             parser.parse("http://example.com/manifest.m3u8", invalidPrefixHeader)
         }
+    }
+
+    @Test
+    fun testInvalidManifestContentIsWrappedInManifestParseException() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val url = "http://example.com/manifest.m3u8"
+
+        // Origin/CDN serving an HTML error page with HTTP 200 — the most common real case.
+        assertFailsWith<ManifestParseException> {
+            parser.parse(url, "<html><body><h1>502 Bad Gateway</h1></body></html>")
+        }
+
+        // Missing required attribute (EXT-X-MEDIA without GROUP-ID) -> NoSuchElementException.
+        val missingGroupId = """
+            #EXTM3U
+            #EXT-X-MEDIA:TYPE=AUDIO,NAME="English",URI="audio.m3u8"
+            #EXT-X-STREAM-INF:BANDWIDTH=1000000
+            video.m3u8
+        """.trimIndent()
+        assertFailsWith<ManifestParseException> { parser.parse(url, missingGroupId) }
+
+        // Malformed EXTINF duration -> NumberFormatException.
+        val malformedDuration = """
+            #EXTM3U
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:1.2.3,
+            segment.ts
+        """.trimIndent()
+        assertFailsWith<ManifestParseException> { parser.parse(url, malformedDuration) }
+
+        // EXT-X-STREAM-INF without a following URI line -> IllegalStateException.
+        val missingVariantUri = """
+            #EXTM3U
+            #EXT-X-STREAM-INF:BANDWIDTH=1000000
+        """.trimIndent()
+        assertFailsWith<ManifestParseException> { parser.parse(url, missingVariantUri) }
     }
 
     @Test
@@ -123,11 +160,6 @@ class HlsPlaylistParserTest {
 
         val playlist = result.playlist as HlsMultivariantPlaylist
         assertEquals("http://example.com/master.m3u8", playlist.baseUri)
-
-        // Check session keys
-        assertEquals(1, playlist.sessionKeyUrls.size)
-        assertEquals("https://priv.key", playlist.sessionKeyUrls[0].original)
-        assertEquals("https://priv.key", playlist.sessionKeyUrls[0].absolute)
 
         // Check variants
         assertEquals(2, playlist.variants.size)
@@ -186,8 +218,6 @@ class HlsPlaylistParserTest {
         assertEquals(0L, seg1.byteRangeOffset)
         assertEquals(-1L, seg1.byteRangeLength)
         assertNull(seg1.byteRange)
-        assertEquals("https://key", seg1.encryptionKey?.original)
-        assertEquals("init.mp4", seg1.initializationSegment?.url?.original)
 
         val seg2 = playlist.hlsSegments[1]
         assertEquals("http://example.com/segment2.ts", seg2.url.absolute)
@@ -195,14 +225,6 @@ class HlsPlaylistParserTest {
         assertEquals(2048L, seg2.byteRangeOffset)
         assertEquals(1024L, seg2.byteRangeLength)
         assertEquals(ByteRange(2048, 3071), seg2.byteRange)
-
-        // Check LL-HLS lists
-        assertEquals(1, playlist.parts.size)
-        assertEquals("part1.ts", playlist.parts[0].original)
-        assertEquals(1, playlist.preloadHints.size)
-        assertEquals("preload.ts", playlist.preloadHints[0].original)
-        assertEquals(1, playlist.renditionReports.size)
-        assertEquals("report.m3u8", playlist.renditionReports[0].original)
 
         // Check rewritten output
         assertTrue(result.rewrittenManifest.contains("URI=\"rewritten-key-https://key\""))
@@ -233,18 +255,14 @@ class HlsPlaylistParserTest {
                 byteRangeOffset = 0,
                 byteRangeLength = -1,
                 durationUs = 10_000_000, // 10s
-                programDateTimeUs = null,
-                initializationSegment = null,
-                encryptionKey = null
+                programDateTimeUs = null
             ),
             HlsSegment(
                 url = ParsedUrl("seg2.ts", "http://example.com/seg2.ts"),
                 byteRangeOffset = 0,
                 byteRangeLength = -1,
                 durationUs = 10_000_000, // 10s
-                programDateTimeUs = null,
-                initializationSegment = null,
-                encryptionKey = null
+                programDateTimeUs = null
             )
         )
 
@@ -252,10 +270,7 @@ class HlsPlaylistParserTest {
             baseUri = "http://example.com/live.m3u8",
             mediaSequence = 1,
             hasEndTag = false, // Live stream!
-            hlsSegments = segments,
-            parts = emptyList(),
-            preloadHints = emptyList(),
-            renditionReports = emptyList()
+            hlsSegments = segments
         )
 
         // Process live media playlist
@@ -271,10 +286,7 @@ class HlsPlaylistParserTest {
             baseUri = "http://example.com/live-other.m3u8",
             mediaSequence = 1,
             hasEndTag = false,
-            hlsSegments = segments,
-            parts = emptyList(),
-            preloadHints = emptyList(),
-            renditionReports = emptyList()
+            hlsSegments = segments
         )
 
         // Process a different live playlist, should not evict yet
