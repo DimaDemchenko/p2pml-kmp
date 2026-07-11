@@ -18,9 +18,23 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
     private val tracker = HlsStreamStateTracker()
     private val mutex = Mutex()
 
-    suspend fun getModifiedManifest(originalManifest: String, manifestUrl: String): String = mutex.withLock {
+    /**
+     * Parses and rewrites a manifest. [manifestUrl] is the identity the stream is tracked under —
+     * the URL the player requested, stable across sessions and refreshes. [resolutionBaseUrl] is
+     * the URL the content was actually served from (after HTTP redirects) and is only used to
+     * resolve relative URLs inside the playlist. Keying by the redirect target instead would make
+     * every redirected fetch look like new content.
+     */
+    suspend fun getModifiedManifest(
+        originalManifest: String,
+        manifestUrl: String,
+        resolutionBaseUrl: String = manifestUrl
+    ): String = mutex.withLock {
         logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
-        val result = parser.parse(manifestUrl, originalManifest)
+        if (resolutionBaseUrl != manifestUrl) {
+            logger.d { "Manifest served via redirect. Resolving relative URLs against: $resolutionBaseUrl" }
+        }
+        val result = parser.parse(resolutionBaseUrl, originalManifest)
 
         when (val hlsPlaylist = result.playlist) {
             is HlsMediaPlaylist -> {

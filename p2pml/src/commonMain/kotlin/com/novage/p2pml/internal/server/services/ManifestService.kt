@@ -16,24 +16,32 @@ internal class ManifestService(
     private var isInitialManifestProcessed = false
     private val mutex = Mutex()
 
-    suspend fun processManifest(manifestUrl: String, manifest: String): String = mutex.withLock {
-        if (!parser.isManifestTracked(manifestUrl)) {
-            logger.i { "Untracked manifest detected. Resetting ManifestService state for: $manifestUrl" }
-            isInitialManifestProcessed = false
-            onManifestChanged()
+    /**
+     * [requestUrl] is the URL the player asked the local proxy for — the identity every stream is
+     * tracked and synced under. [responseUrl] is where the upstream actually served the content
+     * from (after redirects) and is only used to resolve relative URLs. CDNs commonly 302 variant
+     * requests (signed-URL refresh, multi-CDN steering); treating the redirect target as the
+     * identity would reset all P2P state on every such fetch.
+     */
+    suspend fun processManifest(requestUrl: String, responseUrl: String, manifest: String): String =
+        mutex.withLock {
+            if (!parser.isManifestTracked(requestUrl)) {
+                logger.i { "Untracked manifest detected. Resetting ManifestService state for: $requestUrl" }
+                isInitialManifestProcessed = false
+                onManifestChanged()
+            }
+
+            val modifiedManifest = parser.getModifiedManifest(manifest, requestUrl, responseUrl)
+
+            val needsInitialSetup = !isInitialManifestProcessed
+            if (needsInitialSetup) {
+                isInitialManifestProcessed = true
+            }
+
+            syncWithEngine(requestUrl, needsInitialSetup)
+
+            modifiedManifest
         }
-
-        val modifiedManifest = parser.getModifiedManifest(manifest, manifestUrl)
-
-        val needsInitialSetup = !isInitialManifestProcessed
-        if (needsInitialSetup) {
-            isInitialManifestProcessed = true
-        }
-
-        syncWithEngine(manifestUrl, needsInitialSetup)
-
-        modifiedManifest
-    }
 
     private suspend fun syncWithEngine(manifestUrl: String, needsInitialSetup: Boolean) {
         val updateStreamParams = parser.getUpdateStreamParams(manifestUrl)

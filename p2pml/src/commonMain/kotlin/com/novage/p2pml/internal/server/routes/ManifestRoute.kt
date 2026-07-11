@@ -32,8 +32,9 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             val fetchResult = httpClient.fetchManifest(call, manifestUrl)
 
             val modifiedManifest = manifestService.processManifest(
-                fetchResult.responseUrl,
-                fetchResult.manifestContent
+                requestUrl = manifestUrl,
+                responseUrl = fetchResult.responseUrl,
+                manifest = fetchResult.manifestContent
             )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
