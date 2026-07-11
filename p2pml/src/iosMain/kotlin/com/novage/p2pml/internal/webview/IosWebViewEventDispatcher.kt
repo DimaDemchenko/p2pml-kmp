@@ -4,6 +4,7 @@ import com.novage.p2pml.api.events.ChunkDownloadedDetails
 import com.novage.p2pml.api.events.ChunkUploadedDetails
 import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.P2PEvents
+import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage
@@ -26,6 +27,7 @@ internal class IosWebViewEventDispatcher(
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 
+    private val logger = CoreLogger("IosWebViewEventDispatcher")
     private val router = WebViewMessageRouter(events, json, onPageReady)
 
     override fun userContentController(
@@ -44,7 +46,11 @@ internal class IosWebViewEventDispatcher(
         val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val downloadSource = dict.objectForKey("downloadSource") as? String ?: return
         val peerId = dict.objectForKey("peerId") as? String
-        val source = DownloadSource.fromValue(downloadSource)
+
+        val source = DownloadSource.fromValue(downloadSource) ?: run {
+            logger.w { "Dropping chunk event with unknown download source: $downloadSource" }
+            return
+        }
         events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
     }
 

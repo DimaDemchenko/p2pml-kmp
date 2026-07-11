@@ -23,6 +23,12 @@ enum class DownloadSource(val value: String) {
     HTTP("http");
 
     companion object {
-        fun fromValue(value: String): DownloadSource = entries.first { it.value == value }
+        /**
+         * Resolves the engine's string representation to a [DownloadSource], or `null` for
+         * unrecognized values. Never throws: an unknown value (e.g. a newer engine build behind
+         * a custom engine URL emitting a new source type) must degrade to a dropped stats event,
+         * not an exception on the WebView bridge thread — that would crash the host app.
+         */
+        fun fromValue(value: String): DownloadSource? = entries.firstOrNull { it.value == value }
     }
 }
