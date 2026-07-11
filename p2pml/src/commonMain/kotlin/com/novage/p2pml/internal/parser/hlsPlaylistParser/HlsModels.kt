@@ -15,20 +15,14 @@ internal data class HlsMultivariantPlaylist(
     override val baseUri: String,
     val variants: List<Variant>,
     val videos: List<Rendition>,
-    val audios: List<Rendition>,
-    val subtitles: List<Rendition>,
-    val closedCaptions: List<Rendition>,
-    val sessionKeyUrls: List<ParsedUrl>
+    val audios: List<Rendition>
 ) : HlsPlaylist
 
 internal data class HlsMediaPlaylist(
     override val baseUri: String,
     val mediaSequence: Long,
     val hasEndTag: Boolean,
-    val hlsSegments: List<HlsSegment>,
-    val parts: List<ParsedUrl>,
-    val preloadHints: List<ParsedUrl>,
-    val renditionReports: List<ParsedUrl>
+    val hlsSegments: List<HlsSegment>
 ) : HlsPlaylist
 
 internal data class Variant(
@@ -55,16 +49,12 @@ internal data class Rendition(
     val channels: String? = null
 )
 
-internal data class InitializationSegment(val url: ParsedUrl)
-
 internal data class HlsSegment(
     val url: ParsedUrl,
     val byteRangeOffset: Long,
     val byteRangeLength: Long,
     val durationUs: Long,
-    val programDateTimeUs: Long?,
-    val initializationSegment: InitializationSegment?,
-    val encryptionKey: ParsedUrl?
+    val programDateTimeUs: Long?
 ) {
     val byteRange: ByteRange? = if (byteRangeLength !=
         -1L
