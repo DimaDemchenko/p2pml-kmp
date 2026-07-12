@@ -63,6 +63,12 @@ class NetworkUtilsTest {
     }
 
     @Test
+    fun zeroContentLengthIsTreatedAsUnknownEnd() {
+        assertTrue(payloadSatisfiesRequest("bytes=0-", wholeSegment, contentLength = 0))
+        assertFalse(payloadSatisfiesRequest("bytes=0-0", wholeSegment, contentLength = 0))
+    }
+
+    @Test
     fun rangedSegmentRejectsMismatches() {
         assertFalse(payloadSatisfiesRequest(null, rangedSegment, contentLength = 500))
         assertFalse(payloadSatisfiesRequest("bytes=600-", rangedSegment, contentLength = 500))

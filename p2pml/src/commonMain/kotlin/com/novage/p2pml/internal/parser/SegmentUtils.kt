@@ -23,6 +23,9 @@ internal fun segmentUrlFromRuntimeId(runtimeId: String): String = BYTE_RANGE_SUF
 private val BYTE_RANGE_SUFFIX = Regex("""\|(\d+)-(\d+)$""")
 
 /** Extracts the byte range encoded by [buildSegmentRuntimeId], or null for whole-segment ids. */
-internal fun byteRangeFromRuntimeId(runtimeId: String): ByteRange? = BYTE_RANGE_SUFFIX.find(runtimeId)?.let { match ->
-    ByteRange(match.groupValues[1].toLong(), match.groupValues[2].toLong())
+internal fun byteRangeFromRuntimeId(runtimeId: String): ByteRange? {
+    val match = BYTE_RANGE_SUFFIX.find(runtimeId) ?: return null
+    val start = match.groupValues[1].toLongOrNull()
+    val end = match.groupValues[2].toLongOrNull()
+    return if (start != null && end != null && end >= start) ByteRange(start, end) else null
 }

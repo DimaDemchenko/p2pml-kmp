@@ -84,7 +84,7 @@ internal fun parseSingleByteRange(rangeHeader: String): RequestedByteRange? {
 private fun payloadSpan(runtimeId: String, contentLength: Long?): Pair<Long, Long?> {
     val byteRange = byteRangeFromRuntimeId(runtimeId)
     val start = byteRange?.start ?: 0L
-    val end = byteRange?.end ?: contentLength?.let { it - 1 }
+    val end = byteRange?.end ?: contentLength?.takeIf { it > 0 }?.let { it - 1 }
     return start to end
 }
 

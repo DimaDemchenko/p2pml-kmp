@@ -60,4 +60,14 @@ class SegmentUtilsTest {
     fun byteRangeIsNullWhenPipeSuffixIsNotARange() {
         assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts?token=a|b"))
     }
+
+    @Test
+    fun byteRangeIsNullOnOverflowingDigits() {
+        assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts|99999999999999999999-99999999999999999999"))
+    }
+
+    @Test
+    fun byteRangeIsNullWhenEndPrecedesStart() {
+        assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts|200-100"))
+    }
 }
