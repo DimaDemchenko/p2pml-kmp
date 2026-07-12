@@ -33,6 +33,19 @@ class SegmentUtilsTest {
     }
 
     @Test
+    fun decodePreservesUrlContainingPipeWithoutByteRange() {
+        val url = "https://example.com/seg0.ts?token=a|b"
+        assertEquals(url, segmentUrlFromRuntimeId(url))
+    }
+
+    @Test
+    fun decodeStripsOnlyByteRangeSuffixFromPipeContainingUrl() {
+        val url = "https://example.com/seg0.ts?token=a|b"
+        val runtimeId = buildSegmentRuntimeId(url, ByteRange(100, 199))
+        assertEquals(url, segmentUrlFromRuntimeId(runtimeId))
+    }
+
+    @Test
     fun byteRangeIsRecoveredFromRuntimeId() {
         val runtimeId = buildSegmentRuntimeId("https://example.com/seg0.ts", ByteRange(100, 199))
         assertEquals(ByteRange(100, 199), byteRangeFromRuntimeId(runtimeId))
