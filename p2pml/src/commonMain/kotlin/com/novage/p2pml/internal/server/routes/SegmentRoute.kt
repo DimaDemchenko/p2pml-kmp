@@ -8,12 +8,14 @@ import com.novage.p2pml.internal.server.exceptions.SegmentReplacedException
 import com.novage.p2pml.internal.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.server.services.SegmentService
+import com.novage.p2pml.internal.server.utils.payloadSatisfiesRequest
 import com.novage.p2pml.internal.server.utils.respondFallback
 import com.novage.p2pml.internal.server.utils.respondVideoSegmentStream
 import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -81,8 +83,7 @@ private fun Route.segmentDownloadRoute(
                 deferred.await()
             }
 
-            logger.d { "Serving stream to Player for: $segmentUrl" }
-            call.respondVideoSegmentStream(payload)
+            servePayloadOrFallback(call, httpClient, segmentUrl, payload)
         } catch (_: TimeoutCancellationException) {
             logger.w { "P2P Engine timed out providing segment. Falling back to HTTP." }
             call.respondFallback(httpClient, segmentUrl)
@@ -112,6 +113,23 @@ private fun Route.segmentDownloadRoute(
                 payloadToClean?.channel?.cancel(null)
             }
         }
+    }
+}
+
+private suspend fun servePayloadOrFallback(
+    call: ApplicationCall,
+    httpClient: HttpClient,
+    segmentUrl: String,
+    payload: SegmentPayload
+) {
+    val rangeHeader = call.request.headers[HttpHeaders.Range]
+    if (payloadSatisfiesRequest(rangeHeader, segmentUrl, payload.contentLength)) {
+        logger.d { "Serving stream to Player for: $segmentUrl" }
+        call.respondVideoSegmentStream(payload, segmentUrl)
+    } else {
+        logger.i { "P2P payload does not cover requested range '$rangeHeader'. Falling back to HTTP." }
+        payload.channel.cancel(null)
+        call.respondFallback(httpClient, segmentUrl)
     }
 }
 

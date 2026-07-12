@@ -18,4 +18,14 @@ internal fun buildSegmentRuntimeId(absoluteUrl: String, byteRange: ByteRange?): 
  * Recovers the absolute segment URL from a runtime id produced by [buildSegmentRuntimeId],
  * dropping any encoded byte range. Returns the input unchanged when no byte range is present.
  */
-internal fun segmentUrlFromRuntimeId(runtimeId: String): String = runtimeId.substringBeforeLast(BYTE_RANGE_DELIMITER)
+internal fun segmentUrlFromRuntimeId(runtimeId: String): String = BYTE_RANGE_SUFFIX.replace(runtimeId, "")
+
+private val BYTE_RANGE_SUFFIX = Regex("""\|(\d+)-(\d+)$""")
+
+/** Extracts the byte range encoded by [buildSegmentRuntimeId], or null for whole-segment ids. */
+internal fun byteRangeFromRuntimeId(runtimeId: String): ByteRange? {
+    val match = BYTE_RANGE_SUFFIX.find(runtimeId) ?: return null
+    val start = match.groupValues[1].toLongOrNull()
+    val end = match.groupValues[2].toLongOrNull()
+    return if (start != null && end != null && end >= start) ByteRange(start, end) else null
+}

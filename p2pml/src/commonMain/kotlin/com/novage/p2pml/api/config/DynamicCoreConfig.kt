@@ -23,7 +23,7 @@ import kotlinx.serialization.Transient
  * ```swift
  * let config = DynamicCoreConfig()
  * config.isP2PDisabled = true
- * try loader.applyDynamicConfig(dynamicCoreConfig: config)
+ * loader.applyDynamicConfig(dynamicCoreConfig: config)
  * ```
  *
  * @see CoreConfig

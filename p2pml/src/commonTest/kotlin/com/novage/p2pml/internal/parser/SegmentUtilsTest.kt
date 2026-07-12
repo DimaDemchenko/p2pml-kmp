@@ -3,6 +3,7 @@ package com.novage.p2pml.internal.parser
 import com.novage.p2pml.api.events.ByteRange
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class SegmentUtilsTest {
 
@@ -29,5 +30,44 @@ class SegmentUtilsTest {
     fun decodeLeavesPlainUrlUnchanged() {
         val url = "https://example.com/seg0.ts"
         assertEquals(url, segmentUrlFromRuntimeId(url))
+    }
+
+    @Test
+    fun decodePreservesUrlContainingPipeWithoutByteRange() {
+        val url = "https://example.com/seg0.ts?token=a|b"
+        assertEquals(url, segmentUrlFromRuntimeId(url))
+    }
+
+    @Test
+    fun decodeStripsOnlyByteRangeSuffixFromPipeContainingUrl() {
+        val url = "https://example.com/seg0.ts?token=a|b"
+        val runtimeId = buildSegmentRuntimeId(url, ByteRange(100, 199))
+        assertEquals(url, segmentUrlFromRuntimeId(runtimeId))
+    }
+
+    @Test
+    fun byteRangeIsRecoveredFromRuntimeId() {
+        val runtimeId = buildSegmentRuntimeId("https://example.com/seg0.ts", ByteRange(100, 199))
+        assertEquals(ByteRange(100, 199), byteRangeFromRuntimeId(runtimeId))
+    }
+
+    @Test
+    fun byteRangeIsNullForPlainUrl() {
+        assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts"))
+    }
+
+    @Test
+    fun byteRangeIsNullWhenPipeSuffixIsNotARange() {
+        assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts?token=a|b"))
+    }
+
+    @Test
+    fun byteRangeIsNullOnOverflowingDigits() {
+        assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts|99999999999999999999-99999999999999999999"))
+    }
+
+    @Test
+    fun byteRangeIsNullWhenEndPrecedesStart() {
+        assertNull(byteRangeFromRuntimeId("https://example.com/seg0.ts|200-100"))
     }
 }

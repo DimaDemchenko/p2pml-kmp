@@ -112,11 +112,9 @@ private class AndroidHeadlessWebView(
         }
     }
 
-    override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
+    override fun evaluateJavascript(script: String) {
         runOnUiThread {
-            webView?.evaluateJavascript(script) { result ->
-                callback?.invoke(result)
-            }
+            webView?.evaluateJavascript(script, null)
         }
     }
 

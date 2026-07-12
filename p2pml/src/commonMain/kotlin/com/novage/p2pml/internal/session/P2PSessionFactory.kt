@@ -152,8 +152,6 @@ internal class P2PSessionFactory(
     }
 
     private suspend fun handleInitializationFailure(e: Throwable, cleanupTasks: List<suspend () -> Unit>) {
-        if (e !is Exception) throw e
-
         if (e is TimeoutCancellationException) {
             logger.e { "Session boot timed out waiting for WebView." }
         } else if (e !is CancellationException) {
