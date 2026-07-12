@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.utils
 
+import com.novage.p2pml.internal.parser.byteRangeFromRuntimeId
 import com.novage.p2pml.internal.parser.segmentUrlFromRuntimeId
 import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -62,44 +63,56 @@ private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
 
 private const val BYTES_PREFIX = "bytes="
 
-private fun buildContentRange(rangeHeader: String, contentLength: Long?): String? {
-    if (!rangeHeader.startsWith(BYTES_PREFIX) || rangeHeader.contains(",")) {
-        return null
-    }
+internal data class RequestedByteRange(val start: Long, val endInclusive: Long?)
+
+internal fun parseSingleByteRange(rangeHeader: String): RequestedByteRange? {
+    if (!rangeHeader.startsWith(BYTES_PREFIX) || rangeHeader.contains(",")) return null
 
     val parts = rangeHeader.substring(BYTES_PREFIX.length).trim().split('-')
-    if (parts.size != 2) {
-        return null
-    }
+    if (parts.size != 2) return null
 
-    val startStr = parts[0].trim()
+    val start = parts[0].trim().toLongOrNull()?.takeIf { it >= 0 } ?: return null
     val endStr = parts[1].trim()
 
-    val start = startStr.toLongOrNull()
-    if (start == null || start < 0) {
-        return null
+    return when {
+        endStr.isEmpty() -> RequestedByteRange(start, endInclusive = null)
+        else -> endStr.toLongOrNull()?.takeIf { it >= start }?.let { RequestedByteRange(start, it) }
     }
-
-    val end = if (endStr.isNotEmpty()) {
-        endStr.toLongOrNull()
-    } else if (contentLength != null && contentLength > 0) {
-        start + contentLength - 1
-    } else {
-        null
-    }
-
-    return if (end != null && end >= start) "bytes $start-$end/*" else null
 }
 
-internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload) {
-    val rangeHeader = request.headers[HttpHeaders.Range]
-    val contentType = ContentType.Application.OctetStream
+/** Byte span the payload covers: the runtime id's byte range, or [0, contentLength) for whole segments. */
+private fun payloadSpan(runtimeId: String, contentLength: Long?): Pair<Long, Long?> {
+    val byteRange = byteRangeFromRuntimeId(runtimeId)
+    val start = byteRange?.start ?: 0L
+    val end = byteRange?.end ?: contentLength?.let { it - 1 }
+    return start to end
+}
 
-    val contentRange = rangeHeader?.let { buildContentRange(it, payload.contentLength) }
+/**
+ * Whether the P2P payload — which always streams exactly the span its runtime id describes —
+ * can honestly answer the player's Range request. An unparseable or absent Range means the
+ * player expects the whole resource, which only whole-segment payloads provide. On a mismatch
+ * (e.g. a mid-segment resume) the caller must fall back to the origin, which honors the
+ * forwarded Range header.
+ */
+internal fun payloadSatisfiesRequest(rangeHeader: String?, runtimeId: String, contentLength: Long?): Boolean {
+    val (payloadStart, payloadEnd) = payloadSpan(runtimeId, contentLength)
+    val requested = rangeHeader?.let { parseSingleByteRange(it) }
+        ?: return payloadStart == 0L
+
+    if (requested.start != payloadStart) return false
+    val requestedEnd = requested.endInclusive ?: return true
+    return requestedEnd == payloadEnd
+}
+
+internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentPayload, runtimeId: String) {
+    val (payloadStart, payloadEnd) = payloadSpan(runtimeId, payload.contentLength)
+    val isRangeRequest = request.headers[HttpHeaders.Range]?.let { parseSingleByteRange(it) } != null
+    val contentRange = if (isRangeRequest && payloadEnd != null) "bytes $payloadStart-$payloadEnd/*" else null
 
     respond(
         object : OutgoingContent.ReadChannelContent() {
-            override val contentType = contentType
+            override val contentType = ContentType.Application.OctetStream
             override val contentLength = payload.contentLength
             override val status = if (contentRange != null) HttpStatusCode.PartialContent else HttpStatusCode.OK
             override val headers = Headers.build {
