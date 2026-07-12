@@ -10,6 +10,7 @@ import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.core.P2PMediaLoaderCore
 import com.novage.p2pml.internal.playback.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -31,6 +32,8 @@ class P2PMediaLoader @JvmOverloads constructor(
 ) {
     private val appContext: Context = context.applicationContext
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+
+    @Volatile
     private var defaultProvider: ExoPlayerPlaybackProvider? = null
 
     val p2pEvents get() = core.p2pEvents

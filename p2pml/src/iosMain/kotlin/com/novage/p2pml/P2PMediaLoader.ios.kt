@@ -8,6 +8,7 @@ import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.core.P2PMediaLoaderCore
 import com.novage.p2pml.internal.playback.AVPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import platform.AVFoundation.AVPlayer
 
@@ -25,6 +26,8 @@ import platform.AVFoundation.AVPlayer
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+    
+    @Volatile
     private var defaultProvider: AVPlayerPlaybackProvider? = null
 
     val p2pEvents get() = core.p2pEvents
