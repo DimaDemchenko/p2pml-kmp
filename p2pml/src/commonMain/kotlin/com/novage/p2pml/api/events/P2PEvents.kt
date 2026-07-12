@@ -43,8 +43,7 @@ class P2PEvents internal constructor(
     private inline fun <reified T> jsonChannel(name: String, capacity: Int = 64): EventChannel<T> =
         EventChannel(name, newFlow(capacity)) { payload, json -> json.decodeFromJsonElement<T>(payload) }
 
-    private fun <T> directChannel(name: String, capacity: Int): EventChannel<T> =
-        EventChannel(name, newFlow(capacity))
+    private fun <T> directChannel(name: String, capacity: Int): EventChannel<T> = EventChannel(name, newFlow(capacity))
 
     private val segmentLoaded = jsonChannel<SegmentLoadDetails>("onSegmentLoaded")
     private val segmentStart = jsonChannel<SegmentStartDetails>("onSegmentStart")
