@@ -1,19 +1,10 @@
 package com.novage.p2pml.api.events
 
-import com.novage.p2pml.api.events.ChunkDownloadedDetails
-import com.novage.p2pml.api.events.ChunkUploadedDetails
-import com.novage.p2pml.api.events.PeerDetails
-import com.novage.p2pml.api.events.PeerErrorDetails
-import com.novage.p2pml.api.events.SegmentAbortDetails
-import com.novage.p2pml.api.events.SegmentErrorDetails
-import com.novage.p2pml.api.events.SegmentLoadDetails
-import com.novage.p2pml.api.events.SegmentStartDetails
-import com.novage.p2pml.api.events.TrackerErrorDetails
-import com.novage.p2pml.api.events.TrackerWarningDetails
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
@@ -31,88 +22,86 @@ class P2PEvents internal constructor(
 ) {
     private val logger = CoreLogger("P2PEvents")
 
-    private fun <T> createFlow(capacity: Int = 64): MutableSharedFlow<T> = MutableSharedFlow(
+    private class EventChannel<T>(
+        val name: String,
+        val flow: MutableSharedFlow<T>,
+        private val decode: ((JsonElement, Json) -> T)? = null
+    ) {
+        val shared: SharedFlow<T> = flow.asSharedFlow()
+
+        fun emitJson(payload: JsonElement, json: Json) {
+            val decoder = decode ?: return
+            flow.tryEmit(decoder(payload, json))
+        }
+    }
+
+    private fun <T> newFlow(capacity: Int): MutableSharedFlow<T> = MutableSharedFlow(
         extraBufferCapacity = capacity,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    private val _onSegmentLoaded = createFlow<SegmentLoadDetails>()
-    val onSegmentLoaded = _onSegmentLoaded.asSharedFlow()
+    private inline fun <reified T> jsonChannel(name: String, capacity: Int = 64): EventChannel<T> =
+        EventChannel(name, newFlow(capacity)) { payload, json -> json.decodeFromJsonElement<T>(payload) }
 
-    private val _onSegmentStart = createFlow<SegmentStartDetails>()
-    val onSegmentStart = _onSegmentStart.asSharedFlow()
+    private fun <T> directChannel(name: String, capacity: Int): EventChannel<T> =
+        EventChannel(name, newFlow(capacity))
 
-    private val _onSegmentError = createFlow<SegmentErrorDetails>()
-    val onSegmentError = _onSegmentError.asSharedFlow()
+    private val segmentLoaded = jsonChannel<SegmentLoadDetails>("onSegmentLoaded")
+    private val segmentStart = jsonChannel<SegmentStartDetails>("onSegmentStart")
+    private val segmentError = jsonChannel<SegmentErrorDetails>("onSegmentError")
+    private val segmentAbort = jsonChannel<SegmentAbortDetails>("onSegmentAbort")
+    private val peerConnect = jsonChannel<PeerDetails>("onPeerConnect")
+    private val peerClose = jsonChannel<PeerDetails>("onPeerClose")
+    private val peerError = jsonChannel<PeerErrorDetails>("onPeerError")
+    private val trackerError = jsonChannel<TrackerErrorDetails>("onTrackerError")
+    private val trackerWarning = jsonChannel<TrackerWarningDetails>("onTrackerWarning")
+    private val chunkDownloaded = directChannel<ChunkDownloadedDetails>("onChunkDownloaded", capacity = 256)
+    private val chunkUploaded = directChannel<ChunkUploadedDetails>("onChunkUploaded", capacity = 256)
 
-    private val _onSegmentAbort = createFlow<SegmentAbortDetails>()
-    val onSegmentAbort = _onSegmentAbort.asSharedFlow()
+    private val channels: List<EventChannel<*>> = listOf(
+        segmentLoaded, segmentStart, segmentError, segmentAbort,
+        peerConnect, peerClose, peerError,
+        chunkDownloaded, chunkUploaded,
+        trackerError, trackerWarning
+    )
+    private val channelsByName: Map<String, EventChannel<*>> = channels.associateBy { it.name }
 
-    private val _onPeerConnect = createFlow<PeerDetails>()
-    val onPeerConnect = _onPeerConnect.asSharedFlow()
+    val onSegmentLoaded: SharedFlow<SegmentLoadDetails> = segmentLoaded.shared
+    val onSegmentStart: SharedFlow<SegmentStartDetails> = segmentStart.shared
+    val onSegmentError: SharedFlow<SegmentErrorDetails> = segmentError.shared
+    val onSegmentAbort: SharedFlow<SegmentAbortDetails> = segmentAbort.shared
+    val onPeerConnect: SharedFlow<PeerDetails> = peerConnect.shared
+    val onPeerClose: SharedFlow<PeerDetails> = peerClose.shared
+    val onPeerError: SharedFlow<PeerErrorDetails> = peerError.shared
+    val onTrackerError: SharedFlow<TrackerErrorDetails> = trackerError.shared
+    val onTrackerWarning: SharedFlow<TrackerWarningDetails> = trackerWarning.shared
+    val onChunkDownloaded: SharedFlow<ChunkDownloadedDetails> = chunkDownloaded.shared
+    val onChunkUploaded: SharedFlow<ChunkUploadedDetails> = chunkUploaded.shared
 
-    private val _onPeerClose = createFlow<PeerDetails>()
-    val onPeerClose = _onPeerClose.asSharedFlow()
-
-    private val _onPeerError = createFlow<PeerErrorDetails>()
-    val onPeerError = _onPeerError.asSharedFlow()
-
-    private val _onTrackerError = createFlow<TrackerErrorDetails>()
-    val onTrackerError = _onTrackerError.asSharedFlow()
-
-    private val _onTrackerWarning = createFlow<TrackerWarningDetails>()
-    val onTrackerWarning = _onTrackerWarning.asSharedFlow()
-
-    private val _onChunkDownloaded = createFlow<ChunkDownloadedDetails>(capacity = 256)
-    val onChunkDownloaded = _onChunkDownloaded.asSharedFlow()
-
-    private val _onChunkUploaded = createFlow<ChunkUploadedDetails>(capacity = 256)
-    val onChunkUploaded = _onChunkUploaded.asSharedFlow()
-
-    internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = _onChunkDownloaded.tryEmit(d)
-    internal fun emitChunkUploaded(d: ChunkUploadedDetails) = _onChunkUploaded.tryEmit(d)
+    internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = chunkDownloaded.flow.tryEmit(d)
+    internal fun emitChunkUploaded(d: ChunkUploadedDetails) = chunkUploaded.flow.tryEmit(d)
 
     internal fun dispatchEvent(eventName: String, payload: JsonElement, json: Json) {
-        when (eventName) {
-            "onSegmentLoaded" -> _onSegmentLoaded.tryEmit(json.decodeFromJsonElement(payload))
-            "onSegmentStart" -> _onSegmentStart.tryEmit(json.decodeFromJsonElement(payload))
-            "onSegmentError" -> _onSegmentError.tryEmit(json.decodeFromJsonElement(payload))
-            "onSegmentAbort" -> _onSegmentAbort.tryEmit(json.decodeFromJsonElement(payload))
-            "onPeerConnect" -> _onPeerConnect.tryEmit(json.decodeFromJsonElement(payload))
-            "onPeerClose" -> _onPeerClose.tryEmit(json.decodeFromJsonElement(payload))
-            "onPeerError" -> _onPeerError.tryEmit(json.decodeFromJsonElement(payload))
-            "onTrackerError" -> _onTrackerError.tryEmit(json.decodeFromJsonElement(payload))
-            "onTrackerWarning" -> _onTrackerWarning.tryEmit(json.decodeFromJsonElement(payload))
-            else -> logger.w { "No dispatcher found for event: $eventName" }
+        val channel = channelsByName[eventName]
+        if (channel == null) {
+            logger.w { "No dispatcher found for event: $eventName" }
+            return
         }
+        channel.emitJson(payload, json)
     }
 
-    internal val flowsWithNames = listOf(
-        "onSegmentLoaded" to _onSegmentLoaded,
-        "onSegmentStart" to _onSegmentStart,
-        "onSegmentError" to _onSegmentError,
-        "onSegmentAbort" to _onSegmentAbort,
-        "onPeerConnect" to _onPeerConnect,
-        "onPeerClose" to _onPeerClose,
-        "onPeerError" to _onPeerError,
-        "onChunkDownloaded" to _onChunkDownloaded,
-        "onChunkUploaded" to _onChunkUploaded,
-        "onTrackerError" to _onTrackerError,
-        "onTrackerWarning" to _onTrackerWarning
-    )
-
     init {
-        flowsWithNames.forEach { (eventName, flow) ->
-            flow.subscriptionCount
+        channels.forEach { channel ->
+            channel.flow.subscriptionCount
                 .map { it > 0 }
                 .distinctUntilChanged()
                 .onEach { hasSubscribers ->
                     if (!isCoreActive()) return@onEach
 
                     if (hasSubscribers) {
-                        onSubscribe(eventName)
+                        onSubscribe(channel.name)
                     } else {
-                        onUnsubscribe(eventName)
+                        onUnsubscribe(channel.name)
                     }
                 }
                 .launchIn(coreScope)
@@ -122,9 +111,9 @@ class P2PEvents internal constructor(
     internal fun syncEarlySubscriptions() {
         if (!isCoreActive()) return
 
-        flowsWithNames.forEach { (eventName, flow) ->
-            if (flow.subscriptionCount.value > 0) {
-                onSubscribe(eventName)
+        channels.forEach { channel ->
+            if (channel.flow.subscriptionCount.value > 0) {
+                onSubscribe(channel.name)
             }
         }
     }
