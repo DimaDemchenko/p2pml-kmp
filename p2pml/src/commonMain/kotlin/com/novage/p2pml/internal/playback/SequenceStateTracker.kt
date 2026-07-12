@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,7 +29,7 @@ internal class SequenceStateTracker(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mutex = Mutex()
 
-    private val playbackInfoFlow = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
+    private val playbackInfoFlow = MutableStateFlow<PlaybackInfo?>(null)
 
     private var suspensionJob: Job? = null
 
@@ -49,7 +50,7 @@ internal class SequenceStateTracker(
         playbackProvider.setPlaybackListener(this)
 
         scope.launch {
-            playbackInfoFlow.collect { info ->
+            playbackInfoFlow.filterNotNull().collect { info ->
                 processPlaybackUpdate(info)
             }
         }
@@ -102,8 +103,8 @@ internal class SequenceStateTracker(
                 logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
                 suspendPollingLocked(segment.startTime, duration)
 
-                val info = playbackInfoFlow.value
-                updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
+                val speed = playbackInfoFlow.value?.currentPlaybackSpeed ?: 1.0f
+                updateEnginePlaybackInfoSafely(PlaybackInfo(segment.startTime, speed))
             }
         }
     }
