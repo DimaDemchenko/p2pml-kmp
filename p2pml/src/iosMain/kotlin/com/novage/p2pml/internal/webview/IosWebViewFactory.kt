@@ -148,17 +148,9 @@ private class IosHeadlessWebView(
         }
     }
 
-    override fun evaluateJavascript(script: String, callback: ((String?) -> Unit)?) {
+    override fun evaluateJavascript(script: String) {
         runOnMainThread {
-            val view = webView ?: return@runOnMainThread
-
-            view.evaluateJavaScript(script) { result, error ->
-                if (error == null && result is String) {
-                    callback?.invoke(result)
-                } else {
-                    callback?.invoke(null)
-                }
-            }
+            webView?.evaluateJavaScript(script, completionHandler = null)
         }
     }
 
