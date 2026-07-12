@@ -71,7 +71,7 @@ internal class P2PSessionFactory(
 
             val hlsManifestManager = HlsManifestManager(urlFactory)
 
-            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, onFatalError)
+            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager)
             cleanupTasks.add { sequenceStateTracker.destroy() }
 
             val manifestService = ManifestService(hlsManifestManager, engine) {

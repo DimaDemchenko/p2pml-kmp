@@ -1,7 +1,5 @@
 package com.novage.p2pml.internal.playback
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
-import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.playback.PlaybackInfo
 import com.novage.p2pml.api.playback.PlaybackListener
 import com.novage.p2pml.api.playback.PlaybackProvider
@@ -24,8 +22,7 @@ import kotlinx.serialization.SerializationException
 internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
     private val p2pEngine: P2PEngine,
-    private val hlsManifestManager: HlsManifestManager,
-    private val onFatalError: (P2PMediaLoaderException) -> Unit
+    private val hlsManifestManager: HlsManifestManager
 ) : PlaybackListener {
     private val logger = CoreLogger("SequenceStateTracker")
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -151,17 +148,6 @@ internal class SequenceStateTracker(
             p2pEngine.updatePlaybackInfo(info)
         } catch (e: SerializationException) {
             logger.e(e) { "Serialization error updating P2P engine (e.g. NaN/Infinity)" }
-        } catch (e: IllegalStateException) {
-            logger.e(e) { "Fatal state error updating P2P engine" }
-            onFatalError(
-                P2PMediaLoaderException(
-                    code = P2PMediaLoaderErrorCode.ENGINE_CRASHED,
-                    message = "Engine bridge broken during playback sync: ${e.message}",
-                    cause = e
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            logger.e(e) { "Argument error updating P2P engine" }
         }
     }
 }
