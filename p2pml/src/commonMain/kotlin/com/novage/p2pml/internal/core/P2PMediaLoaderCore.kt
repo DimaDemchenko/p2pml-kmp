@@ -196,6 +196,11 @@ internal class P2PMediaLoaderCore(
 
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
             pendingDynamicConfig.value = dynamicCoreConfig
+            if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
+                pendingDynamicConfig.getAndUpdate { null }?.let { missed ->
+                    activeSession.load()?.applyDynamicConfig(missed)
+                }
+            }
             return
         }
 
