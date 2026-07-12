@@ -6,6 +6,7 @@ import kotlin.math.roundToLong
 
 private const val VARIABLE_REFERENCE_MARKER = "{\$"
 private const val BYTERANGE_SEPARATOR = '@'
+private const val TAG_PREFIX = "#EXT"
 
 private data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
 
@@ -313,15 +314,16 @@ internal class HlsPlaylistParser(
             }
         }
 
-        val skippedEmptyLines = StringBuilder()
+        val skippedLines = StringBuilder()
         var nextOriginalLine = ""
         var nextTrimmedLine = ""
         var foundUri = false
         while (iterator.hasNext()) {
             val line = iterator.next()
             val trimmed = line.trim()
-            if (trimmed.isEmpty()) {
-                skippedEmptyLines.append(line).append("\n")
+
+            if (trimmed.isEmpty() || isCommentLine(trimmed)) {
+                skippedLines.append(line).append("\n")
             } else {
                 nextOriginalLine = line
                 nextTrimmedLine = trimmed
@@ -338,8 +340,8 @@ internal class HlsPlaylistParser(
             nextOriginalLine.replaceFirst(variant.url.original, newUrl)
         }
 
-        return if (skippedEmptyLines.isNotEmpty()) {
-            "$originalLine\n$skippedEmptyLines$rewrittenNextLine"
+        return if (skippedLines.isNotEmpty()) {
+            "$originalLine\n$skippedLines$rewrittenNextLine"
         } else {
             "$originalLine\n$rewrittenNextLine"
         }
@@ -369,6 +371,8 @@ internal class HlsPlaylistParser(
 }
 
 private fun cleanBOM(data: String): String = if (data.startsWith("\uFEFF")) data.substring(1) else data
+
+private fun isCommentLine(trimmed: String): Boolean = trimmed.startsWith("#") && !trimmed.startsWith(TAG_PREFIX)
 
 private fun isMediaPlaylistTag(trimmed: String): Boolean = trimmed.startsWith(TAG_TARGET_DURATION) ||
     trimmed.startsWith(TAG_MEDIA_SEQUENCE) ||

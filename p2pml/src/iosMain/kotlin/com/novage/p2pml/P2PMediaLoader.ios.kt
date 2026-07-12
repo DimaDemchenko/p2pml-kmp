@@ -3,6 +3,7 @@ package com.novage.p2pml
 import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
+import com.novage.p2pml.api.logging.P2PLogging
 import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.core.P2PMediaLoaderCore
 import com.novage.p2pml.internal.playback.AVPlayerPlaybackProvider
@@ -51,13 +52,13 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
          * Call before [initialize] so the internal WebView is also created inspectable.
          * Debug output includes manifest and segment URLs, which may carry signed query parameters.
          */
-        fun enableLogging() = P2PMediaLoaderCore.enableLogging()
+        fun enableLogging() = P2PLogging.enableLogging()
 
         /**
          * Restores the default log verbosity (WARN and above). To silence the library entirely,
          * set [com.novage.p2pml.api.logging.P2PLogging.sink] to null instead.
          */
-        fun disableLogging() = P2PMediaLoaderCore.disableLogging()
+        fun disableLogging() = P2PLogging.disableLogging()
     }
 
     /**

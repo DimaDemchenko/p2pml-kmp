@@ -1,7 +1,5 @@
 package com.novage.p2pml.internal.playback
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
-import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.playback.PlaybackInfo
 import com.novage.p2pml.api.playback.PlaybackListener
 import com.novage.p2pml.api.playback.PlaybackProvider
@@ -16,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -24,14 +23,13 @@ import kotlinx.serialization.SerializationException
 internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
     private val p2pEngine: P2PEngine,
-    private val hlsManifestManager: HlsManifestManager,
-    private val onFatalError: (P2PMediaLoaderException) -> Unit
+    private val hlsManifestManager: HlsManifestManager
 ) : PlaybackListener {
     private val logger = CoreLogger("SequenceStateTracker")
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mutex = Mutex()
 
-    private val playbackInfoFlow = MutableStateFlow(PlaybackInfo(0.0, 1.0f))
+    private val playbackInfoFlow = MutableStateFlow<PlaybackInfo?>(null)
 
     private var suspensionJob: Job? = null
 
@@ -52,7 +50,7 @@ internal class SequenceStateTracker(
         playbackProvider.setPlaybackListener(this)
 
         scope.launch {
-            playbackInfoFlow.collect { info ->
+            playbackInfoFlow.filterNotNull().collect { info ->
                 processPlaybackUpdate(info)
             }
         }
@@ -105,8 +103,8 @@ internal class SequenceStateTracker(
                 logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
                 suspendPollingLocked(segment.startTime, duration)
 
-                val info = playbackInfoFlow.value
-                updateEnginePlaybackInfoSafely(info.copy(currentPlayPosition = segment.startTime))
+                val speed = playbackInfoFlow.value?.currentPlaybackSpeed ?: 1.0f
+                updateEnginePlaybackInfoSafely(PlaybackInfo(segment.startTime, speed))
             }
         }
     }
@@ -151,17 +149,6 @@ internal class SequenceStateTracker(
             p2pEngine.updatePlaybackInfo(info)
         } catch (e: SerializationException) {
             logger.e(e) { "Serialization error updating P2P engine (e.g. NaN/Infinity)" }
-        } catch (e: IllegalStateException) {
-            logger.e(e) { "Fatal state error updating P2P engine" }
-            onFatalError(
-                P2PMediaLoaderException(
-                    code = P2PMediaLoaderErrorCode.ENGINE_CRASHED,
-                    message = "Engine bridge broken during playback sync: ${e.message}",
-                    cause = e
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            logger.e(e) { "Argument error updating P2P engine" }
         }
     }
 }

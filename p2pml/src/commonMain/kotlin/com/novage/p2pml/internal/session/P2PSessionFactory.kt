@@ -3,7 +3,6 @@ package com.novage.p2pml.internal.session
 import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
-import com.novage.p2pml.api.logging.LogLevel
 import com.novage.p2pml.api.logging.P2PLogging
 import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
@@ -71,7 +70,7 @@ internal class P2PSessionFactory(
 
             val hlsManifestManager = HlsManifestManager(urlFactory)
 
-            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager, onFatalError)
+            val sequenceStateTracker = SequenceStateTracker(provider, engine, hlsManifestManager)
             cleanupTasks.add { sequenceStateTracker.destroy() }
 
             val manifestService = ManifestService(hlsManifestManager, engine) {
@@ -136,7 +135,7 @@ internal class P2PSessionFactory(
      */
     private fun buildEnginePageUrl(urlFactory: LocalUrlFactory): String {
         val base = urlFactory.buildStaticPageUrl()
-        return if (P2PLogging.minLevel == LogLevel.DEBUG) {
+        return if (P2PLogging.isDebugEnabled) {
             "$base?debug=${ENGINE_DEBUG_NAMESPACES.encodeURLParameter()}"
         } else {
             base

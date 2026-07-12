@@ -3,7 +3,6 @@ package com.novage.p2pml.internal.webview
 import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
-import com.novage.p2pml.api.logging.LogLevel
 import com.novage.p2pml.api.logging.P2PLogging
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -27,9 +26,6 @@ import platform.WebKit.WKWebViewConfiguration
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
-
-private val isDebugLoggingEnabled: Boolean
-    get() = P2PLogging.minLevel <= LogLevel.DEBUG
 
 internal class IosWebViewFactory : WebViewFactory {
     override fun createHeadlessWebView(
@@ -68,7 +64,7 @@ private class IosHeadlessWebView(
         val configuration = WKWebViewConfiguration()
 
         val preferences = WKPreferences()
-        if (isDebugLoggingEnabled) {
+        if (P2PLogging.isDebugEnabled) {
             preferences.setValue(true, forKey = "developerExtrasEnabled")
         }
         configuration.preferences = preferences
@@ -106,7 +102,7 @@ private class IosHeadlessWebView(
 
         wkWebView.hidden = true
         wkWebView.userInteractionEnabled = false
-        wkWebView.inspectable = isDebugLoggingEnabled
+        wkWebView.inspectable = P2PLogging.isDebugEnabled
 
         this.webView = wkWebView
     }

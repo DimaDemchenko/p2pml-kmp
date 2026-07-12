@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.utils
 
+import com.novage.p2pml.internal.parser.segmentUrlFromRuntimeId
 import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.client.HttpClient
@@ -113,7 +114,7 @@ internal suspend fun ApplicationCall.respondVideoSegmentStream(payload: SegmentP
 }
 
 internal suspend fun ApplicationCall.respondFallback(httpClient: HttpClient, segmentUrl: String) {
-    val cleanUrl = segmentUrl.substringBeforeLast("|")
+    val cleanUrl = segmentUrlFromRuntimeId(segmentUrl)
     try {
         httpClient.prepareGet(cleanUrl) {
             copyProxyHeaders(request.headers)
