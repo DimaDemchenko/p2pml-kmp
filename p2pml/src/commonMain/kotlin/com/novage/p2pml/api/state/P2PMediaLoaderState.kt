@@ -6,6 +6,7 @@ import com.novage.p2pml.api.errors.P2PMediaLoaderException
  * Lifecycle status of a [com.novage.p2pml.P2PMediaLoader].
  *
  * A loader moves [IDLE] → [STARTING] → [ACTIVE], then terminally to either [FAILED] or [RELEASED].
+ * Calling release before initialization moves [IDLE] directly to [RELEASED].
  * Once terminal, the instance is single-use and must be discarded.
  */
 enum class P2PMediaLoaderStatus { IDLE, STARTING, ACTIVE, FAILED, RELEASED }
