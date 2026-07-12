@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.server.routes
 
+import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.utils.fetchManifest
 import com.novage.p2pml.internal.utils.CoreLogger
@@ -31,8 +32,9 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             val fetchResult = httpClient.fetchManifest(call, manifestUrl)
 
             val modifiedManifest = manifestService.processManifest(
-                fetchResult.responseUrl,
-                fetchResult.manifestContent
+                requestUrl = manifestUrl,
+                responseUrl = fetchResult.responseUrl,
+                manifest = fetchResult.manifestContent
             )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
@@ -43,6 +45,9 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
         } catch (e: IOException) {
             logger.e(e) { "Network error fetching manifest [$manifestUrl]" }
             call.respondText("Upstream manifest unreachable", status = HttpStatusCode.BadGateway)
+        } catch (e: ManifestParseException) {
+            logger.e(e) { "Upstream returned invalid manifest content [$manifestUrl]" }
+            call.respondText("Invalid manifest from upstream", status = HttpStatusCode.BadGateway)
         } catch (e: IllegalStateException) {
             logger.e(e) { "Parser crashed on manifest [$manifestUrl]" }
             call.respondText("Invalid manifest state", status = HttpStatusCode.InternalServerError)

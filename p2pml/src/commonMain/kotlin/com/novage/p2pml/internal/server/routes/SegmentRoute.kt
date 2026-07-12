@@ -23,7 +23,9 @@ import io.ktor.server.routing.post
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 private val logger = CoreLogger("SegmentRoute")
@@ -97,11 +99,18 @@ private fun Route.segmentDownloadRoute(
             logger.w { "P2P Engine aborted segment (Abandoned by ABR/Seek). Terminating cleanly." }
             call.respond(HttpStatusCode.RequestTimeout)
         } finally {
-            if (deferred?.isActive == true) {
-                logger.d { "Cleaning up active request." }
-                segmentService.cancelRequest(segmentUrl, deferred)
+            val deferredToClean = deferred
+            val payloadToClean = payload
+            // NonCancellable: a player disconnect cancels this handler, and the cleanup must
+            // still run. Abandon whenever we did not consume a payload — the engine may have
+            // completed the deferred concurrently (e.g. during the fallback after a timeout),
+            // and that orphaned channel must be drained or the upload route hangs forever.
+            withContext(NonCancellable) {
+                if (deferredToClean != null && payloadToClean == null) {
+                    segmentService.abandonRequest(segmentUrl, deferredToClean)
+                }
+                payloadToClean?.channel?.cancel(null)
             }
-            payload?.channel?.cancel(null)
         }
     }
 }

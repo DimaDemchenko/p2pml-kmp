@@ -9,6 +9,7 @@ import com.novage.p2pml.internal.server.exceptions.TooManyRetriesException
 import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -111,13 +112,26 @@ internal class SegmentService(
         return true
     }
 
-    suspend fun cancelRequest(segmentUrl: String, deferredToCancel: CompletableDeferred<SegmentPayload>) {
+    /**
+     * Detaches a caller that no longer waits on [deferredToAbandon] (timeout, error, disconnect).
+     * Removes the map entry if it still belongs to this deferred. If the engine completed the
+     * deferred concurrently (or completes it before anyone notices), the payload channel is
+     * drained here — nobody will read it anymore, and an unconsumed channel suspends the
+     * upload route forever once its buffer fills.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun abandonRequest(segmentUrl: String, deferredToAbandon: CompletableDeferred<SegmentPayload>) {
         mutex.withLock {
-            val state = requests[segmentUrl] ?: return
-
-            if (state.deferred === deferredToCancel) {
-                logger.d { "Cancelling active pending download: $segmentUrl" }
+            if (requests[segmentUrl]?.deferred === deferredToAbandon) {
+                logger.d { "Abandoning active pending download: $segmentUrl" }
                 requests.remove(segmentUrl)
+            }
+        }
+
+        deferredToAbandon.invokeOnCompletion { cause ->
+            if (cause == null) {
+                logger.d { "Draining orphaned segment payload for: $segmentUrl" }
+                deferredToAbandon.getCompleted().channel.cancel(null)
             }
         }
     }

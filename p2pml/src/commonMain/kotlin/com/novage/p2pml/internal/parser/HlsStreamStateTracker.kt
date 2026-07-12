@@ -27,13 +27,22 @@ internal class HlsStreamStateTracker(
 
     private val trackedStreams = mutableMapOf<String, TrackedStreamContext>()
 
+    /**
+     * Variant/rendition URLs declared by the current master playlist. These stay tracked for the
+     * whole session even when the player has not fetched them recently (ABR dwells on one variant),
+     * so a later quality switch is recognized as the same content instead of triggering a full
+     * state reset. Only ad-hoc streams (played without a master) are subject to the live TTL.
+     */
+    private val masterDeclaredUrls = mutableSetOf<String>()
+
     private val runtimeIdToSegmentMap = mutableMapOf<String, Pair<String, Segment>>()
 
     fun isCurrentSegment(segmentUrl: String): Boolean =
         trackedStreams.values.any { it.currentSegmentRuntimeIds.contains(segmentUrl) }
 
-    fun isManifestTracked(manifestUrl: String): Boolean =
-        currentMasterManifestUrl == manifestUrl || trackedStreams.containsKey(manifestUrl)
+    fun isManifestTracked(manifestUrl: String): Boolean = currentMasterManifestUrl == manifestUrl ||
+        manifestUrl in masterDeclaredUrls ||
+        trackedStreams.containsKey(manifestUrl)
 
     fun getUpdateStreamParams(variantUrl: String): UpdateStreamParams? = trackedStreams[variantUrl]?.updateParams
 
@@ -44,15 +53,18 @@ internal class HlsStreamStateTracker(
     fun reset() {
         logger.i { "Resetting tracker state." }
         trackedStreams.clear()
+        masterDeclaredUrls.clear()
         runtimeIdToSegmentMap.clear()
         currentMasterManifestUrl = null
     }
 
     fun postProcessMultivariantPlaylist(manifestUrl: String, hlsPlaylist: HlsMultivariantPlaylist) {
         currentMasterManifestUrl = manifestUrl
+        masterDeclaredUrls.clear()
 
         hlsPlaylist.variants.forEach { variant ->
             if (!variant.isIFrame) {
+                masterDeclaredUrls.add(variant.url.absolute)
                 getOrCreateContext(variant.url.absolute) {
                     Stream(
                         runtimeId = variant.url.absolute,
@@ -74,6 +86,7 @@ internal class HlsStreamStateTracker(
     private fun addRenditionStreams(renditions: List<Rendition>, streamType: String) {
         renditions.forEach { rendition ->
             rendition.url?.let { url ->
+                masterDeclaredUrls.add(url.absolute)
                 getOrCreateContext(url.absolute) {
                     Stream(
                         runtimeId = url.absolute,
@@ -115,7 +128,8 @@ internal class HlsStreamStateTracker(
             newSegment?.let { segmentsToAdd.add(it) }
         }
 
-        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
+        val removeUntilId = if (isStreamLive) newMediaSequence else 0L
+        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, removeUntilId, isStreamLive)
 
         context.updateParams = UpdateStreamParams(
             streamRuntimeId = manifestUrl,
@@ -194,7 +208,9 @@ internal class HlsStreamStateTracker(
 
     private fun evictAbandonedLiveVariants(activeVariantUrl: String) {
         trackedStreams.entries.removeAll { (staleUrl, context) ->
-            val isAbandoned = staleUrl != activeVariantUrl && context.lastUpdated.elapsedNow() > LIVE_VARIANT_TTL
+            val isAbandoned = staleUrl != activeVariantUrl &&
+                staleUrl !in masterDeclaredUrls &&
+                context.lastUpdated.elapsedNow() > LIVE_VARIANT_TTL
             if (isAbandoned) {
                 logger.d { "Evicting abandoned live variant from parser memory: $staleUrl" }
                 context.segments.values.forEach {

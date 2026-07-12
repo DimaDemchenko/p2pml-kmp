@@ -1,6 +1,6 @@
 package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
-import com.novage.p2pml.internal.parser.ManifestParser
+import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.math.roundToLong
 
@@ -9,28 +9,19 @@ private const val BYTERANGE_SEPARATOR = '@'
 
 private data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
 
-@Suppress("LongParameterList")
 private class SegmentState(
     var mediaSequence: Long = 0L,
     var hasEndTag: Boolean = false,
     var durationUs: Long = 0L,
     var offset: Long = 0L,
     var length: Long = -1L,
-    var programDateTimeUs: Long? = null,
-    var initSegment: InitializationSegment? = null,
-    var encryptionKey: ParsedUrl? = null
-)
-
-private class LowLatencyState(
-    val parts: MutableList<ParsedUrl> = mutableListOf(),
-    val preloadHints: MutableList<ParsedUrl> = mutableListOf(),
-    val renditionReports: MutableList<ParsedUrl> = mutableListOf()
+    var programDateTimeUs: Long? = null
 )
 
 internal class HlsPlaylistParser(
     private val urlRewriter: HlsUrlRewriter,
     private val logger: CoreLogger = CoreLogger("HlsPlaylistParser")
-) : ManifestParser<ParsedPlaylist> {
+) {
 
     internal class PlaylistLineIterator(linesSequence: Sequence<String>) : Iterator<String> {
         private val iterator = linesSequence.iterator()
@@ -56,7 +47,24 @@ internal class HlsPlaylistParser(
         }
     }
 
-    override fun parse(manifestUrl: String, manifestData: String): ParsedPlaylist {
+    /**
+     * Parse failures surface as [ManifestParseException] so callers handle a single type.
+     * The individual parsing helpers throw [IllegalArgumentException] (`require`, number
+     * parsing), [IllegalStateException] (`check`/`error`) and [NoSuchElementException]
+     * (missing required attributes) — an origin serving an HTML error page with HTTP 200
+     * is the most common real-world trigger.
+     */
+    fun parse(manifestUrl: String, manifestData: String): ParsedPlaylist = try {
+        parsePlaylist(manifestUrl, manifestData)
+    } catch (e: IllegalArgumentException) {
+        throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
+    } catch (e: IllegalStateException) {
+        throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
+    } catch (e: NoSuchElementException) {
+        throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
+    }
+
+    private fun parsePlaylist(manifestUrl: String, manifestData: String): ParsedPlaylist {
         val cleaned = cleanBOM(manifestData)
         val iterator = PlaylistLineIterator(cleaned.lineSequence())
         val context = ParserContext(baseUri = manifestUrl)
@@ -116,7 +124,6 @@ internal class HlsPlaylistParser(
 
     private fun parseMediaPlaylist(iterator: PlaylistLineIterator, context: ParserContext): ParsedPlaylist {
         val segmentState = SegmentState()
-        val llState = LowLatencyState()
         val segments = mutableListOf<HlsSegment>()
         val builder = StringBuilder("$PLAYLIST_HEADER\n")
 
@@ -130,7 +137,7 @@ internal class HlsPlaylistParser(
 
             var rewrittenLine = originalLine
             if (trimmed.startsWith("#")) {
-                rewrittenLine = processMediaTag(originalLine, trimmed, segmentState, llState, context)
+                rewrittenLine = processMediaTag(originalLine, trimmed, segmentState, context)
             } else {
                 val seg = createSegment(trimmed, context.baseUri, context.vars, segmentState)
                 segments.add(seg)
@@ -148,10 +155,7 @@ internal class HlsPlaylistParser(
             context.baseUri,
             segmentState.mediaSequence,
             segmentState.hasEndTag,
-            segments,
-            llState.parts,
-            llState.preloadHints,
-            llState.renditionReports
+            segments
         )
         return ParsedPlaylist(playlist, builder.toString())
     }
@@ -160,7 +164,6 @@ internal class HlsPlaylistParser(
         originalLine: String,
         trimmedLine: String,
         state: SegmentState,
-        llState: LowLatencyState,
         context: ParserContext
     ): String = when {
         trimmedLine.startsWith(TAG_DEFINE) -> {
@@ -194,79 +197,56 @@ internal class HlsPlaylistParser(
         }
 
         trimmedLine.startsWith(TAG_INIT_SEGMENT) -> {
-            processInitSegmentTag(originalLine, trimmedLine, state, context)
+            processInitSegmentTag(originalLine, trimmedLine, context)
         }
 
         trimmedLine.startsWith(TAG_KEY) -> {
-            processKeyTag(originalLine, trimmedLine, state, context)
+            processKeyTag(originalLine, trimmedLine, context)
         }
 
-        trimmedLine.startsWith(TAG_PART) -> {
-            processLowLatencyTag(originalLine, trimmedLine, llState.parts, context)
-        }
-
-        trimmedLine.startsWith(TAG_PRELOAD_HINT) -> {
-            processLowLatencyTag(originalLine, trimmedLine, llState.preloadHints, context)
-        }
-
-        trimmedLine.startsWith(TAG_RENDITION_REPORT) -> {
-            processLowLatencyTag(originalLine, trimmedLine, llState.renditionReports, context)
+        trimmedLine.startsWith(TAG_PART) ||
+            trimmedLine.startsWith(TAG_PRELOAD_HINT) ||
+            trimmedLine.startsWith(TAG_RENDITION_REPORT) -> {
+            processLowLatencyTag(originalLine, trimmedLine, context)
         }
 
         else -> originalLine
     }
 
-    private fun processInitSegmentTag(
-        originalLine: String,
-        trimmedLine: String,
-        state: SegmentState,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = {
-            parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
-                ?: throw NoSuchElementException("Missing URI")
-        },
-        stateUpdater = { state.initSegment = InitializationSegment(it) },
-        rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
-    )
+    private fun processInitSegmentTag(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = {
+                parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
+                    ?: throw NoSuchElementException("Missing URI")
+            },
+            rewriter = { urlRewriter.rewriteInitSegmentUrl(it) }
+        )
 
-    private fun processLowLatencyTag(
-        originalLine: String,
-        trimmedLine: String,
-        targetList: MutableList<ParsedUrl>,
-        context: ParserContext
-    ): String = processUrlTag(
-        line = originalLine,
-        urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
-        stateUpdater = { targetList.add(it) },
-        rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
-    )
+    private fun processLowLatencyTag(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+            rewriter = { urlRewriter.rewriteLowLatencyUrl(it) }
+        )
 
-    private fun processKeyTag(
-        originalLine: String,
-        trimmedLine: String,
-        state: SegmentState,
-        context: ParserContext
-    ): String {
-        val parsedUrl = parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
-        state.encryptionKey = parsedUrl
-        return parsedUrl?.let { url ->
-            urlRewriter.rewriteKeyUrl(url).let { newUrl ->
-                rewriteUriAttribute(originalLine, url.original, newUrl)
-            }
-        } ?: originalLine
-    }
+    private fun processKeyTag(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+            rewriter = { urlRewriter.rewriteKeyUrl(it) }
+        )
 
+    /**
+     * Tags are still parsed and their URIs rewritten (relative URIs must not resolve against
+     * the local proxy origin), even when the parsed URL itself is not tracked further.
+     */
     private inline fun processUrlTag(
         line: String,
         urlExtractor: () -> ParsedUrl?,
-        stateUpdater: (ParsedUrl) -> Unit,
         rewriter: (ParsedUrl) -> String
     ): String {
         val parsedUrl = urlExtractor() ?: return line
-
-        stateUpdater(parsedUrl)
 
         val newUrl = rewriter(parsedUrl)
         return rewriteUriAttribute(line, parsedUrl.original, newUrl)
@@ -275,7 +255,6 @@ internal class HlsPlaylistParser(
     private fun parseMultivariantPlaylist(iterator: PlaylistLineIterator, context: ParserContext): ParsedPlaylist {
         val variants = mutableListOf<Variant>()
         val renditions = mutableListOf<TypedRendition>()
-        val sessionKeys = mutableListOf<ParsedUrl>()
         val builder = StringBuilder("$PLAYLIST_HEADER\n")
 
         while (iterator.hasNext()) {
@@ -301,7 +280,7 @@ internal class HlsPlaylistParser(
                 }
 
                 trimmedLine.startsWith(TAG_SESSION_KEY) -> {
-                    rewrittenLine = processSessionKeyLine(originalLine, trimmedLine, context, sessionKeys)
+                    rewrittenLine = processSessionKeyLine(originalLine, trimmedLine, context)
                 }
             }
             builder.append(rewrittenLine).append("\n")
@@ -313,10 +292,7 @@ internal class HlsPlaylistParser(
             baseUri = context.baseUri,
             variants = variants,
             videos = grouped[TYPE_VIDEO].orEmpty(),
-            audios = grouped[TYPE_AUDIO].orEmpty(),
-            subtitles = grouped[TYPE_SUBTITLES].orEmpty(),
-            closedCaptions = grouped[TYPE_CLOSED_CAPTIONS].orEmpty(),
-            sessionKeyUrls = sessionKeys
+            audios = grouped[TYPE_AUDIO].orEmpty()
         )
         return ParsedPlaylist(playlist, builder.toString())
     }
@@ -384,19 +360,12 @@ internal class HlsPlaylistParser(
         return rewriteUriAttribute(originalLine, url.original, newUrl)
     }
 
-    private fun processSessionKeyLine(
-        originalLine: String,
-        trimmedLine: String,
-        context: ParserContext,
-        sessionKeys: MutableList<ParsedUrl>
-    ): String {
-        val parsedUrl = parseUrlAttribute(trimmedLine, context.vars, context.baseUri) ?: return originalLine
-        sessionKeys.add(parsedUrl)
-
-        val newUrl = urlRewriter.rewriteSessionKeyUrl(parsedUrl)
-
-        return rewriteUriAttribute(originalLine, parsedUrl.original, newUrl)
-    }
+    private fun processSessionKeyLine(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
+            rewriter = { urlRewriter.rewriteSessionKeyUrl(it) }
+        )
 }
 
 private fun cleanBOM(data: String): String = if (data.startsWith("\uFEFF")) data.substring(1) else data
@@ -406,8 +375,9 @@ private fun isMediaPlaylistTag(trimmed: String): Boolean = trimmed.startsWith(TA
     trimmed.startsWith(TAG_MEDIA_DURATION) ||
     trimmed.startsWith(TAG_KEY) ||
     trimmed.startsWith(TAG_BYTERANGE) ||
-    trimmed == TAG_DISCONTINUITY ||
-    trimmed == TAG_DISCONTINUITY_SEQUENCE ||
+    // Covers both EXT-X-DISCONTINUITY and EXT-X-DISCONTINUITY-SEQUENCE:<n> — the latter
+    // carries a value, so an equality check could never match it.
+    trimmed.startsWith(TAG_DISCONTINUITY) ||
     trimmed == TAG_ENDLIST
 
 private fun parseDefineTag(line: String, context: ParserContext) {
@@ -464,9 +434,7 @@ private fun createSegment(line: String, baseUri: String, vars: Map<String, Strin
         byteRangeOffset = state.offset,
         byteRangeLength = state.length,
         durationUs = state.durationUs,
-        programDateTimeUs = state.programDateTimeUs,
-        initializationSegment = state.initSegment,
-        encryptionKey = state.encryptionKey
+        programDateTimeUs = state.programDateTimeUs
     )
 
 private fun parseVariant(line: String, context: ParserContext, nextLine: String? = null, isIFrame: Boolean): Variant {
