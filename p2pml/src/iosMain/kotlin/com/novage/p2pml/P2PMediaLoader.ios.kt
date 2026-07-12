@@ -26,7 +26,7 @@ import platform.AVFoundation.AVPlayer
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
-    
+
     @Volatile
     private var defaultProvider: AVPlayerPlaybackProvider? = null
 
