@@ -5,8 +5,6 @@ import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
-import com.novage.p2pml.api.logging.LogLevel
-import com.novage.p2pml.api.logging.P2PLogging
 import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.api.state.P2PMediaLoaderState
 import com.novage.p2pml.api.state.P2PMediaLoaderStatus
@@ -43,15 +41,6 @@ internal class P2PMediaLoaderCore(
     private val coreConfig: CoreConfig = CoreConfig(),
     private val customEngineUrl: String? = null
 ) {
-    companion object {
-        fun enableLogging() {
-            P2PLogging.minLevel = LogLevel.DEBUG
-        }
-        fun disableLogging() {
-            P2PLogging.minLevel = LogLevel.WARN
-        }
-    }
-
     private val logger = CoreLogger("P2PMediaLoaderCore")
     private val sessionFactory = P2PSessionFactory(
         coreConfig = coreConfig,

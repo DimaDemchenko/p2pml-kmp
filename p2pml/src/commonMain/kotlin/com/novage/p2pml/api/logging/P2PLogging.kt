@@ -22,4 +22,23 @@ object P2PLogging {
     /** Lowest severity forwarded to [sink]. Defaults to [LogLevel.WARN]. */
     @Volatile
     var minLevel: LogLevel = LogLevel.WARN
+
+    /**
+     * Whether verbose (DEBUG) diagnostics are enabled. Besides log verbosity this also gates engine
+     * debug namespaces and WebView inspectability, which are turned on together with verbose logging.
+     */
+    val isDebugEnabled: Boolean get() = minLevel == LogLevel.DEBUG
+
+    /**
+     * Enables verbose (DEBUG) diagnostics. Process-global: this affects every loader instance.
+     * Debug output includes manifest and segment URLs, which may carry signed query parameters.
+     */
+    fun enableLogging() {
+        minLevel = LogLevel.DEBUG
+    }
+
+    /** Restores the default verbosity ([LogLevel.WARN] and above). Process-global. */
+    fun disableLogging() {
+        minLevel = LogLevel.WARN
+    }
 }
