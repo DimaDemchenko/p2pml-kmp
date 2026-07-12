@@ -4,8 +4,11 @@ import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.internal.server.routes.RoutePaths
 import kotlin.concurrent.Volatile
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
-internal class LocalUrlFactory {
+@OptIn(ExperimentalUuidApi::class)
+internal class LocalUrlFactory(val sessionToken: String = Uuid.random().toHexString()) {
     @Volatile
     private var port: Int = -1
 
@@ -20,7 +23,7 @@ internal class LocalUrlFactory {
                 "P2P Server not ready"
             )
         }
-        return "http://127.0.0.1:$port"
+        return "http://127.0.0.1:$port/$sessionToken"
     }
 
     fun buildManifestUrl(encodedUrl: String): String = "${getBaseUrl()}/${RoutePaths.MANIFEST}/$encodedUrl"
