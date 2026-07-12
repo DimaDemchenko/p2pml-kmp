@@ -10,6 +10,7 @@ import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.core.P2PMediaLoaderCore
 import com.novage.p2pml.internal.playback.ExoPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.AndroidWebViewFactory
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -31,6 +32,8 @@ class P2PMediaLoader @JvmOverloads constructor(
 ) {
     private val appContext: Context = context.applicationContext
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
+
+    @Volatile
     private var defaultProvider: ExoPlayerPlaybackProvider? = null
 
     val p2pEvents get() = core.p2pEvents
@@ -41,9 +44,26 @@ class P2PMediaLoader @JvmOverloads constructor(
      */
     val state get() = core.state
 
+    /**
+     * Builds the local proxy URL for [manifestUrl] to hand to the player instead of the origin URL.
+     *
+     * One active stream per loader: when the player starts fetching a manifest that does not belong
+     * to the currently tracked stream, all P2P state for the previous stream is reset. To play
+     * several streams concurrently, use a separate [P2PMediaLoader] instance per stream.
+     *
+     * @throws P2PMediaLoaderException if the loader is not initialized or already released.
+     */
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
+    /**
+     * Applies [dynamicCoreConfig] to the running engine as a partial patch: only explicitly set
+     * properties are overridden, and successive calls accumulate in the engine.
+     *
+     * Calls made before initialization completes are cached and applied once the loader becomes
+     * active; only the most recent pre-initialization config is kept — earlier ones are dropped,
+     * not merged. Calls after the loader has failed or been released are ignored.
+     */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() {

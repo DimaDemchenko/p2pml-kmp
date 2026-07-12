@@ -88,6 +88,7 @@ internal class P2PSessionFactory(
                 hlsManifestManager = hlsManifestManager,
                 manifestService = manifestService,
                 segmentService = segmentService,
+                sessionToken = urlFactory.sessionToken,
                 enableCors = customEngineUrl != null
             )
             cleanupTasks.add { serverModule.destroy() }

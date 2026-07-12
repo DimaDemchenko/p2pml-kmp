@@ -5,17 +5,21 @@ import com.novage.p2pml.internal.server.services.ManifestService
 import com.novage.p2pml.internal.server.services.SegmentService
 import io.ktor.client.HttpClient
 import io.ktor.server.application.Application
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 
 internal fun Application.configureRoutes(
     httpClient: HttpClient,
     manifestService: ManifestService,
     hlsManifestManager: HlsManifestManager,
-    segmentService: SegmentService
+    segmentService: SegmentService,
+    sessionToken: String
 ) {
     routing {
-        registerWebAssets()
-        registerManifestRoute(httpClient, manifestService)
-        registerSegmentRoutes(httpClient, segmentService, hlsManifestManager)
+        route("/$sessionToken") {
+            registerWebAssets()
+            registerManifestRoute(httpClient, manifestService)
+            registerSegmentRoutes(httpClient, segmentService, hlsManifestManager)
+        }
     }
 }

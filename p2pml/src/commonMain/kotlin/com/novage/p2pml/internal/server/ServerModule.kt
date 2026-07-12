@@ -26,6 +26,7 @@ internal class ServerModule(
     private val hlsManifestManager: HlsManifestManager,
     private val manifestService: ManifestService,
     private val segmentService: SegmentService,
+    private val sessionToken: String,
     private val enableCors: Boolean
 ) {
     private val logger = CoreLogger("ServerModule")
@@ -55,7 +56,7 @@ internal class ServerModule(
         try {
             val serverInstance = embeddedServer(CIO, host = "127.0.0.1", port = 0, watchPaths = emptyList()) {
                 if (enableCors) configureCORS()
-                configureRoutes(client, manifestService, hlsManifestManager, segmentService)
+                configureRoutes(client, manifestService, hlsManifestManager, segmentService, sessionToken)
             }
             server = serverInstance
 

@@ -108,11 +108,7 @@ internal class P2PMediaLoaderCore(
 
         activeSession.store(session)
 
-        val configToApply = pendingDynamicConfig.getAndUpdate { null }
-        if (configToApply != null) {
-            logger.i { "Applying cached pending dynamic config..." }
-            session.applyDynamicConfig(configToApply)
-        }
+        drainPendingConfig(session, "cached before initialization")
 
         if (!_state.compareAndSet(
                 P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING),
@@ -133,13 +129,14 @@ internal class P2PMediaLoaderCore(
                 }
             }
 
+            val latched = _state.value
+            if (latched.status == P2PMediaLoaderStatus.FAILED && latched.error != null) {
+                throw latched.error
+            }
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
-        pendingDynamicConfig.getAndUpdate { null }?.let { late ->
-            logger.i { "Applying dynamic config that arrived during initialization handoff." }
-            session.applyDynamicConfig(late)
-        }
+        drainPendingConfig(session, "arrived during initialization handoff")
 
         p2pEvents.syncEarlySubscriptions()
     }
@@ -192,6 +189,9 @@ internal class P2PMediaLoaderCore(
 
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
             pendingDynamicConfig.value = dynamicCoreConfig
+            if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
+                drainPendingConfig(activeSession.load(), "stored during activation handoff")
+            }
             return
         }
 
@@ -203,16 +203,25 @@ internal class P2PMediaLoaderCore(
         session.applyDynamicConfig(dynamicCoreConfig)
     }
 
+    private fun drainPendingConfig(session: P2PSession?, context: String) {
+        val pending = pendingDynamicConfig.getAndUpdate { null } ?: return
+        if (session == null) return
+        logger.i { "Applying pending dynamic config ($context)." }
+        session.applyDynamicConfig(pending)
+    }
+
     /**
-     * Terminally tears down the loader. Atomically claims the transition from a live state
-     * ([P2PMediaLoaderStatus.STARTING]/[P2PMediaLoaderStatus.ACTIVE]) to a terminal one — [P2PMediaLoaderStatus.FAILED]
-     * when [failure] is non-null, otherwise [P2PMediaLoaderStatus.RELEASED] — so teardown runs exactly once
-     * and the fatal cause is latched for observers. A no-op if already terminal or never started.
+     * Terminally tears down the loader. Atomically claims the transition from any non-terminal state
+     * ([P2PMediaLoaderStatus.IDLE]/[P2PMediaLoaderStatus.STARTING]/[P2PMediaLoaderStatus.ACTIVE]) to a terminal
+     * one — [P2PMediaLoaderStatus.FAILED] when [failure] is non-null, otherwise [P2PMediaLoaderStatus.RELEASED] —
+     * so teardown runs exactly once and the fatal cause is latched for observers. Releasing an [P2PMediaLoaderStatus.IDLE]
+     * loader latches the terminal state so a later [initialize] fails fast instead of booting a session
+     * nobody will release. A no-op if already terminal.
      */
     fun release(failure: P2PMediaLoaderException? = null) {
         val previous = _state.getAndUpdate { current ->
             when (current.status) {
-                P2PMediaLoaderStatus.STARTING, P2PMediaLoaderStatus.ACTIVE ->
+                P2PMediaLoaderStatus.IDLE, P2PMediaLoaderStatus.STARTING, P2PMediaLoaderStatus.ACTIVE ->
                     if (failure != null) {
                         P2PMediaLoaderState(P2PMediaLoaderStatus.FAILED, failure)
                     } else {
@@ -221,6 +230,12 @@ internal class P2PMediaLoaderCore(
 
                 else -> current
             }
+        }
+        if (previous.status == P2PMediaLoaderStatus.IDLE) {
+            logger.i { "Released before initialization — no session resources to clean up." }
+            pendingDynamicConfig.value = null
+            coreScope.cancel()
+            return
         }
         if (previous.status != P2PMediaLoaderStatus.STARTING && previous.status != P2PMediaLoaderStatus.ACTIVE) {
             return

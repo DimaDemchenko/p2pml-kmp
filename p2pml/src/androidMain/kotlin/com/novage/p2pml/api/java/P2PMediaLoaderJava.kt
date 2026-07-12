@@ -91,9 +91,11 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         null
     }
 
+    /** See [P2PMediaLoader.createPlaybackUrl]: one active stream per loader. */
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String): String = loader.createPlaybackUrl(manifestUrl)
 
+    /** See [P2PMediaLoader.applyDynamicConfig]: partial patch; pre-initialization calls are last-wins. */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() {
