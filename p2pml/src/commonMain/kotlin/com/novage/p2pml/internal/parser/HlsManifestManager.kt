@@ -29,25 +29,28 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
         originalManifest: String,
         manifestUrl: String,
         resolutionBaseUrl: String = manifestUrl
-    ): String = mutex.withLock {
+    ): String {
         logger.d { "Processing manifest: $manifestUrl (Length: ${originalManifest.length})" }
         if (resolutionBaseUrl != manifestUrl) {
             logger.d { "Manifest served via redirect. Resolving relative URLs against: $resolutionBaseUrl" }
         }
+
         val result = parser.parse(resolutionBaseUrl, originalManifest)
 
-        when (val hlsPlaylist = result.playlist) {
-            is HlsMediaPlaylist -> {
-                logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
-                tracker.postProcessMediaPlaylist(manifestUrl, hlsPlaylist)
-            }
+        return mutex.withLock {
+            when (val hlsPlaylist = result.playlist) {
+                is HlsMediaPlaylist -> {
+                    logger.d { "Type: Media Playlist. Live: ${!hlsPlaylist.hasEndTag}" }
+                    tracker.postProcessMediaPlaylist(manifestUrl, hlsPlaylist)
+                }
 
-            is HlsMultivariantPlaylist -> {
-                logger.d { "Type: Multivariant (Master) Playlist" }
-                tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
+                is HlsMultivariantPlaylist -> {
+                    logger.d { "Type: Multivariant (Master) Playlist" }
+                    tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
+                }
             }
+            result.rewrittenManifest
         }
-        result.rewrittenManifest
     }
 
     suspend fun isCurrentSegment(segmentUrl: String): Boolean = mutex.withLock {
