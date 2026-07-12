@@ -108,11 +108,7 @@ internal class P2PMediaLoaderCore(
 
         activeSession.store(session)
 
-        val configToApply = pendingDynamicConfig.getAndUpdate { null }
-        if (configToApply != null) {
-            logger.i { "Applying cached pending dynamic config..." }
-            session.applyDynamicConfig(configToApply)
-        }
+        drainPendingConfig(session, "cached before initialization")
 
         if (!_state.compareAndSet(
                 P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING),
@@ -140,10 +136,7 @@ internal class P2PMediaLoaderCore(
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
-        pendingDynamicConfig.getAndUpdate { null }?.let { late ->
-            logger.i { "Applying dynamic config that arrived during initialization handoff." }
-            session.applyDynamicConfig(late)
-        }
+        drainPendingConfig(session, "arrived during initialization handoff")
 
         p2pEvents.syncEarlySubscriptions()
     }
@@ -197,9 +190,7 @@ internal class P2PMediaLoaderCore(
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
             pendingDynamicConfig.value = dynamicCoreConfig
             if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
-                pendingDynamicConfig.getAndUpdate { null }?.let { missed ->
-                    activeSession.load()?.applyDynamicConfig(missed)
-                }
+                drainPendingConfig(activeSession.load(), "stored during activation handoff")
             }
             return
         }
@@ -210,6 +201,13 @@ internal class P2PMediaLoaderCore(
             return
         }
         session.applyDynamicConfig(dynamicCoreConfig)
+    }
+
+    private fun drainPendingConfig(session: P2PSession?, context: String) {
+        val pending = pendingDynamicConfig.getAndUpdate { null } ?: return
+        if (session == null) return
+        logger.i { "Applying pending dynamic config ($context)." }
+        session.applyDynamicConfig(pending)
     }
 
     /**
