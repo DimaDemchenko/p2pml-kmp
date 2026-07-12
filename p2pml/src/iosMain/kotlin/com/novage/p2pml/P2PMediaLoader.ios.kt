@@ -38,9 +38,26 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
      */
     val state get() = core.state
 
+    /**
+     * Builds the local proxy URL for [manifestUrl] to hand to the player instead of the origin URL.
+     *
+     * One active stream per loader: when the player starts fetching a manifest that does not belong
+     * to the currently tracked stream, all P2P state for the previous stream is reset. To play
+     * several streams concurrently, use a separate [P2PMediaLoader] instance per stream.
+     *
+     * @throws P2PMediaLoaderException if the loader is not initialized or already released.
+     */
     @Throws(P2PMediaLoaderException::class)
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
+    /**
+     * Applies [dynamicCoreConfig] to the running engine as a partial patch: only explicitly set
+     * properties are overridden, and successive calls accumulate in the engine.
+     *
+     * Calls made before initialization completes are cached and applied once the loader becomes
+     * active; only the most recent pre-initialization config is kept — earlier ones are dropped,
+     * not merged. Calls after the loader has failed or been released are ignored.
+     */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
     fun release() {
