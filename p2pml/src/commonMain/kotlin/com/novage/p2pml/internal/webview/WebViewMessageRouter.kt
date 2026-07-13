@@ -72,18 +72,17 @@ internal class WebViewMessageRouter(
 
     private fun describeCoreInitFailure(payload: JsonElement?): String {
         val failure = payload?.let {
+            // SerializationException extends IllegalArgumentException, so one catch covers both
+            // decode failure modes.
             try {
                 json.decodeFromJsonElement<CoreInitFailure>(it)
-            } catch (e: SerializationException) {
-                logger.e(e) { "Failed to parse core init failure payload: $it" }
-                null
             } catch (e: IllegalArgumentException) {
                 logger.e(e) { "Failed to parse core init failure payload: $it" }
                 null
             }
         }
         failure?.stack?.let { stack -> logger.e { "JS core init failed:\n$stack" } }
-        return failure?.message ?: "Unknown JS core initialization error"
+        return failure?.message?.takeIf { it.isNotBlank() } ?: "Unknown JS core initialization error"
     }
 
     private fun logEngineEntries(batch: EngineLogBatch) {

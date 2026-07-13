@@ -4,6 +4,7 @@ import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.logging.P2PLogging
+import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -18,6 +19,8 @@ import platform.Foundation.NSThread
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
 import platform.Foundation.setValue
+import platform.WebKit.WKErrorDomain
+import platform.WebKit.WKErrorJavaScriptResultTypeIsUnsupported
 import platform.WebKit.WKNavigation
 import platform.WebKit.WKNavigationDelegateProtocol
 import platform.WebKit.WKPreferences
@@ -38,6 +41,8 @@ private class IosHeadlessWebView(
     private val events: P2PEvents,
     private val onFatalError: (P2PMediaLoaderException) -> Unit
 ) : HeadlessWebView {
+    private val logger = CoreLogger("IosHeadlessWebView")
+
     private var webView: WKWebView? = null
 
     private var navigationDelegate: NavigationDelegate? = null
@@ -163,7 +168,17 @@ private class IosHeadlessWebView(
                 runOnMainThread { coreInitContinuation = null }
             }
 
-            view.evaluateJavaScript(script, completionHandler = null)
+            // A script that throws outside initP2P's try/catch (e.g. missing window.p2p on a
+            // custom page) sends no ack; the NSError here is the only record of the real cause.
+            // WKErrorJavaScriptResultTypeIsUnsupported only means the script's completion value
+            // wasn't serializable (e.g. an async initP2P returning a Promise) — not a failure.
+            view.evaluateJavaScript(script) { _, error ->
+                if (error != null &&
+                    !(error.domain == WKErrorDomain && error.code == WKErrorJavaScriptResultTypeIsUnsupported)
+                ) {
+                    logger.e { "Core init script failed to evaluate: ${error.localizedDescription} ${error.userInfo}" }
+                }
+            }
         }
     }
 
@@ -189,25 +204,29 @@ private class IosHeadlessWebView(
         val loadCont = loadUrlContinuation
         when {
             loadCont != null -> {
+                loadUrlContinuation = null
+                onPageReadyCallback = null
                 if (loadCont.isActive) {
                     loadCont.resumeWithException(
                         P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
                     )
+                } else if (!isDestroyed) {
+                    onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
                 }
-                loadUrlContinuation = null
-                onPageReadyCallback = null
             }
 
-            // Fail the awaited init directly; onFatalError would report the crash once and the
-            // still-pending init ack would time out into a second, conflicting failure.
-            coreInitContinuation != null -> {
-                takeCoreInitContinuation()?.resumeWithException(
-                    P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg)
-                )
-            }
-
-            !isDestroyed -> {
-                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
+            // Fail a pending init await directly; onFatalError would report the crash once and
+            // the still-pending ack would time out into a second, conflicting failure. With no
+            // active waiter (nothing pending, or the await already cancelled by the ack timeout)
+            // the crash goes to onFatalError.
+            else -> {
+                val error = P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg)
+                val cont = takeCoreInitContinuation()
+                if (cont != null) {
+                    cont.resumeWithException(error)
+                } else if (!isDestroyed) {
+                    onFatalError(error)
+                }
             }
         }
         // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()

@@ -110,6 +110,16 @@ class WebViewMessageRouterTest {
     }
 
     @Test
+    fun coreInitFailureWithBlankMessageFallsBackToGenericMessage() {
+        val results = mutableListOf<String?>()
+
+        createRouter { results.add(it) }
+            .handleMessage("""{"type":"onCoreInitFailed","payload":{"message":"  ","stack":"Error"}}""")
+
+        assertEquals(listOf<String?>("Unknown JS core initialization error"), results)
+    }
+
+    @Test
     fun coreInitFailureWithMalformedPayloadFallsBackToGenericMessage() {
         val results = mutableListOf<String?>()
 

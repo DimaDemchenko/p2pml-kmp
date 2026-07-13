@@ -23,8 +23,8 @@ internal object IosBridgeChannels {
 internal class IosWebViewEventDispatcher(
     private val events: P2PEvents,
     json: Json = Json { ignoreUnknownKeys = true },
-    onPageReady: (() -> Unit)? = null,
-    onCoreInitResult: ((errorMessage: String?) -> Unit)? = null
+    onPageReady: () -> Unit,
+    onCoreInitResult: (errorMessage: String?) -> Unit
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 

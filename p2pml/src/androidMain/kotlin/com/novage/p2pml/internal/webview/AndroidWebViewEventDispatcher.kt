@@ -13,16 +13,16 @@ import kotlinx.serialization.json.Json
 internal class AndroidWebViewEventDispatcher(
     private val events: P2PEvents,
     json: Json = Json { ignoreUnknownKeys = true },
-    onPageReady: (() -> Unit)? = null,
-    onCoreInitResult: ((errorMessage: String?) -> Unit)? = null
+    onPageReady: () -> Unit,
+    onCoreInitResult: (errorMessage: String?) -> Unit
 ) {
     private val logger = CoreLogger("AndroidWebViewEventDispatcher")
     private val mainHandler = Handler(Looper.getMainLooper())
     private val router = WebViewMessageRouter(
         events,
         json,
-        onPageReady = { mainHandler.post { onPageReady?.invoke() } },
-        onCoreInitResult = { error -> mainHandler.post { onCoreInitResult?.invoke(error) } }
+        onPageReady = { mainHandler.post { onPageReady() } },
+        onCoreInitResult = { error -> mainHandler.post { onCoreInitResult(error) } }
     )
 
     @JavascriptInterface

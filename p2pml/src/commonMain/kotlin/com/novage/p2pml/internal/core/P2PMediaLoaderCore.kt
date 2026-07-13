@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -142,15 +141,8 @@ internal class P2PMediaLoaderCore(
     }
 
     private fun handleInitializationException(e: Exception): Exception = when (e) {
-        is TimeoutCancellationException -> {
-            logger.e { "Initialization timed out waiting for WebView." }
-            P2PMediaLoaderException(
-                P2PMediaLoaderErrorCode.ENGINE_LOAD_TIMEOUT,
-                "Engine page did not load within the startup timeout.",
-                cause = e
-            )
-        }
-
+        // Startup timeouts arrive pre-mapped by P2PSessionFactory.withStartupTimeout; a raw
+        // TimeoutCancellationException here is an enclosing caller's timeout, i.e. cancellation.
         is CancellationException -> {
             logger.d { "Initialization cancelled by coroutine scope." }
             e
