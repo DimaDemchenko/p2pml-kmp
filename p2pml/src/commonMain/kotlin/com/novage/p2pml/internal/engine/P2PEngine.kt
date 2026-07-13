@@ -8,7 +8,7 @@ import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
 
 internal interface P2PEngine {
     suspend fun loadUrlAndWait(url: String)
-    fun initCoreEngine(coreConfig: CoreConfig, uploadUrl: String)
+    suspend fun initCoreEngineAndWait(coreConfig: CoreConfig, uploadUrl: String)
     fun destroy()
 
     fun requestSegmentBytes(segmentUrl: String)

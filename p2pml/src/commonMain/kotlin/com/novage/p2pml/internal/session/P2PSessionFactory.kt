@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.session
 
 import com.novage.p2pml.api.config.CoreConfig
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.logging.P2PLogging
@@ -23,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
@@ -45,6 +48,13 @@ internal class P2PSessionFactory(
 ) {
     companion object {
         private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
+
+        /**
+         * A healthy engine acks near-instantly once the page is loaded; the budget is generous
+         * because both legs of the ack round-trip transit the main thread, which can be starved
+         * for seconds during app cold start on low-end devices.
+         */
+        private const val CORE_INIT_ACK_TIMEOUT_MS = 10_000L
 
         /** `debug` library namespaces enabled in the engine page when debug logging is on. */
         private const val ENGINE_DEBUG_NAMESPACES = "p2pml-core:*"
@@ -118,14 +128,45 @@ internal class P2PSessionFactory(
         urlFactory.setPort(port)
 
         val engineFileUrl = customEngineUrl ?: buildEnginePageUrl(urlFactory)
-        withTimeout(WEBVIEW_LOAD_TIMEOUT_MS) {
+        withStartupTimeout(
+            timeoutMs = WEBVIEW_LOAD_TIMEOUT_MS,
+            code = P2PMediaLoaderErrorCode.ENGINE_LOAD_TIMEOUT,
+            message = "Engine page did not load within ${WEBVIEW_LOAD_TIMEOUT_MS}ms."
+        ) {
             engine.loadUrlAndWait(engineFileUrl)
         }
 
-        engine.initCoreEngine(
-            coreConfig = coreConfig,
-            uploadUrl = urlFactory.buildUploadUrl()
-        )
+        withStartupTimeout(
+            timeoutMs = CORE_INIT_ACK_TIMEOUT_MS,
+            code = P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED,
+            message = "JS core did not acknowledge initialization within ${CORE_INIT_ACK_TIMEOUT_MS}ms. " +
+                "Likely causes: the engine page does not implement the init ack " +
+                "(outdated custom page), or the init script failed to evaluate " +
+                "(e.g. invalid custom JS snippets in CoreConfig)."
+        ) {
+            engine.initCoreEngineAndWait(
+                coreConfig = coreConfig,
+                uploadUrl = urlFactory.buildUploadUrl()
+            )
+        }
+    }
+
+    /**
+     * Maps this step's own timeout to a typed [P2PMediaLoaderException] at the site, so boot
+     * timeouts cannot be mislabeled by generic mapping layers. If the enclosing scope is being
+     * cancelled (including an outer caller's withTimeout), rethrows that cancellation instead of
+     * converting it into a fake engine failure.
+     */
+    private suspend fun withStartupTimeout(
+        timeoutMs: Long,
+        code: P2PMediaLoaderErrorCode,
+        message: String,
+        block: suspend () -> Unit
+    ) = try {
+        withTimeout(timeoutMs) { block() }
+    } catch (e: TimeoutCancellationException) {
+        currentCoroutineContext().ensureActive()
+        throw P2PMediaLoaderException(code, message, cause = e)
     }
 
     /**
@@ -152,9 +193,7 @@ internal class P2PSessionFactory(
     }
 
     private suspend fun handleInitializationFailure(e: Throwable, cleanupTasks: List<suspend () -> Unit>) {
-        if (e is TimeoutCancellationException) {
-            logger.e { "Session boot timed out waiting for WebView." }
-        } else if (e !is CancellationException) {
+        if (e !is CancellationException) {
             logger.e(e) { "Session boot failed" }
         }
 

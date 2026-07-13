@@ -33,9 +33,9 @@ internal class P2PEngineManager(
         webView.destroy()
     }
 
-    override fun initCoreEngine(coreConfig: CoreConfig, uploadUrl: String) {
+    override suspend fun initCoreEngineAndWait(coreConfig: CoreConfig, uploadUrl: String) {
         logger.i { "Initializing JS Core Engine" }
-        evaluate(
+        webView.initCoreAndWait(
             "$JS_BRIDGE.initP2P(${CoreConfigJsMapper.toJsExpression(coreConfig)}, " +
                 "${json.encodeToString(uploadUrl)});"
         )

@@ -23,12 +23,13 @@ internal object IosBridgeChannels {
 internal class IosWebViewEventDispatcher(
     private val events: P2PEvents,
     json: Json = Json { ignoreUnknownKeys = true },
-    onPageReady: (() -> Unit)? = null
+    onPageReady: () -> Unit,
+    onCoreInitResult: (errorMessage: String?) -> Unit
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 
     private val logger = CoreLogger("IosWebViewEventDispatcher")
-    private val router = WebViewMessageRouter(events, json, onPageReady)
+    private val router = WebViewMessageRouter(events, json, onPageReady, onCoreInitResult)
 
     override fun userContentController(
         userContentController: WKUserContentController,

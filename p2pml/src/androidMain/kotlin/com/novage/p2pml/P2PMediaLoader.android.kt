@@ -24,6 +24,11 @@ import kotlinx.coroutines.CancellationException
  * @param customEngineUrl URL to a custom-hosted engine page. Uses the bundled asset by default.
  *   Custom pages do not include the bundled page's log bridge, so engine console output and
  *   uncaught JS errors are not forwarded to the native log unless the page replicates it.
+ *   The page must implement this library version's bridge contract: signal readiness with an
+ *   `onWebViewLoaded` message (otherwise loading fails with `ENGINE_LOAD_TIMEOUT`) and acknowledge
+ *   `initP2P` with `onCoreInitialized`/`onCoreInitFailed` (otherwise initialization fails with
+ *   `ENGINE_INIT_FAILED` once the ack times out). Build the page from this repository's
+ *   `p2pml/src/assets` to stay in sync.
  */
 class P2PMediaLoader @JvmOverloads constructor(
     context: Context,
