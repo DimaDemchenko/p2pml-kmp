@@ -218,9 +218,17 @@
         }
 
         initP2P(coreConfigJsObject, uploadBaseUrl) {
-          this.uploadUrl = uploadBaseUrl;
-          this.coreConfig = coreConfigJsObject || {};
-          this.createP2PEngine();
+          try {
+            this.uploadUrl = uploadBaseUrl;
+            this.coreConfig = coreConfigJsObject || {};
+            this.createP2PEngine();
+            this.bridge.sendMessage("onCoreInitialized");
+          } catch (e) {
+            this.bridge.sendMessage("onCoreInitFailed", {
+              message: e instanceof Error ? e.message : String(e),
+              stack: e instanceof Error ? e.stack : undefined,
+            });
+          }
         }
 
         createP2PEngine() {

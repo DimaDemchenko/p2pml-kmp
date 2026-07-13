@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.session
 
 import com.novage.p2pml.api.config.CoreConfig
+import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.logging.P2PLogging
@@ -45,6 +46,9 @@ internal class P2PSessionFactory(
 ) {
     companion object {
         private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
+
+        /** The page is already loaded when init runs, so a healthy engine acks near-instantly. */
+        private const val CORE_INIT_ACK_TIMEOUT_MS = 5_000L
 
         /** `debug` library namespaces enabled in the engine page when debug logging is on. */
         private const val ENGINE_DEBUG_NAMESPACES = "p2pml-core:*"
@@ -122,10 +126,20 @@ internal class P2PSessionFactory(
             engine.loadUrlAndWait(engineFileUrl)
         }
 
-        engine.initCoreEngine(
-            coreConfig = coreConfig,
-            uploadUrl = urlFactory.buildUploadUrl()
-        )
+        try {
+            withTimeout(CORE_INIT_ACK_TIMEOUT_MS) {
+                engine.initCoreEngineAndWait(
+                    coreConfig = coreConfig,
+                    uploadUrl = urlFactory.buildUploadUrl()
+                )
+            }
+        } catch (e: TimeoutCancellationException) {
+            throw P2PMediaLoaderException(
+                P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED,
+                "JS core did not acknowledge initialization within ${CORE_INIT_ACK_TIMEOUT_MS}ms.",
+                cause = e
+            )
+        }
     }
 
     /**

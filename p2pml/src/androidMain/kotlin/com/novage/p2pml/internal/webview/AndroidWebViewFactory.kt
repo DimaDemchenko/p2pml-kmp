@@ -31,6 +31,7 @@ private class AndroidHeadlessWebView(
     private val onFatalError: (P2PMediaLoaderException) -> Unit
 ) : HeadlessWebView {
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
+    private var coreInitContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
     private var isDestroyed = false
 
@@ -71,7 +72,8 @@ private class AndroidHeadlessWebView(
 
         val dispatcher = AndroidWebViewEventDispatcher(
             events = events,
-            onPageReady = { onPageReadyCallback?.invoke() }
+            onPageReady = { onPageReadyCallback?.invoke() },
+            onCoreInitResult = { error -> handleCoreInitResult(error) }
         )
         addJavascriptInterface(dispatcher, "P2PMLAndroid")
     }
@@ -118,11 +120,56 @@ private class AndroidHeadlessWebView(
         }
     }
 
+    override suspend fun initCoreAndWait(script: String) = suspendCancellableCoroutine<Unit> { continuation ->
+        runOnUiThread {
+            if (!continuation.isActive) return@runOnUiThread
+
+            val view = webView
+            if (view == null) {
+                continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
+                return@runOnUiThread
+            }
+
+            if (this.coreInitContinuation != null) {
+                continuation.resumeWithException(IllegalStateException("A core init is already in progress"))
+                return@runOnUiThread
+            }
+
+            this.coreInitContinuation = continuation
+
+            continuation.invokeOnCancellation {
+                runOnUiThread { coreInitContinuation = null }
+            }
+
+            view.evaluateJavascript(script, null)
+        }
+    }
+
+    private fun handleCoreInitResult(errorMessage: String?) {
+        val cont = takeCoreInitContinuation() ?: return
+
+        if (errorMessage == null) {
+            cont.resume(Unit)
+        } else {
+            cont.resumeWithException(
+                P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED, errorMessage)
+            )
+        }
+    }
+
+    private fun takeCoreInitContinuation(): CancellableContinuation<Unit>? {
+        val cont = coreInitContinuation
+        coreInitContinuation = null
+        return cont?.takeIf { it.isActive }
+    }
+
     override fun destroy() {
         runOnUiThread {
             isDestroyed = true
             loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
             loadUrlContinuation = null
+            coreInitContinuation?.cancel(CancellationException("WebView destroyed"))
+            coreInitContinuation = null
             onPageReadyCallback = null
 
             webView?.stopLoading()
@@ -140,17 +187,29 @@ private class AndroidHeadlessWebView(
     }
 
     private fun handleError(msg: String) {
-        val cont = loadUrlContinuation
-        if (cont != null) {
-            if (cont.isActive) {
-                cont.resumeWithException(
-                    P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
+        val loadCont = loadUrlContinuation
+        when {
+            loadCont != null -> {
+                if (loadCont.isActive) {
+                    loadCont.resumeWithException(
+                        P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
+                    )
+                }
+                loadUrlContinuation = null
+                onPageReadyCallback = null
+            }
+
+            // Fail the awaited init directly; onFatalError would report the crash once and the
+            // still-pending init ack would time out into a second, conflicting failure.
+            coreInitContinuation != null -> {
+                takeCoreInitContinuation()?.resumeWithException(
+                    P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg)
                 )
             }
-            loadUrlContinuation = null
-            onPageReadyCallback = null
-        } else if (!isDestroyed) {
-            onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
+
+            !isDestroyed -> {
+                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
+            }
         }
         // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
         // aborting the in-flight load) — not a runtime fault, so it must not be surfaced as fatal.

@@ -13,13 +13,17 @@ import kotlinx.serialization.json.Json
 internal class AndroidWebViewEventDispatcher(
     private val events: P2PEvents,
     json: Json = Json { ignoreUnknownKeys = true },
-    onPageReady: (() -> Unit)? = null
+    onPageReady: (() -> Unit)? = null,
+    onCoreInitResult: ((errorMessage: String?) -> Unit)? = null
 ) {
     private val logger = CoreLogger("AndroidWebViewEventDispatcher")
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val router = WebViewMessageRouter(events, json) {
-        mainHandler.post { onPageReady?.invoke() }
-    }
+    private val router = WebViewMessageRouter(
+        events,
+        json,
+        onPageReady = { mainHandler.post { onPageReady?.invoke() } },
+        onCoreInitResult = { error -> mainHandler.post { onCoreInitResult?.invoke(error) } }
+    )
 
     @JavascriptInterface
     fun onChunkDownloaded(bytesLength: Int, downloadSource: String, peerId: String?) {

@@ -32,13 +32,14 @@ class WebViewMessageRouterTest {
         P2PLogging.minLevel = originalMinLevel
     }
 
-    private fun createRouter() = WebViewMessageRouter(
+    private fun createRouter(onCoreInitResult: ((String?) -> Unit)? = null) = WebViewMessageRouter(
         events = P2PEvents(
             coreScope = CoroutineScope(Dispatchers.Unconfined),
             onSubscribe = {},
             onUnsubscribe = {},
             isCoreActive = { true }
-        )
+        ),
+        onCoreInitResult = onCoreInitResult
     )
 
     @Test
@@ -84,5 +85,47 @@ class WebViewMessageRouterTest {
         createRouter().handleMessage("""{"type":"onEngineLog","payload":{"entries":"bogus"}}""")
 
         assertTrue(engineLogs.isEmpty())
+    }
+
+    @Test
+    fun coreInitSuccessInvokesCallbackWithNull() {
+        val results = mutableListOf<String?>()
+
+        createRouter { results.add(it) }
+            .handleMessage("""{"type":"onCoreInitialized","payload":{}}""")
+
+        assertEquals(listOf<String?>(null), results)
+    }
+
+    @Test
+    fun coreInitFailureInvokesCallbackWithMessage() {
+        val results = mutableListOf<String?>()
+
+        createRouter { results.add(it) }
+            .handleMessage(
+                """{"type":"onCoreInitFailed","payload":{"message":"Core is not a constructor","stack":"..."}}"""
+            )
+
+        assertEquals(listOf<String?>("Core is not a constructor"), results)
+    }
+
+    @Test
+    fun coreInitFailureWithMalformedPayloadFallsBackToGenericMessage() {
+        val results = mutableListOf<String?>()
+
+        createRouter { results.add(it) }
+            .handleMessage("""{"type":"onCoreInitFailed","payload":"bogus"}""")
+
+        assertEquals(listOf<String?>("Unknown JS core initialization error"), results)
+    }
+
+    @Test
+    fun coreInitFailureWithoutPayloadFallsBackToGenericMessage() {
+        val results = mutableListOf<String?>()
+
+        createRouter { results.add(it) }
+            .handleMessage("""{"type":"onCoreInitFailed"}""")
+
+        assertEquals(listOf<String?>("Unknown JS core initialization error"), results)
     }
 }

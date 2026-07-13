@@ -11,5 +11,7 @@ internal interface HeadlessWebView {
 
     fun evaluateJavascript(script: String)
 
+    suspend fun initCoreAndWait(script: String)
+
     fun destroy()
 }

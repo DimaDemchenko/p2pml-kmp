@@ -43,6 +43,7 @@ private class IosHeadlessWebView(
     private var navigationDelegate: NavigationDelegate? = null
 
     private var loadUrlContinuation: CancellableContinuation<Unit>? = null
+    private var coreInitContinuation: CancellableContinuation<Unit>? = null
     private var onPageReadyCallback: (() -> Unit)? = null
     private var isDestroyed = false
 
@@ -69,9 +70,11 @@ private class IosHeadlessWebView(
         }
         configuration.preferences = preferences
 
-        val scriptMessageHandler = IosWebViewEventDispatcher(events) {
-            onPageReadyCallback?.invoke()
-        }
+        val scriptMessageHandler = IosWebViewEventDispatcher(
+            events = events,
+            onPageReady = { onPageReadyCallback?.invoke() },
+            onCoreInitResult = { error -> handleCoreInitResult(error) }
+        )
 
         IosBridgeChannels.all.forEach { channel ->
             configuration.userContentController.addScriptMessageHandler(scriptMessageHandler, channel)
@@ -80,22 +83,7 @@ private class IosHeadlessWebView(
         val frame = CGRectZero.readValue()
         val wkWebView = WKWebView(frame = frame, configuration = configuration)
 
-        val delegate = NavigationDelegate { msg ->
-            val cont = loadUrlContinuation
-            if (cont != null) {
-                if (cont.isActive) {
-                    cont.resumeWithException(
-                        P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
-                    )
-                }
-                loadUrlContinuation = null
-                onPageReadyCallback = null
-            } else if (!isDestroyed) {
-                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
-            }
-            // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
-            // aborting navigation) — not a runtime fault, so it must not be surfaced as fatal.
-        }
+        val delegate = NavigationDelegate(::handleError)
 
         this.navigationDelegate = delegate
         wkWebView.navigationDelegate = delegate
@@ -154,11 +142,85 @@ private class IosHeadlessWebView(
         }
     }
 
+    override suspend fun initCoreAndWait(script: String) = suspendCancellableCoroutine<Unit> { continuation ->
+        runOnMainThread {
+            if (!continuation.isActive) return@runOnMainThread
+
+            val view = webView
+            if (view == null) {
+                continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
+                return@runOnMainThread
+            }
+
+            if (this.coreInitContinuation != null) {
+                continuation.resumeWithException(IllegalStateException("A core init is already in progress"))
+                return@runOnMainThread
+            }
+
+            this.coreInitContinuation = continuation
+
+            continuation.invokeOnCancellation {
+                runOnMainThread { coreInitContinuation = null }
+            }
+
+            view.evaluateJavaScript(script, completionHandler = null)
+        }
+    }
+
+    private fun handleCoreInitResult(errorMessage: String?) {
+        val cont = takeCoreInitContinuation() ?: return
+
+        if (errorMessage == null) {
+            cont.resume(Unit)
+        } else {
+            cont.resumeWithException(
+                P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED, errorMessage)
+            )
+        }
+    }
+
+    private fun takeCoreInitContinuation(): CancellableContinuation<Unit>? {
+        val cont = coreInitContinuation
+        coreInitContinuation = null
+        return cont?.takeIf { it.isActive }
+    }
+
+    private fun handleError(msg: String) {
+        val loadCont = loadUrlContinuation
+        when {
+            loadCont != null -> {
+                if (loadCont.isActive) {
+                    loadCont.resumeWithException(
+                        P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
+                    )
+                }
+                loadUrlContinuation = null
+                onPageReadyCallback = null
+            }
+
+            // Fail the awaited init directly; onFatalError would report the crash once and the
+            // still-pending init ack would time out into a second, conflicting failure.
+            coreInitContinuation != null -> {
+                takeCoreInitContinuation()?.resumeWithException(
+                    P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg)
+                )
+            }
+
+            !isDestroyed -> {
+                onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
+            }
+        }
+        // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
+        // aborting navigation) — not a runtime fault, so it must not be surfaced as fatal.
+    }
+
     override fun destroy() {
         runOnMainThread {
             isDestroyed = true
             loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
             loadUrlContinuation = null
+            coreInitContinuation?.cancel(CancellationException("WebView destroyed"))
+            coreInitContinuation = null
             onPageReadyCallback = null
 
             val view = webView ?: return@runOnMainThread
