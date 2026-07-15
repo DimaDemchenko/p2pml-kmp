@@ -111,7 +111,7 @@ internal class P2PSessionFactory(
             startServerAndEngine(engine, serverModule, urlFactory)
 
             P2PSession(
-                engineManager = engine,
+                engine = engine,
                 urlFactory = urlFactory,
                 teardownAction = performFullTeardown
             )

@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.io.IOException
 
 /**
  * Core orchestrator for P2P media streaming. Single-use: once [release] is called,
@@ -244,12 +243,6 @@ internal class P2PMediaLoaderCore(
         cleanupScope.launch {
             try {
                 sessionToDestroy?.destroy()
-            } catch (e: IOException) {
-                logger.e(e) { "IO Error during session teardown" }
-            } catch (e: IllegalStateException) {
-                logger.e(e) { "State Error during session teardown" }
-            } catch (e: IllegalArgumentException) {
-                logger.e(e) { "Arg Error during session teardown" }
             } finally {
                 logger.d { "Release complete." }
                 cleanupScope.cancel()

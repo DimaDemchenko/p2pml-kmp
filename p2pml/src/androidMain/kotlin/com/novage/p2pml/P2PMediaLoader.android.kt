@@ -27,8 +27,9 @@ import kotlinx.coroutines.CancellationException
  *   The page must implement this library version's bridge contract: signal readiness with an
  *   `onWebViewLoaded` message (otherwise loading fails with `ENGINE_LOAD_TIMEOUT`) and acknowledge
  *   `initP2P` with `onCoreInitialized`/`onCoreInitFailed` (otherwise initialization fails with
- *   `ENGINE_INIT_FAILED` once the ack times out). Build the page from this repository's
- *   `p2pml/src/assets` to stay in sync.
+ *   `ENGINE_INIT_FAILED` once the ack times out). Its event subscription must be idempotent:
+ *   duplicate subscribe calls for the same event name must be ignored, or events double-emit.
+ *   Build the page from this repository's `p2pml/src/assets` to stay in sync.
  */
 class P2PMediaLoader @JvmOverloads constructor(
     context: Context,
