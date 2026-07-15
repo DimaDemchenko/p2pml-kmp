@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSError
+import platform.Foundation.NSSelectorFromString
 import platform.Foundation.NSThread
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
@@ -95,7 +96,10 @@ private class IosHeadlessWebView(
 
         wkWebView.hidden = true
         wkWebView.userInteractionEnabled = false
-        wkWebView.inspectable = P2PLogging.isDebugEnabled
+
+        if (wkWebView.respondsToSelector(NSSelectorFromString("setInspectable:"))) {
+            wkWebView.inspectable = P2PLogging.isDebugEnabled
+        }
 
         this.webView = wkWebView
     }
@@ -169,14 +173,17 @@ private class IosHeadlessWebView(
             }
 
             // A script that throws outside initP2P's try/catch (e.g. missing window.p2p on a
-            // custom page) sends no ack; the NSError here is the only record of the real cause.
-            // WKErrorJavaScriptResultTypeIsUnsupported only means the script's completion value
-            // wasn't serializable (e.g. an async initP2P returning a Promise) — not a failure.
+            // custom page) sends no ack, so a genuine eval NSError means the init can never
+            // complete — fail fast instead of burning the ack timeout with the cause buried in
+            // the log. WKErrorJavaScriptResultTypeIsUnsupported only means the script's
+            // completion value wasn't serializable (e.g. an async initP2P returning a Promise)
+            // — not a failure.
             view.evaluateJavaScript(script) { _, error ->
                 if (error != null &&
                     !(error.domain == WKErrorDomain && error.code == WKErrorJavaScriptResultTypeIsUnsupported)
                 ) {
                     logger.e { "Core init script failed to evaluate: ${error.localizedDescription} ${error.userInfo}" }
+                    handleCoreInitResult("Core init script failed to evaluate: ${error.localizedDescription}")
                 }
             }
         }

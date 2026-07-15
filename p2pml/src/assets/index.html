@@ -172,29 +172,40 @@
           return "unknown";
         }
 
-        sendChunkDownloaded(bytesLength, downloadSource, peerId) {
+        sendChunkDownloaded(bytesLength, downloadSource, peerId, streamType, infoHash) {
           if (this.platform === "android") {
             window.P2PMLAndroid.onChunkDownloaded(
               bytesLength,
               downloadSource,
               peerId,
+              streamType,
+              infoHash,
             );
           } else if (this.platform === "ios") {
             window.webkit.messageHandlers.p2pml_onChunkDownloaded.postMessage({
               bytesLength,
               downloadSource,
               peerId,
+              streamType,
+              infoHash,
             });
           }
         }
 
-        sendChunkUploaded(bytesLength, peerId) {
+        sendChunkUploaded(bytesLength, peerId, streamType, infoHash) {
           if (this.platform === "android") {
-            window.P2PMLAndroid.onChunkUploaded(bytesLength, peerId);
+            window.P2PMLAndroid.onChunkUploaded(
+              bytesLength,
+              peerId,
+              streamType,
+              infoHash,
+            );
           } else if (this.platform === "ios") {
             window.webkit.messageHandlers.p2pml_onChunkUploaded.postMessage({
               bytesLength,
               peerId,
+              streamType,
+              infoHash,
             });
           }
         }
@@ -255,12 +266,18 @@
 
           const handler = (...args) => {
             if (eventName === "onChunkDownloaded") {
-              this.bridge.sendChunkDownloaded(args[0], args[1], args[2]);
+              this.bridge.sendChunkDownloaded(
+                args[0],
+                args[1],
+                args[2],
+                args[3],
+                args[4],
+              );
               return;
             }
 
             if (eventName === "onChunkUploaded") {
-              this.bridge.sendChunkUploaded(args[0], args[1]);
+              this.bridge.sendChunkUploaded(args[0], args[1], args[2], args[3]);
               return;
             }
 
@@ -280,16 +297,36 @@
           this.eventHandlers.delete(eventName);
         }
 
+        // Engine errors are Error subclasses: message/stack are not own-enumerable, and the
+        // error kind lives in `type` (segment requests) or `code` (peers). Raw JSON.stringify
+        // would serialize them as {} or {type} only, so normalize to a stable shape here.
+        serializeJsError(error) {
+          if (error == null) return { message: "" };
+          if (typeof error !== "object") return { message: String(error) };
+          return {
+            message: error.message != null ? String(error.message) : "",
+            stack: typeof error.stack === "string" ? error.stack : undefined,
+            type:
+              typeof error.type === "string"
+                ? error.type
+                : typeof error.code === "string"
+                  ? error.code
+                  : undefined,
+          };
+        }
+
         formatEventPayload(eventName, args) {
           switch (eventName) {
             case "onTrackerError":
+            case "onSegmentError":
+            case "onPeerError":
+            case "onPeerConnectError":
+              return { ...args[0], error: this.serializeJsError(args[0].error) };
             case "onTrackerWarning":
+            case "onPeerWarning":
               return {
-                streamType: args[0].streamType,
-                error: {
-                  message: args[0].error?.message,
-                  stack: args[0].error?.stack,
-                },
+                ...args[0],
+                warning: this.serializeJsError(args[0].warning),
               };
             default:
               return args[0];

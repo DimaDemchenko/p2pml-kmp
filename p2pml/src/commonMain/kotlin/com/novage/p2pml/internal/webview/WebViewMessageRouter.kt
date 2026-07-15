@@ -22,7 +22,10 @@ internal data class CoreInitFailure(val message: String? = null, val stack: Stri
 
 internal class WebViewMessageRouter(
     private val events: P2PEvents,
-    private val json: Json = Json { ignoreUnknownKeys = true },
+    private val json: Json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    },
     private val onPageReady: (() -> Unit)? = null,
     private val onCoreInitResult: ((errorMessage: String?) -> Unit)? = null
 ) {

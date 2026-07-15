@@ -24,6 +24,15 @@ class DynamicStreamConfig {
     var httpNotReceivingBytesTimeoutMs: Int = USE_ENGINE_DEFAULT
     var httpErrorRetries: Int = USE_ENGINE_DEFAULT
     var p2pErrorRetries: Int = USE_ENGINE_DEFAULT
+    var p2pMaxPeers: Int = USE_ENGINE_DEFAULT
+    var p2pChurnMaxPeersMultiplier: Double = USE_ENGINE_DEFAULT.toDouble()
+    var p2pChurnCleanupIntervalMs: Int = USE_ENGINE_DEFAULT
+    var p2pChurnGracePeriodMs: Int = USE_ENGINE_DEFAULT
+    var webRtcOffersCount: Int = USE_ENGINE_DEFAULT
+    var webRtcOfferTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var webRtcIceGatheringTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var webRtcConnectionTimeoutMs: Int = USE_ENGINE_DEFAULT
+    var rtcConfig: RtcConfig? = null
 
     @SerialName("isP2PDisabled")
     private var _isP2PDisabled: Boolean? = null
@@ -44,6 +53,8 @@ class DynamicStreamConfig {
         }
 
     @Transient var validateP2PSegmentJs: String? = null
+
+    @Transient var validateHTTPSegmentJs: String? = null
 
     @Transient var httpRequestSetupJs: String? = null
 }

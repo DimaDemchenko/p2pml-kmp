@@ -38,7 +38,7 @@ internal class P2PSessionFactory(
         WebViewFactory,
         P2PEvents
     ) -> P2PEngine = { webViewFactory, events ->
-        withContext(Dispatchers.Main) {
+        withContext(Dispatchers.Main + NonCancellable) {
             val webView = webViewFactory.createHeadlessWebView(events) { exception ->
                 onFatalError(exception)
             }
@@ -74,6 +74,7 @@ internal class P2PSessionFactory(
 
             val engine = engineProvider(webViewFactory, events)
             cleanupTasks.add { engine.destroy() }
+            currentCoroutineContext().ensureActive()
 
             val client = httpClientProvider()
             cleanupTasks.add { client.close() }

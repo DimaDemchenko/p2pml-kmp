@@ -26,17 +26,23 @@ internal class AndroidWebViewEventDispatcher(
     )
 
     @JavascriptInterface
-    fun onChunkDownloaded(bytesLength: Int, downloadSource: String, peerId: String?) {
+    fun onChunkDownloaded(
+        bytesLength: Int,
+        downloadSource: String,
+        peerId: String?,
+        streamType: String,
+        infoHash: String
+    ) {
         val source = DownloadSource.fromValue(downloadSource) ?: run {
             logger.w { "Dropping chunk event with unknown download source: $downloadSource" }
             return
         }
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId, streamType, infoHash))
     }
 
     @JavascriptInterface
-    fun onChunkUploaded(bytesLength: Int, peerId: String) {
-        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
+    fun onChunkUploaded(bytesLength: Int, peerId: String, streamType: String, infoHash: String) {
+        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId, streamType, infoHash))
     }
 
     @JavascriptInterface

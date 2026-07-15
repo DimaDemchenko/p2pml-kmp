@@ -53,12 +53,14 @@ internal object CoreConfigJsMapper {
             streamScope(
                 "config",
                 VALIDATE_P2P to config.validateP2PSegmentJs,
+                VALIDATE_HTTP to config.validateHTTPSegmentJs,
                 HTTP_SETUP to config.httpRequestSetupJs
             ),
             config.mainStream?.let {
                 streamScope(
                     "config.mainStream",
                     VALIDATE_P2P to it.validateP2PSegmentJs,
+                    VALIDATE_HTTP to it.validateHTTPSegmentJs,
                     HTTP_SETUP to it.httpRequestSetupJs
                 )
             },
@@ -66,6 +68,7 @@ internal object CoreConfigJsMapper {
                 streamScope(
                     "config.secondaryStream",
                     VALIDATE_P2P to it.validateP2PSegmentJs,
+                    VALIDATE_HTTP to it.validateHTTPSegmentJs,
                     HTTP_SETUP to it.httpRequestSetupJs
                 )
             }
