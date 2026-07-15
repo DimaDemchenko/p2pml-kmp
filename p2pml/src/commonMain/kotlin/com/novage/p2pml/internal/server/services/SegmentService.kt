@@ -28,6 +28,7 @@ internal class SegmentService(
 
     companion object {
         private const val MAX_RETRIES = 4
+        private const val ENGINE_ABORT_ERROR_TYPE = "aborted"
     }
 
     suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<SegmentPayload> {
@@ -100,7 +101,7 @@ internal class SegmentService(
             return false
         }
 
-        if (errorMsg.contains("aborted")) {
+        if (errorMsg == ENGINE_ABORT_ERROR_TYPE) {
             logger.i { "Segment upload aborted: $segmentUrl" }
             state.deferred.completeExceptionally(SegmentAbortedException("Segment aborted - $segmentUrl"))
         } else {

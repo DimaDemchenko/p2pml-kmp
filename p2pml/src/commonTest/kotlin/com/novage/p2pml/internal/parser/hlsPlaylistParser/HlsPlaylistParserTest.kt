@@ -322,4 +322,117 @@ class HlsPlaylistParserTest {
         tracker.postProcessMediaPlaylist("http://example.com/live-other.m3u8", livePlaylist2)
         assertFalse(tracker.isManifestTracked("http://example.com/live.m3u8"))
     }
+
+    @Test
+    fun queryParamDefineResolvesFromThePlaylistUrl() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val playlist = """
+            #EXTM3U
+            #EXT-X-DEFINE:QUERYPARAM="token"
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            seg_{${'$'}token}.ts
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/video.m3u8?token=abc123&other=1", playlist)
+
+        val media = result.playlist as HlsMediaPlaylist
+        assertEquals("http://example.com/seg_abc123.ts", media.hlsSegments.single().url.absolute)
+    }
+
+    @Test
+    fun queryParamDefineWithoutMatchingParameterFailsParse() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val playlist = """
+            #EXTM3U
+            #EXT-X-DEFINE:QUERYPARAM="token"
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            segment.ts
+        """.trimIndent()
+
+        assertFailsWith<ManifestParseException> {
+            parser.parse("http://example.com/video.m3u8", playlist)
+        }
+    }
+
+    @Test
+    fun importDefineResolvesFromParentVariables() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+
+        val master = """
+            #EXTM3U
+            #EXT-X-DEFINE:NAME="token",VALUE="abc123"
+            #EXT-X-STREAM-INF:BANDWIDTH=1280000
+            video.m3u8
+        """.trimIndent()
+        val masterResult = parser.parse("http://example.com/master.m3u8", master)
+        val variables = (masterResult.playlist as HlsMultivariantPlaylist).variables
+        assertEquals(mapOf("token" to "abc123"), variables)
+
+        val media = """
+            #EXTM3U
+            #EXT-X-DEFINE:IMPORT="token"
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            seg_{${'$'}token}.ts
+        """.trimIndent()
+        val mediaResult = parser.parse("http://example.com/video.m3u8", media, parentVariables = variables)
+
+        val mediaPlaylist = mediaResult.playlist as HlsMediaPlaylist
+        assertEquals("http://example.com/seg_abc123.ts", mediaPlaylist.hlsSegments.single().url.absolute)
+    }
+
+    @Test
+    fun importDefineWithoutParentVariableFailsParse() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val playlist = """
+            #EXTM3U
+            #EXT-X-DEFINE:IMPORT="token"
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            segment.ts
+        """.trimIndent()
+
+        assertFailsWith<ManifestParseException> {
+            parser.parse("http://example.com/video.m3u8", playlist)
+        }
+    }
+
+    @Test
+    fun sessionDataAndContentSteeringUrisAreAbsolutized() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val master = """
+            #EXTM3U
+            #EXT-X-SESSION-DATA:DATA-ID="com.example.title",URI="data.json"
+            #EXT-X-SESSION-DATA:DATA-ID="com.example.name",VALUE="Example"
+            #EXT-X-CONTENT-STEERING:SERVER-URI="steering.json",PATHWAY-ID="cdn-a"
+            #EXT-X-STREAM-INF:BANDWIDTH=1280000
+            video.m3u8
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/path/master.m3u8", master)
+
+        assertTrue(result.rewrittenManifest.contains("URI=\"http://example.com/path/data.json\""))
+        assertTrue(result.rewrittenManifest.contains("SERVER-URI=\"http://example.com/path/steering.json\""))
+        // VALUE-only SESSION-DATA passes through untouched.
+        assertTrue(result.rewrittenManifest.contains("DATA-ID=\"com.example.name\",VALUE=\"Example\""))
+    }
+
+    @Test
+    fun absoluteSessionDataAndSteeringUrisAreUnchanged() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val master = """
+            #EXTM3U
+            #EXT-X-SESSION-DATA:DATA-ID="com.example.title",URI="https://cdn.example.com/data.json"
+            #EXT-X-CONTENT-STEERING:SERVER-URI="https://steer.example.com/s.json",PATHWAY-ID="cdn-a"
+            #EXT-X-STREAM-INF:BANDWIDTH=1280000
+            video.m3u8
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/master.m3u8", master)
+
+        assertTrue(result.rewrittenManifest.contains("URI=\"https://cdn.example.com/data.json\""))
+        assertTrue(result.rewrittenManifest.contains("SERVER-URI=\"https://steer.example.com/s.json\""))
+    }
 }

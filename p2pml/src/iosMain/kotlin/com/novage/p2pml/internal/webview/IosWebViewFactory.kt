@@ -217,9 +217,11 @@ private class IosHeadlessWebView(
                     loadCont.resumeWithException(
                         P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
                     )
-                } else if (!isDestroyed) {
-                    onFatalError(P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg))
                 }
+                // An inactive load continuation was cancelled by the startup timeout, the caller,
+                // or destroy() — that party already owns the terminal report. Escalating this late
+                // callback via onFatalError would race it with a conflicting error code
+                // (ENGINE_CRASHED vs ENGINE_LOAD_TIMEOUT).
             }
 
             // Fail a pending init await directly; onFatalError would report the crash once and

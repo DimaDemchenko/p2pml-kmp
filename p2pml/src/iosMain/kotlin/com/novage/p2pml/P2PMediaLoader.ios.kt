@@ -25,8 +25,9 @@ import platform.AVFoundation.AVPlayer
  *   The page must implement this library version's bridge contract: signal readiness with an
  *   `onWebViewLoaded` message (otherwise loading fails with `ENGINE_LOAD_TIMEOUT`) and acknowledge
  *   `initP2P` with `onCoreInitialized`/`onCoreInitFailed` (otherwise initialization fails with
- *   `ENGINE_INIT_FAILED` once the ack times out). Build the page from this repository's
- *   `p2pml/src/assets` to stay in sync.
+ *   `ENGINE_INIT_FAILED` once the ack times out). Its event subscription must be idempotent:
+ *   duplicate subscribe calls for the same event name must be ignored, or events double-emit.
+ *   Build the page from this repository's `p2pml/src/assets` to stay in sync.
  */
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
@@ -65,6 +66,11 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
      */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
+    /**
+     * Stops P2P streaming and tears down the local proxy, engine WebView and HTTP client.
+     * Returns immediately; resources are freed asynchronously. Idempotent, non-suspending and
+     * safe to call from `deinit`.
+     */
     fun release() {
         core.release()
         defaultProvider?.release()
@@ -94,7 +100,9 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
      *
      * @param player AVPlayer instance for media playback
      * @throws P2PMediaLoaderException if initialization or startup fails
-     * @throws CancellationException if the coroutine is cancelled
+     * @throws CancellationException if the coroutine is cancelled (e.g. the enclosing Swift
+     *   `Task` is cancelled). Cancellation is terminal: the loader ends up released and cannot
+     *   be re-initialized — create a new instance to retry.
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(player: AVPlayer) {
@@ -121,7 +129,9 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
      *
      * @param provider Custom Playback Provider
      * @throws P2PMediaLoaderException if initialization or startup fails
-     * @throws CancellationException if the coroutine is cancelled
+     * @throws CancellationException if the coroutine is cancelled (e.g. the enclosing Swift
+     *   `Task` is cancelled). Cancellation is terminal: the loader ends up released and cannot
+     *   be re-initialized — create a new instance to retry.
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {

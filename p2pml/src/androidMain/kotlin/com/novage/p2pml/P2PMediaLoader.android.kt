@@ -27,8 +27,9 @@ import kotlinx.coroutines.CancellationException
  *   The page must implement this library version's bridge contract: signal readiness with an
  *   `onWebViewLoaded` message (otherwise loading fails with `ENGINE_LOAD_TIMEOUT`) and acknowledge
  *   `initP2P` with `onCoreInitialized`/`onCoreInitFailed` (otherwise initialization fails with
- *   `ENGINE_INIT_FAILED` once the ack times out). Build the page from this repository's
- *   `p2pml/src/assets` to stay in sync.
+ *   `ENGINE_INIT_FAILED` once the ack times out). Its event subscription must be idempotent:
+ *   duplicate subscribe calls for the same event name must be ignored, or events double-emit.
+ *   Build the page from this repository's `p2pml/src/assets` to stay in sync.
  */
 class P2PMediaLoader @JvmOverloads constructor(
     context: Context,
@@ -71,6 +72,11 @@ class P2PMediaLoader @JvmOverloads constructor(
      */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
+    /**
+     * Stops P2P streaming and tears down the local proxy, engine WebView and HTTP client.
+     * Returns immediately; resources are freed asynchronously. Idempotent and safe to call
+     * from any thread.
+     */
     fun release() {
         core.release()
         defaultProvider?.release()
@@ -80,6 +86,8 @@ class P2PMediaLoader @JvmOverloads constructor(
     companion object {
         /**
          * Lowers [com.novage.p2pml.api.logging.P2PLogging.minLevel] to DEBUG for full diagnostics.
+         * Call before [initialize] so the engine page is created with verbose logging — the debug
+         * switch is applied when the internal WebView boots.
          * Debug output includes manifest and segment URLs, which may carry signed query parameters.
          */
         fun enableLogging() = P2PLogging.enableLogging()
@@ -99,7 +107,9 @@ class P2PMediaLoader @JvmOverloads constructor(
      *
      * @param exoPlayer ExoPlayer instance for media playback
      * @throws P2PMediaLoaderException if initialization or startup fails
-     * @throws CancellationException if the coroutine is cancelled
+     * @throws CancellationException if the coroutine is cancelled. Cancellation is terminal:
+     *   the loader ends up released and cannot be re-initialized — create a new instance to
+     *   retry. Launch from a scope that survives configuration changes if the loader is retained.
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(exoPlayer: ExoPlayer) {
@@ -126,7 +136,9 @@ class P2PMediaLoader @JvmOverloads constructor(
      *
      * @param provider Custom Playback Provider
      * @throws P2PMediaLoaderException if initialization or startup fails
-     * @throws CancellationException if the coroutine is cancelled
+     * @throws CancellationException if the coroutine is cancelled. Cancellation is terminal:
+     *   the loader ends up released and cannot be re-initialized — create a new instance to
+     *   retry. Launch from a scope that survives configuration changes if the loader is retained.
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {

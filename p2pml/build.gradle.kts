@@ -145,7 +145,6 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             compileOnly(libs.androidx.media3.exoplayer)
-            compileOnly(libs.androidx.media3.exoplayer.hls)
         }
 
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }

@@ -36,16 +36,16 @@ private const val P2P_ENGINE_TIMEOUT_MS = 30_000L
 internal fun Route.registerSegmentRoutes(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestManager
+    manifestManager: HlsManifestManager
 ) {
-    segmentDownloadRoute(httpClient, segmentService, parser)
+    segmentDownloadRoute(httpClient, segmentService, manifestManager)
     segmentUploadRoute(segmentService)
 }
 
 private fun Route.segmentDownloadRoute(
     httpClient: HttpClient,
     segmentService: SegmentService,
-    parser: HlsManifestManager
+    manifestManager: HlsManifestManager
 ) {
     get("/${RoutePaths.SEGMENT}/{segmentUrl}") {
         val encodedSegmentUrl = call.parameters["segmentUrl"]
@@ -65,7 +65,7 @@ private fun Route.segmentDownloadRoute(
 
         logger.d { "Player requested segment: $segmentUrl" }
 
-        if (!parser.isCurrentSegment(segmentUrl)) {
+        if (!manifestManager.isCurrentSegment(segmentUrl)) {
             logger.d { "Segment not tracked by P2P. Passthrough to HTTP: $segmentUrl" }
             call.respondFallback(httpClient, segmentUrl)
             return@get

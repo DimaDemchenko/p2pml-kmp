@@ -7,8 +7,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class ManifestService(
-    private val parser: HlsManifestManager,
-    private val engineManager: P2PEngine,
+    private val manifestManager: HlsManifestManager,
+    private val engine: P2PEngine,
     private val onManifestChanged: suspend () -> Unit
 ) {
     private val logger = CoreLogger("ManifestService")
@@ -24,13 +24,13 @@ internal class ManifestService(
      * identity would reset all P2P state on every such fetch.
      */
     suspend fun processManifest(requestUrl: String, responseUrl: String, manifest: String): String = mutex.withLock {
-        if (!parser.isManifestTracked(requestUrl)) {
+        if (!manifestManager.isManifestTracked(requestUrl)) {
             logger.i { "Untracked manifest detected. Resetting ManifestService state for: $requestUrl" }
             isInitialManifestProcessed = false
             onManifestChanged()
         }
 
-        val modifiedManifest = parser.getModifiedManifest(manifest, requestUrl, responseUrl)
+        val modifiedManifest = manifestManager.getModifiedManifest(manifest, requestUrl, responseUrl)
 
         val needsInitialSetup = !isInitialManifestProcessed
         if (needsInitialSetup) {
@@ -43,21 +43,21 @@ internal class ManifestService(
     }
 
     private suspend fun syncWithEngine(manifestUrl: String, needsInitialSetup: Boolean) {
-        val updateStreamParams = parser.getUpdateStreamParams(manifestUrl)
+        val updateStreamParams = manifestManager.getUpdateStreamParams(manifestUrl)
 
         if (needsInitialSetup) {
             logger.d { "Performing initial P2P Engine setup for master manifest." }
-            val streams = parser.getStreams()
+            val streams = manifestManager.getStreams()
 
-            engineManager.setManifestUrl(manifestUrl)
-            engineManager.sendAllStreams(streams)
-            updateStreamParams?.let { engineManager.sendStream(it) }
+            engine.setManifestUrl(manifestUrl)
+            engine.sendAllStreams(streams)
+            updateStreamParams?.let { engine.sendStream(it) }
         } else {
             if (updateStreamParams == null) {
                 logger.w { "No stream parameters found for URL: $manifestUrl. Skipping engine sync." }
                 return
             }
-            engineManager.sendStream(updateStreamParams)
+            engine.sendStream(updateStreamParams)
         }
     }
 
