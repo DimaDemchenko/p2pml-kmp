@@ -54,21 +54,61 @@ class CoreConfigJsMapperTest {
     }
 
     @Test
-    fun dynamicConfigOmitsHttpSegmentValidation() {
+    fun dynamicConfigEmitsAllFunctionHooks() {
         val config = DynamicCoreConfig().apply {
             validateP2PSegmentJs = "P2P_FN"
+            validateHTTPSegmentJs = "HTTP_FN"
             httpRequestSetupJs = "SETUP_FN"
-            mainStream = DynamicStreamConfig().apply { validateP2PSegmentJs = "MAIN_P2P_FN" }
+            mainStream = DynamicStreamConfig().apply { validateHTTPSegmentJs = "MAIN_HTTP_FN" }
         }
 
         val js = CoreConfigJsMapper.toJsExpression(config)
 
         assertContains(js, "config.validateP2PSegment = P2P_FN;")
+        assertContains(js, "config.validateHTTPSegment = HTTP_FN;")
         assertContains(js, "config.httpRequestSetup = SETUP_FN;")
         assertContains(js, "config.mainStream = config.mainStream || {};")
-        assertContains(js, "config.mainStream.validateP2PSegment = MAIN_P2P_FN;")
-        // DynamicCoreConfig exposes no HTTP-segment validation hook.
-        assertFalse(js.contains("validateHTTPSegment"), "dynamic config must not emit validateHTTPSegment")
+        assertContains(js, "config.mainStream.validateHTTPSegment = MAIN_HTTP_FN;")
+    }
+
+    @Test
+    fun assignedBooleansAlwaysSerializeSoStreamFalseCanOverrideGlobalTrue() {
+        val config = CoreConfig().apply {
+            isP2PDisabled = true
+            mainStream = StreamConfig().apply { isP2PDisabled = false }
+        }
+
+        val js = CoreConfigJsMapper.toJsExpression(config)
+
+        assertContains(js, "\"isP2PDisabled\":true")
+        assertContains(js, "\"mainStream\":{\"isP2PDisabled\":false}")
+    }
+
+    @Test
+    fun unassignedBooleansAreOmitted() {
+        val js = CoreConfigJsMapper.toJsExpression(CoreConfig())
+
+        assertFalse(js.contains("isP2PDisabled"), "unassigned booleans must not serialize")
+        assertFalse(js.contains("isP2PUploadDisabled"), "unassigned booleans must not serialize")
+    }
+
+    @Test
+    fun peerChurnAndWebRtcFieldsSerializeOnlyWhenSet() {
+        val unset = CoreConfigJsMapper.toJsExpression(CoreConfig())
+        assertFalse(unset.contains("p2pMaxPeers"))
+        assertFalse(unset.contains("p2pChurnMaxPeersMultiplier"))
+        assertFalse(unset.contains("webRtcOffersCount"))
+
+        val set = CoreConfigJsMapper.toJsExpression(
+            CoreConfig().apply {
+                p2pMaxPeers = 40
+                p2pChurnMaxPeersMultiplier = 2.0
+                webRtcConnectionTimeoutMs = 10_000
+            }
+        )
+        assertContains(set, "\"p2pMaxPeers\":40")
+        assertContains(set, "\"p2pChurnMaxPeersMultiplier\":2.0")
+        assertContains(set, "\"webRtcConnectionTimeoutMs\":10000")
     }
 
     @Test
