@@ -47,19 +47,23 @@ internal class IosWebViewEventDispatcher(
         val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val downloadSource = dict.objectForKey("downloadSource") as? String ?: return
         val peerId = dict.objectForKey("peerId") as? String
+        val streamType = dict.objectForKey("streamType") as? String ?: return
+        val infoHash = dict.objectForKey("infoHash") as? String ?: return
 
         val source = DownloadSource.fromValue(downloadSource) ?: run {
             logger.w { "Dropping chunk event with unknown download source: $downloadSource" }
             return
         }
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId))
+        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId, streamType, infoHash))
     }
 
     private fun handleChunkUploaded(body: Any?) {
         val dict = body as? NSDictionary ?: return
         val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
         val peerId = dict.objectForKey("peerId") as? String ?: return
-        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId))
+        val streamType = dict.objectForKey("streamType") as? String ?: return
+        val infoHash = dict.objectForKey("infoHash") as? String ?: return
+        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId, streamType, infoHash))
     }
 
     private fun handleGenericMessage(body: Any?) {

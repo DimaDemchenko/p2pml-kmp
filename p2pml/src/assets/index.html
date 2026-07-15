@@ -172,29 +172,40 @@
           return "unknown";
         }
 
-        sendChunkDownloaded(bytesLength, downloadSource, peerId) {
+        sendChunkDownloaded(bytesLength, downloadSource, peerId, streamType, infoHash) {
           if (this.platform === "android") {
             window.P2PMLAndroid.onChunkDownloaded(
               bytesLength,
               downloadSource,
               peerId,
+              streamType,
+              infoHash,
             );
           } else if (this.platform === "ios") {
             window.webkit.messageHandlers.p2pml_onChunkDownloaded.postMessage({
               bytesLength,
               downloadSource,
               peerId,
+              streamType,
+              infoHash,
             });
           }
         }
 
-        sendChunkUploaded(bytesLength, peerId) {
+        sendChunkUploaded(bytesLength, peerId, streamType, infoHash) {
           if (this.platform === "android") {
-            window.P2PMLAndroid.onChunkUploaded(bytesLength, peerId);
+            window.P2PMLAndroid.onChunkUploaded(
+              bytesLength,
+              peerId,
+              streamType,
+              infoHash,
+            );
           } else if (this.platform === "ios") {
             window.webkit.messageHandlers.p2pml_onChunkUploaded.postMessage({
               bytesLength,
               peerId,
+              streamType,
+              infoHash,
             });
           }
         }
@@ -255,12 +266,18 @@
 
           const handler = (...args) => {
             if (eventName === "onChunkDownloaded") {
-              this.bridge.sendChunkDownloaded(args[0], args[1], args[2]);
+              this.bridge.sendChunkDownloaded(
+                args[0],
+                args[1],
+                args[2],
+                args[3],
+                args[4],
+              );
               return;
             }
 
             if (eventName === "onChunkUploaded") {
-              this.bridge.sendChunkUploaded(args[0], args[1]);
+              this.bridge.sendChunkUploaded(args[0], args[1], args[2], args[3]);
               return;
             }
 
@@ -301,18 +318,16 @@
         formatEventPayload(eventName, args) {
           switch (eventName) {
             case "onTrackerError":
-              return {
-                streamType: args[0].streamType,
-                error: this.serializeJsError(args[0].error),
-              };
-            case "onTrackerWarning":
-              return {
-                streamType: args[0].streamType,
-                warning: this.serializeJsError(args[0].warning),
-              };
             case "onSegmentError":
             case "onPeerError":
+            case "onPeerConnectError":
               return { ...args[0], error: this.serializeJsError(args[0].error) };
+            case "onTrackerWarning":
+            case "onPeerWarning":
+              return {
+                ...args[0],
+                warning: this.serializeJsError(args[0].warning),
+              };
             default:
               return args[0];
           }

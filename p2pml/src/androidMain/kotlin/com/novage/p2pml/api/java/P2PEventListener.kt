@@ -2,8 +2,10 @@ package com.novage.p2pml.api.java
 
 import com.novage.p2pml.api.events.ChunkDownloadedDetails
 import com.novage.p2pml.api.events.ChunkUploadedDetails
+import com.novage.p2pml.api.events.PeerConnectErrorDetails
 import com.novage.p2pml.api.events.PeerDetails
 import com.novage.p2pml.api.events.PeerErrorDetails
+import com.novage.p2pml.api.events.PeerWarningDetails
 import com.novage.p2pml.api.events.SegmentAbortDetails
 import com.novage.p2pml.api.events.SegmentErrorDetails
 import com.novage.p2pml.api.events.SegmentLoadDetails
@@ -18,8 +20,10 @@ interface P2PEventListener {
     fun onSegmentError(details: SegmentErrorDetails) {}
     fun onSegmentAbort(details: SegmentAbortDetails) {}
     fun onPeerConnect(details: PeerDetails) {}
+    fun onPeerConnectError(details: PeerConnectErrorDetails) {}
     fun onPeerClose(details: PeerDetails) {}
     fun onPeerError(details: PeerErrorDetails) {}
+    fun onPeerWarning(details: PeerWarningDetails) {}
     fun onChunkDownloaded(details: ChunkDownloadedDetails) {}
     fun onChunkUploaded(details: ChunkUploadedDetails) {}
     fun onTrackerError(details: TrackerErrorDetails) {}

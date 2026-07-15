@@ -50,8 +50,10 @@ class P2PEvents internal constructor(
     private val segmentError = jsonChannel<SegmentErrorDetails>("onSegmentError")
     private val segmentAbort = jsonChannel<SegmentAbortDetails>("onSegmentAbort")
     private val peerConnect = jsonChannel<PeerDetails>("onPeerConnect")
+    private val peerConnectError = jsonChannel<PeerConnectErrorDetails>("onPeerConnectError")
     private val peerClose = jsonChannel<PeerDetails>("onPeerClose")
     private val peerError = jsonChannel<PeerErrorDetails>("onPeerError")
+    private val peerWarning = jsonChannel<PeerWarningDetails>("onPeerWarning")
     private val trackerError = jsonChannel<TrackerErrorDetails>("onTrackerError")
     private val trackerWarning = jsonChannel<TrackerWarningDetails>("onTrackerWarning")
     private val chunkDownloaded = directChannel<ChunkDownloadedDetails>("onChunkDownloaded", capacity = 256)
@@ -59,7 +61,7 @@ class P2PEvents internal constructor(
 
     private val channels: List<EventChannel<*>> = listOf(
         segmentLoaded, segmentStart, segmentError, segmentAbort,
-        peerConnect, peerClose, peerError,
+        peerConnect, peerConnectError, peerClose, peerError, peerWarning,
         chunkDownloaded, chunkUploaded,
         trackerError, trackerWarning
     )
@@ -70,8 +72,10 @@ class P2PEvents internal constructor(
     val onSegmentError: SharedFlow<SegmentErrorDetails> = segmentError.shared
     val onSegmentAbort: SharedFlow<SegmentAbortDetails> = segmentAbort.shared
     val onPeerConnect: SharedFlow<PeerDetails> = peerConnect.shared
+    val onPeerConnectError: SharedFlow<PeerConnectErrorDetails> = peerConnectError.shared
     val onPeerClose: SharedFlow<PeerDetails> = peerClose.shared
     val onPeerError: SharedFlow<PeerErrorDetails> = peerError.shared
+    val onPeerWarning: SharedFlow<PeerWarningDetails> = peerWarning.shared
     val onTrackerError: SharedFlow<TrackerErrorDetails> = trackerError.shared
     val onTrackerWarning: SharedFlow<TrackerWarningDetails> = trackerWarning.shared
     val onChunkDownloaded: SharedFlow<ChunkDownloadedDetails> = chunkDownloaded.shared

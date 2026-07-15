@@ -5,18 +5,29 @@ import kotlinx.serialization.Serializable
 /**
  * Represents the details of a tracker error event.
  *
+ * @property trackerUrl The tracker URL.
+ * @property infoHash The info hash of the swarm that the tracker is for.
  * @property streamType The type of stream that the tracker is for.
  * @property error The error that occurred during the tracker request.
  */
-@Serializable data class TrackerErrorDetails(val streamType: String, val error: JsError)
+@Serializable
+data class TrackerErrorDetails(val trackerUrl: String, val infoHash: String, val streamType: String, val error: JsError)
 
 /**
  * Represents the details of a tracker warning event.
  *
+ * @property trackerUrl The tracker URL.
+ * @property infoHash The info hash of the swarm that the tracker is for.
  * @property streamType The type of stream that the tracker is for.
  * @property warning The warning that occurred during the tracker request.
  */
-@Serializable data class TrackerWarningDetails(val streamType: String, val warning: JsError)
+@Serializable
+data class TrackerWarningDetails(
+    val trackerUrl: String,
+    val infoHash: String,
+    val streamType: String,
+    val warning: JsError
+)
 
 /**
  * Represents a JavaScript error.
