@@ -80,13 +80,11 @@ class P2PMediaLoaderCoreTest {
     }
 
     private class StubPlaybackProvider : PlaybackProvider {
-        override fun setPlaybackListener(listener: PlaybackListener?) {}
+        override fun setPlaybackListener(listener: PlaybackListener?) = Unit
     }
 
     private class StubWebViewFactory : WebViewFactory {
-        override fun createHeadlessWebView(
-            events: P2PEvents,
-            onFatalError: (P2PMediaLoaderException) -> Unit
-        ) = throw AssertionError("initialize() must fail before creating a WebView")
+        override fun createHeadlessWebView(events: P2PEvents, onFatalError: (P2PMediaLoaderException) -> Unit) =
+            throw AssertionError("initialize() must fail before creating a WebView")
     }
 }

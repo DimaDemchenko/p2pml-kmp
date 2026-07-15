@@ -42,28 +42,37 @@ internal class IosWebViewEventDispatcher(
         }
     }
 
+    private class ChunkFields(val bytesLength: Int, val streamType: String, val infoHash: String)
+
+    private fun NSDictionary.chunkFields(): ChunkFields? {
+        val bytesLength = (objectForKey("bytesLength") as? Number)?.toInt() ?: return null
+        val streamType = objectForKey("streamType") as? String ?: return null
+        val infoHash = objectForKey("infoHash") as? String ?: return null
+        return ChunkFields(bytesLength, streamType, infoHash)
+    }
+
     private fun handleChunkDownloaded(body: Any?) {
         val dict = body as? NSDictionary ?: return
-        val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
+        val fields = dict.chunkFields() ?: return
         val downloadSource = dict.objectForKey("downloadSource") as? String ?: return
-        val peerId = dict.objectForKey("peerId") as? String
-        val streamType = dict.objectForKey("streamType") as? String ?: return
-        val infoHash = dict.objectForKey("infoHash") as? String ?: return
 
         val source = DownloadSource.fromValue(downloadSource) ?: run {
             logger.w { "Dropping chunk event with unknown download source: $downloadSource" }
             return
         }
-        events.emitChunkDownloaded(ChunkDownloadedDetails(bytesLength, source, peerId, streamType, infoHash))
+        val peerId = dict.objectForKey("peerId") as? String
+        events.emitChunkDownloaded(
+            ChunkDownloadedDetails(fields.bytesLength, source, peerId, fields.streamType, fields.infoHash)
+        )
     }
 
     private fun handleChunkUploaded(body: Any?) {
         val dict = body as? NSDictionary ?: return
-        val bytesLength = (dict.objectForKey("bytesLength") as? Number)?.toInt() ?: return
+        val fields = dict.chunkFields() ?: return
         val peerId = dict.objectForKey("peerId") as? String ?: return
-        val streamType = dict.objectForKey("streamType") as? String ?: return
-        val infoHash = dict.objectForKey("infoHash") as? String ?: return
-        events.emitChunkUploaded(ChunkUploadedDetails(bytesLength, peerId, streamType, infoHash))
+        events.emitChunkUploaded(
+            ChunkUploadedDetails(fields.bytesLength, peerId, fields.streamType, fields.infoHash)
+        )
     }
 
     private fun handleGenericMessage(body: Any?) {
