@@ -23,5 +23,7 @@ import kotlinx.serialization.Serializable
  *
  * @property message The error message.
  * @property stack The stack trace of the error.
+ * @property type The engine's error kind when available, e.g. "http-error" for segment
+ *   requests or "ERR_CONNECTION_FAILURE" for peers.
  */
-@Serializable data class JsError(val message: String, val stack: String? = null)
+@Serializable data class JsError(val message: String, val stack: String? = null, val type: String? = null)

@@ -33,7 +33,7 @@ data class SegmentStartDetails(val segment: Segment, val downloadSource: Downloa
 /**
  * Represents details about a segment error event.
  *
- * @property error The error message.
+ * @property error The error that caused the download to fail.
  * @property segment The segment that the event is about.
  * @property downloadSource The origin of the segment download.
  * @property peerId The ID of the peer from which the segment was downloaded.
@@ -41,10 +41,10 @@ data class SegmentStartDetails(val segment: Segment, val downloadSource: Downloa
  */
 @Serializable
 data class SegmentErrorDetails(
-    val error: String,
+    val error: JsError,
     val segment: Segment,
     val downloadSource: DownloadSource,
-    val peerId: String?,
+    val peerId: String? = null,
     val streamType: String
 )
 

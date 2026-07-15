@@ -280,17 +280,39 @@
           this.eventHandlers.delete(eventName);
         }
 
+        // Engine errors are Error subclasses: message/stack are not own-enumerable, and the
+        // error kind lives in `type` (segment requests) or `code` (peers). Raw JSON.stringify
+        // would serialize them as {} or {type} only, so normalize to a stable shape here.
+        serializeJsError(error) {
+          if (error == null) return { message: "" };
+          if (typeof error !== "object") return { message: String(error) };
+          return {
+            message: error.message != null ? String(error.message) : "",
+            stack: typeof error.stack === "string" ? error.stack : undefined,
+            type:
+              typeof error.type === "string"
+                ? error.type
+                : typeof error.code === "string"
+                  ? error.code
+                  : undefined,
+          };
+        }
+
         formatEventPayload(eventName, args) {
           switch (eventName) {
             case "onTrackerError":
+              return {
+                streamType: args[0].streamType,
+                error: this.serializeJsError(args[0].error),
+              };
             case "onTrackerWarning":
               return {
                 streamType: args[0].streamType,
-                error: {
-                  message: args[0].error?.message,
-                  stack: args[0].error?.stack,
-                },
+                warning: this.serializeJsError(args[0].warning),
               };
+            case "onSegmentError":
+            case "onPeerError":
+              return { ...args[0], error: this.serializeJsError(args[0].error) };
             default:
               return args[0];
           }

@@ -18,4 +18,4 @@ import kotlinx.serialization.Serializable
  * @property error The error that occurred during the peer-to-peer connection.
  */
 @Serializable
-data class PeerErrorDetails(val peerId: String, val streamType: String, val error: String)
+data class PeerErrorDetails(val peerId: String, val streamType: String, val error: JsError)
