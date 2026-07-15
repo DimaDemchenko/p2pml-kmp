@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSError
+import platform.Foundation.NSSelectorFromString
 import platform.Foundation.NSThread
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
@@ -95,7 +96,10 @@ private class IosHeadlessWebView(
 
         wkWebView.hidden = true
         wkWebView.userInteractionEnabled = false
-        wkWebView.inspectable = P2PLogging.isDebugEnabled
+
+        if (wkWebView.respondsToSelector(NSSelectorFromString("setInspectable:"))) {
+            wkWebView.inspectable = P2PLogging.isDebugEnabled
+        }
 
         this.webView = wkWebView
     }
