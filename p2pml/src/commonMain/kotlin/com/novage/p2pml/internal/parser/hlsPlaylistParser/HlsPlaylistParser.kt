@@ -2,13 +2,18 @@ package com.novage.p2pml.internal.parser.hlsPlaylistParser
 
 import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.utils.CoreLogger
+import io.ktor.http.Url
 import kotlin.math.roundToLong
 
 private const val VARIABLE_REFERENCE_MARKER = "{\$"
 private const val BYTERANGE_SEPARATOR = '@'
 private const val TAG_PREFIX = "#EXT"
 
-private data class ParserContext(val baseUri: String, val vars: MutableMap<String, String> = mutableMapOf())
+private data class ParserContext(
+    val baseUri: String,
+    val parentVars: Map<String, String> = emptyMap(),
+    val vars: MutableMap<String, String> = mutableMapOf()
+)
 
 private class SegmentState(
     var mediaSequence: Long = 0L,
@@ -55,8 +60,12 @@ internal class HlsPlaylistParser(
      * (missing required attributes) — an origin serving an HTML error page with HTTP 200
      * is the most common real-world trigger.
      */
-    fun parse(manifestUrl: String, manifestData: String): ParsedPlaylist = try {
-        parsePlaylist(manifestUrl, manifestData)
+    fun parse(
+        manifestUrl: String,
+        manifestData: String,
+        parentVariables: Map<String, String> = emptyMap()
+    ): ParsedPlaylist = try {
+        parsePlaylist(manifestUrl, manifestData, parentVariables)
     } catch (e: IllegalArgumentException) {
         throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
     } catch (e: IllegalStateException) {
@@ -65,10 +74,14 @@ internal class HlsPlaylistParser(
         throw ManifestParseException("Failed to parse manifest: $manifestUrl", e)
     }
 
-    private fun parsePlaylist(manifestUrl: String, manifestData: String): ParsedPlaylist {
+    private fun parsePlaylist(
+        manifestUrl: String,
+        manifestData: String,
+        parentVariables: Map<String, String>
+    ): ParsedPlaylist {
         val cleaned = cleanBOM(manifestData)
         val iterator = PlaylistLineIterator(cleaned.lineSequence())
-        val context = ParserContext(baseUri = manifestUrl)
+        val context = ParserContext(baseUri = manifestUrl, parentVars = parentVariables)
 
         var headerLine: String? = null
         while (iterator.hasNext()) {
@@ -283,6 +296,10 @@ internal class HlsPlaylistParser(
                 trimmedLine.startsWith(TAG_SESSION_KEY) -> {
                     rewrittenLine = processSessionKeyLine(originalLine, trimmedLine, context)
                 }
+
+                trimmedLine.startsWith(TAG_SESSION_DATA) || trimmedLine.startsWith(TAG_CONTENT_STEERING) -> {
+                    rewrittenLine = absolutizeTagUri(originalLine, trimmedLine, context)
+                }
             }
             builder.append(rewrittenLine).append("\n")
         }
@@ -293,10 +310,26 @@ internal class HlsPlaylistParser(
             baseUri = context.baseUri,
             variants = variants,
             videos = grouped[TYPE_VIDEO].orEmpty(),
-            audios = grouped[TYPE_AUDIO].orEmpty()
+            audios = grouped[TYPE_AUDIO].orEmpty(),
+            variables = context.vars.toMap()
         )
         return ParsedPlaylist(playlist, builder.toString())
     }
+
+    /**
+     * SESSION-DATA and CONTENT-STEERING URIs are fetched by the player directly (they are not
+     * proxied), so relative URIs must be absolutized or they would resolve against the local
+     * proxy origin.
+     */
+    private fun absolutizeTagUri(originalLine: String, trimmedLine: String, context: ParserContext): String =
+        processUrlTag(
+            line = originalLine,
+            urlExtractor = {
+                parseUrlAttribute(trimmedLine, context.vars, context.baseUri)
+                    ?: parseUrlAttribute(trimmedLine, context.vars, context.baseUri, REGEX_SERVER_URI)
+            },
+            rewriter = { it.absolute }
+        )
 
     private fun parseAndRewriteVariant(
         originalLine: String,
@@ -384,11 +417,32 @@ private fun isMediaPlaylistTag(trimmed: String): Boolean = trimmed.startsWith(TA
     trimmed.startsWith(TAG_DISCONTINUITY) ||
     trimmed == TAG_ENDLIST
 
+// RFC 8216bis defines three EXT-X-DEFINE forms: NAME/VALUE, QUERYPARAM (value taken from the
+// query string of the URL the containing playlist was loaded from) and IMPORT (value inherited
+// from the multivariant playlist). A missing query parameter or import source makes the
+// playlist invalid per spec.
 private fun parseDefineTag(line: String, context: ParserContext) {
-    val name = parseStringAttr(line, REGEX_NAME, context.vars)
-    val value = parseStringAttr(line, REGEX_VALUE, context.vars)
-    context.vars[name] = value
+    val name = parseOptionalStringAttr(line, REGEX_NAME, context.vars)
+    val queryParam = parseOptionalStringAttr(line, REGEX_QUERYPARAM, emptyMap())
+    val import = parseOptionalStringAttr(line, REGEX_IMPORT, emptyMap())
+    when {
+        name != null -> context.vars[name] = parseStringAttr(line, REGEX_VALUE, context.vars)
+
+        queryParam != null -> context.vars[queryParam] = resolveQueryParam(queryParam, context.baseUri)
+
+        import != null -> context.vars[import] = resolveImport(import, context.parentVars)
+
+        else -> throw NoSuchElementException(
+            "$TAG_DEFINE requires NAME, QUERYPARAM or IMPORT: ${line.take(ERROR_LINE_PREVIEW_LENGTH)}"
+        )
+    }
 }
+
+private fun resolveQueryParam(param: String, baseUri: String): String = Url(baseUri).parameters[param]
+    ?: throw NoSuchElementException("QUERYPARAM \"$param\" not present in the playlist URL")
+
+private fun resolveImport(name: String, parentVars: Map<String, String>): String = parentVars[name]
+    ?: throw NoSuchElementException("IMPORT \"$name\" not defined by the multivariant playlist")
 
 private fun parseMediaSequenceTag(line: String, state: SegmentState) {
     state.mediaSequence = parseLongAttr(line, REGEX_MEDIA_SEQUENCE)
@@ -429,8 +483,12 @@ private fun String.toParsedUrl(baseUri: String, vars: Map<String, String>): Pars
     return ParsedUrl(this, resolveAbsoluteUrl(baseUri, expanded))
 }
 
-private fun parseUrlAttribute(line: String, vars: Map<String, String>, baseUri: String): ParsedUrl? =
-    REGEX_URI.find(line)?.groups?.get(1)?.value?.toParsedUrl(baseUri, vars)
+private fun parseUrlAttribute(
+    line: String,
+    vars: Map<String, String>,
+    baseUri: String,
+    regex: Regex = REGEX_URI
+): ParsedUrl? = regex.find(line)?.groups?.get(1)?.value?.toParsedUrl(baseUri, vars)
 
 private fun createSegment(line: String, baseUri: String, vars: Map<String, String>, state: SegmentState): HlsSegment =
     HlsSegment(

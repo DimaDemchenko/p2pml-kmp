@@ -15,7 +15,9 @@ internal data class HlsMultivariantPlaylist(
     override val baseUri: String,
     val variants: List<Variant>,
     val videos: List<Rendition>,
-    val audios: List<Rendition>
+    val audios: List<Rendition>,
+    /** EXT-X-DEFINE variables, retained so media playlists can resolve IMPORT. */
+    val variables: Map<String, String> = emptyMap()
 ) : HlsPlaylist
 
 internal data class HlsMediaPlaylist(

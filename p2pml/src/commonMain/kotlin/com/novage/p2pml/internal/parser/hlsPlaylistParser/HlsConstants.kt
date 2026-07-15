@@ -19,6 +19,8 @@ internal const val TAG_SESSION_KEY = "#EXT-X-SESSION-KEY"
 internal const val TAG_BYTERANGE = "#EXT-X-BYTERANGE"
 internal const val TAG_PRELOAD_HINT = "#EXT-X-PRELOAD-HINT"
 internal const val TAG_RENDITION_REPORT = "#EXT-X-RENDITION-REPORT"
+internal const val TAG_SESSION_DATA = "#EXT-X-SESSION-DATA"
+internal const val TAG_CONTENT_STEERING = "#EXT-X-CONTENT-STEERING"
 
 // Type constants.
 internal const val TYPE_AUDIO = "AUDIO"
@@ -42,6 +44,9 @@ internal val REGEX_MEDIA_SEQUENCE = Regex("$TAG_MEDIA_SEQUENCE:(\\d+)\\b")
 internal val REGEX_MEDIA_DURATION = Regex("$TAG_MEDIA_DURATION:([\\d\\.]+)\\b")
 internal val REGEX_BYTERANGE = Regex("$TAG_BYTERANGE:(\\d+(?:@\\d+)?)\\b")
 internal val REGEX_URI = Regex("URI=\"(.+?)\"")
+internal val REGEX_SERVER_URI = Regex("SERVER-URI=\"(.+?)\"")
+internal val REGEX_QUERYPARAM = Regex("QUERYPARAM=\"(.+?)\"")
+internal val REGEX_IMPORT = Regex("IMPORT=\"(.+?)\"")
 internal val REGEX_TYPE = Regex("TYPE=($TYPE_AUDIO|$TYPE_VIDEO|$TYPE_SUBTITLES|$TYPE_CLOSED_CAPTIONS)")
 internal val REGEX_LANGUAGE = Regex("LANGUAGE=\"(.+?)\"")
 internal val REGEX_NAME = Regex("NAME=\"(.+?)\"")

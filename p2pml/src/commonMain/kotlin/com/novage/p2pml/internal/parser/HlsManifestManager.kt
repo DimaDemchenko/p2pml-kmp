@@ -18,6 +18,9 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
     private val tracker = HlsStreamStateTracker()
     private val mutex = Mutex()
 
+    /** EXT-X-DEFINE variables of the tracked multivariant playlist; media playlists resolve IMPORT against them. */
+    private var multivariantVariables: Map<String, String> = emptyMap()
+
     /**
      * Parses and rewrites a manifest. [manifestUrl] is the identity the stream is tracked under —
      * the URL the player requested, stable across sessions and refreshes. [resolutionBaseUrl] is
@@ -35,7 +38,8 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
             logger.d { "Manifest served via redirect. Resolving relative URLs against: $resolutionBaseUrl" }
         }
 
-        val result = parser.parse(resolutionBaseUrl, originalManifest)
+        val parentVariables = mutex.withLock { multivariantVariables }
+        val result = parser.parse(resolutionBaseUrl, originalManifest, parentVariables)
 
         return mutex.withLock {
             when (val hlsPlaylist = result.playlist) {
@@ -46,6 +50,7 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
 
                 is HlsMultivariantPlaylist -> {
                     logger.d { "Type: Multivariant (Master) Playlist" }
+                    multivariantVariables = hlsPlaylist.variables
                     tracker.postProcessMultivariantPlaylist(manifestUrl, hlsPlaylist)
                 }
             }
@@ -74,6 +79,7 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
     }
 
     suspend fun reset() = mutex.withLock {
+        multivariantVariables = emptyMap()
         tracker.reset()
     }
 }
