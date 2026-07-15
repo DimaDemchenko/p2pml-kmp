@@ -71,6 +71,11 @@ class P2PMediaLoader @JvmOverloads constructor(
      */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
 
+    /**
+     * Stops P2P streaming and tears down the local proxy, engine WebView and HTTP client.
+     * Returns immediately; resources are freed asynchronously. Idempotent and safe to call
+     * from any thread.
+     */
     fun release() {
         core.release()
         defaultProvider?.release()
@@ -80,6 +85,8 @@ class P2PMediaLoader @JvmOverloads constructor(
     companion object {
         /**
          * Lowers [com.novage.p2pml.api.logging.P2PLogging.minLevel] to DEBUG for full diagnostics.
+         * Call before [initialize] so the engine page is created with verbose logging — the debug
+         * switch is applied when the internal WebView boots.
          * Debug output includes manifest and segment URLs, which may carry signed query parameters.
          */
         fun enableLogging() = P2PLogging.enableLogging()
@@ -99,7 +106,9 @@ class P2PMediaLoader @JvmOverloads constructor(
      *
      * @param exoPlayer ExoPlayer instance for media playback
      * @throws P2PMediaLoaderException if initialization or startup fails
-     * @throws CancellationException if the coroutine is cancelled
+     * @throws CancellationException if the coroutine is cancelled. Cancellation is terminal:
+     *   the loader ends up released and cannot be re-initialized — create a new instance to
+     *   retry. Launch from a scope that survives configuration changes if the loader is retained.
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(exoPlayer: ExoPlayer) {
@@ -126,7 +135,9 @@ class P2PMediaLoader @JvmOverloads constructor(
      *
      * @param provider Custom Playback Provider
      * @throws P2PMediaLoaderException if initialization or startup fails
-     * @throws CancellationException if the coroutine is cancelled
+     * @throws CancellationException if the coroutine is cancelled. Cancellation is terminal:
+     *   the loader ends up released and cannot be re-initialized — create a new instance to
+     *   retry. Launch from a scope that survives configuration changes if the loader is retained.
      */
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(provider: PlaybackProvider) {

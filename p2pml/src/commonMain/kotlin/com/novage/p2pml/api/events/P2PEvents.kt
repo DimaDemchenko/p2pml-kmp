@@ -14,6 +14,18 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 
+/**
+ * Streams of P2P engine events as hot [SharedFlow]s.
+ *
+ * Collecting a flow has a side effect: the first collector of an event subscribes the JS engine
+ * to it, and when the last collector leaves, the engine is unsubscribed — a flow nobody collects
+ * never emits. Subscriptions made before the loader becomes active are forwarded to the engine
+ * once it starts.
+ *
+ * Delivery uses a bounded buffer with [BufferOverflow.DROP_OLDEST]: a slow collector loses the
+ * oldest pending events instead of stalling the bridge. [onChunkDownloaded] and [onChunkUploaded]
+ * are high-frequency — consume them promptly if you aggregate transfer statistics.
+ */
 class P2PEvents internal constructor(
     private val coreScope: CoroutineScope,
     private val onSubscribe: (String) -> Unit,
