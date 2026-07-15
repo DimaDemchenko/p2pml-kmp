@@ -3,9 +3,10 @@ package com.novage.p2pml.api.errors
 /**
  * Stable reason codes for [P2PMediaLoaderException].
  *
- * Every observable exception is fatal: it is either thrown from `initialize` (and reflected as a
+ * Engine and server codes are fatal: they are either thrown from `initialize` (and reflected as a
  * `FAILED` loader state) or surfaced as a `FAILED` state after the core self-releases at runtime.
- * Branch on [P2PMediaLoaderErrorCode] for analytics or messaging.
+ * [NOT_INITIALIZED] and [INVALID_STATE] instead report caller misuse and leave the loader state
+ * unchanged. Branch on [P2PMediaLoaderErrorCode] for analytics or messaging.
  */
 enum class P2PMediaLoaderErrorCode {
     /** The internal proxy server failed to bind/start. */
@@ -24,7 +25,10 @@ enum class P2PMediaLoaderErrorCode {
     ENGINE_CRASHED,
 
     /** The loader was used before initialization completed or after release. */
-    NOT_INITIALIZED
+    NOT_INITIALIZED,
+
+    /** `initialize` was called while the loader was not IDLE (double-initialize, or after release/failure). */
+    INVALID_STATE
 }
 
 /**

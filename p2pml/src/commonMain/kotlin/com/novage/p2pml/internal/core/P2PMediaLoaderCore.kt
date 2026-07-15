@@ -78,9 +78,9 @@ internal class P2PMediaLoaderCore(
                     P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING)
                 )
             ) {
-                val message = "Initialization skipped: Core is already in state ${_state.value.status}"
+                val message = "initialize() requires IDLE state; current state: ${_state.value.status}"
                 logger.w { message }
-                throw P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED, message)
+                throw P2PMediaLoaderException(P2PMediaLoaderErrorCode.INVALID_STATE, message)
             }
 
             logger.d { "Initializing P2PMediaLoaderCore..." }
