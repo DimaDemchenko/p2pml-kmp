@@ -40,6 +40,6 @@ enum class P2PEventType(
     CHUNK_UPLOADED({ listener, scope -> onChunkUploaded.onEach(listener::onChunkUploaded).launchIn(scope) }),
 
     TRACKER_ERROR({ listener, scope -> onTrackerError.onEach(listener::onTrackerError).launchIn(scope) }),
-    
+
     TRACKER_WARNING({ listener, scope -> onTrackerWarning.onEach(listener::onTrackerWarning).launchIn(scope) })
 }
