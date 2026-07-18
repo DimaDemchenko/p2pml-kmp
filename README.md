@@ -19,8 +19,9 @@ URL directly — playback never depends on P2P.
 ## Requirements
 
 - **Android**: minSdk 24. Calling `initialize(exoPlayer)` requires your app to depend on
-  `androidx.media3:media3-exoplayer` — the library compiles against it but does not ship it.
-  Apps that use a custom `PlaybackProvider` do not need media3 at all.
+  `androidx.media3:media3-exoplayer` (1.10.1 or newer) — the library compiles against it but
+  does not ship it. Apps that use a custom `PlaybackProvider` do not need media3 at all and
+  build cleanly without it.
 - **iOS**: AVPlayer is supported out of the box (the demo targets iOS 15.3+). Swift interop is
   generated with [SKIE](https://skie.touchlab.co/): suspend functions become `async`, flows
   become `AsyncSequence`.

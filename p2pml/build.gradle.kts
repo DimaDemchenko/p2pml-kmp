@@ -101,6 +101,11 @@ kotlin {
                 .get()
                 .toInt()
 
+        optimization {
+            consumerKeepRules.file("consumer-rules.pro")
+            consumerKeepRules.publish = true
+        }
+
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
             jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
@@ -144,6 +149,10 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            // compileOnly: consumers using initialize(ExoPlayer) already bring media3; those on
+            // a custom PlaybackProvider are not forced to. Requires media3 1.10.1+ (the
+            // Player.Listener overrides in ExoPlayerPlaybackProvider); consumer-rules.pro keeps
+            // media3-free consumers building cleanly under R8.
             compileOnly(libs.androidx.media3.exoplayer)
         }
 
