@@ -19,7 +19,12 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
-     * Subscribes to P2P engine events.
+     * Subscribes to **all** P2P engine events.
+     *
+     * This turns on every event in the JS engine — including the high-frequency
+     * [P2PEventType.CHUNK_DOWNLOADED] and [P2PEventType.CHUNK_UPLOADED] chunk statistics, which
+     * cost a WebView bridge call per transferred chunk — even for callbacks the listener does not
+     * override. If you only consume some events, prefer the overload taking [P2PEventType]s.
      *
      * **Important:** All listener callbacks are invoked on a background thread (`Dispatchers.Default`).
      * If you need to update the UI or interact with views inside a callback, you must explicitly
@@ -47,22 +52,37 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
      * @param listener The listener to receive event callbacks.
      * @return An [AutoCloseable] that cancels the subscriptions when closed.
      */
-    fun addListener(listener: P2PEventListener): AutoCloseable {
-        val jobs = listOf(
-            loader.p2pEvents.onSegmentLoaded.onEach(listener::onSegmentLoaded).launchIn(scope),
-            loader.p2pEvents.onSegmentStart.onEach(listener::onSegmentStart).launchIn(scope),
-            loader.p2pEvents.onSegmentError.onEach(listener::onSegmentError).launchIn(scope),
-            loader.p2pEvents.onSegmentAbort.onEach(listener::onSegmentAbort).launchIn(scope),
-            loader.p2pEvents.onPeerConnect.onEach(listener::onPeerConnect).launchIn(scope),
-            loader.p2pEvents.onPeerConnectError.onEach(listener::onPeerConnectError).launchIn(scope),
-            loader.p2pEvents.onPeerClose.onEach(listener::onPeerClose).launchIn(scope),
-            loader.p2pEvents.onPeerError.onEach(listener::onPeerError).launchIn(scope),
-            loader.p2pEvents.onPeerWarning.onEach(listener::onPeerWarning).launchIn(scope),
-            loader.p2pEvents.onChunkDownloaded.onEach(listener::onChunkDownloaded).launchIn(scope),
-            loader.p2pEvents.onChunkUploaded.onEach(listener::onChunkUploaded).launchIn(scope),
-            loader.p2pEvents.onTrackerError.onEach(listener::onTrackerError).launchIn(scope),
-            loader.p2pEvents.onTrackerWarning.onEach(listener::onTrackerWarning).launchIn(scope)
-        )
+    fun addListener(listener: P2PEventListener): AutoCloseable = subscribe(listener, P2PEventType.entries.toSet())
+
+    /**
+     * Subscribes to the given P2P engine [events] only.
+     *
+     * The JS engine is subscribed to exactly these events; the listener's other callbacks are
+     * never invoked and cause no bridge traffic.
+     *
+     * Callbacks are invoked on a background thread (`Dispatchers.Default`); switch to the main
+     * thread before touching UI.
+     *
+     * **Java Example:**
+     * ```java
+     * AutoCloseable subscription = loader.addListener(listener,
+     *     P2PEventType.PEER_CONNECT, P2PEventType.PEER_CLOSE);
+     * ```
+     *
+     * @param listener The listener to receive event callbacks.
+     * @param events The events to subscribe to; duplicates are ignored.
+     * @return An [AutoCloseable] that cancels the subscriptions when closed.
+     * @throws IllegalArgumentException if [events] is empty.
+     */
+    fun addListener(listener: P2PEventListener, vararg events: P2PEventType): AutoCloseable {
+        require(events.isNotEmpty()) {
+            "events must not be empty; use addListener(listener) to subscribe to all events"
+        }
+        return subscribe(listener, events.toSet())
+    }
+
+    private fun subscribe(listener: P2PEventListener, events: Set<P2PEventType>): AutoCloseable {
+        val jobs = events.map { it.collect(loader.p2pEvents, listener, scope) }
         return AutoCloseable { jobs.forEach { it.cancel() } }
     }
 
