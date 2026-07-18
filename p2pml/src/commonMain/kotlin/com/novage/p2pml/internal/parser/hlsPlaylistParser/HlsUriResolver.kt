@@ -133,8 +133,7 @@ private fun findSchemeIndex(uri: String, queryIndex: Int): Int {
 }
 
 private fun calculatePathIndex(uri: String, schemeIndex: Int, queryIndex: Int): Int {
-    val hasAuthority = schemeIndex != -1 &&
-        schemeIndex + SCHEME_SLASH_OFFSET < queryIndex &&
+    val hasAuthority = schemeIndex + SCHEME_SLASH_OFFSET < queryIndex &&
         uri[schemeIndex + 1] == '/' &&
         uri[schemeIndex + 2] == '/'
 

@@ -62,6 +62,33 @@ class HlsPlaylistParserTest {
     }
 
     @Test
+    fun testResolveAbsoluteUrlSchemeRelative() {
+        // Network-path reference (RFC 3986 §4.2): only the base scheme is prepended
+        assertEquals(
+            "https://cdn.example.com/seg1.ts",
+            resolveAbsoluteUrl("https://origin.example.com/live/master.m3u8", "//cdn.example.com/seg1.ts")
+        )
+
+        // Base scheme is carried over, not the base authority
+        assertEquals(
+            "http://cdn.example.com/segment.ts",
+            resolveAbsoluteUrl("http://example.com/path/manifest.m3u8", "//cdn.example.com/segment.ts")
+        )
+
+        // Query string survives resolution
+        assertEquals(
+            "https://cdn.example.com/seg1.ts?token=abc",
+            resolveAbsoluteUrl("https://origin.example.com/live/master.m3u8", "//cdn.example.com/seg1.ts?token=abc")
+        )
+
+        // Dot segments are removed after the authority
+        assertEquals(
+            "https://cdn.example.com/seg.ts",
+            resolveAbsoluteUrl("https://origin.example.com/live/master.m3u8", "//cdn.example.com/a/../seg.ts")
+        )
+    }
+
+    @Test
     fun testHeaderValidation() {
         val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
 
