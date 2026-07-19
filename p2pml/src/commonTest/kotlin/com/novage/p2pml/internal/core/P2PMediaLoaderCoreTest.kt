@@ -16,6 +16,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
@@ -166,6 +167,22 @@ class P2PMediaLoaderCoreTest {
         } finally {
             Dispatchers.resetMain()
         }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun releaseCompletesEventStreams() = runTest {
+        val core = P2PMediaLoaderCore()
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            core.p2pEvents.onPeerConnect.collect {}
+        }
+        assertFalse(collector.isCompleted)
+
+        core.release()
+        collector.join()
+
+        assertTrue(collector.isCompleted)
+        assertFalse(collector.isCancelled)
     }
 
     private class StubPlaybackProvider : PlaybackProvider {
