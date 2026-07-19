@@ -11,7 +11,7 @@ import kotlin.test.assertNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
@@ -37,7 +37,7 @@ class EngineEventPayloadContractTest {
         scope.cancel()
     }
 
-    private fun <T> collect(flow: SharedFlow<T>): List<T> {
+    private fun <T> collect(flow: Flow<T>): List<T> {
         val sink = mutableListOf<T>()
         scope.launch { flow.collect { sink.add(it) } }
         return sink

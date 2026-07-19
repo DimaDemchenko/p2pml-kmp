@@ -18,7 +18,6 @@ class PlayerViewModel: ObservableObject {
     @Published var player: AVPlayer?
 
     private var p2pLoader: P2PMediaLoader?
-    private var eventTasks: [Task<Void, Never>] = []
     private var populateTracksTask: Task<Void, Never>?
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
@@ -80,14 +79,18 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func observeLoaderState(_ loader: P2PMediaLoader) {
-        eventTasks.append(Task { [weak self] in
+        Task { [weak self] in
             for await state in loader.state {
                 guard let self else { return }
                 if state.status == .failed {
                     fallBackToHttp(reason: "state=FAILED code=\(String(describing: state.error?.code))")
                 }
+
+                if state.status == .failed || state.status == .released {
+                    break
+                }
             }
-        })
+        }
     }
 
     private func fallBackToHttp(reason: String) {
@@ -238,7 +241,9 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func setupP2PEvents(_ loader: P2PMediaLoader) {
-        eventTasks.append(Task { [weak self] in
+        // Event streams complete when the loader reaches a terminal state, so these loops end
+        // on their own after release() — no cancellation bookkeeping needed.
+        Task { [weak self] in
             for await details in loader.p2pEvents.onChunkDownloaded {
                 guard let self else { return }
                 uiState.totalDownloaded += Int64(details.bytesLength)
@@ -248,25 +253,25 @@ class PlayerViewModel: ObservableObject {
                     uiState.httpDownloaded += Int64(details.bytesLength)
                 }
             }
-        })
-        eventTasks.append(Task { [weak self] in
+        }
+        Task { [weak self] in
             for await details in loader.p2pEvents.onChunkUploaded {
                 self?.uiState.uploadTotal += Int64(details.bytesLength)
             }
-        })
-        eventTasks.append(Task { [weak self] in
+        }
+        Task { [weak self] in
             for await details in loader.p2pEvents.onPeerConnect {
                 guard let self else { return }
                 if !uiState.peers.contains(details.peerId) {
                     uiState.peers.append(details.peerId)
                 }
             }
-        })
-        eventTasks.append(Task { [weak self] in
+        }
+        Task { [weak self] in
             for await details in loader.p2pEvents.onPeerClose {
                 self?.uiState.peers.removeAll { $0 == details.peerId }
             }
-        })
+        }
     }
 
     func onMessageConsumed() {
@@ -300,9 +305,6 @@ class PlayerViewModel: ObservableObject {
 
         playerItemObserver = nil
         player = nil
-
-        eventTasks.forEach { $0.cancel() }
-        eventTasks.removeAll()
 
         populateTracksTask?.cancel()
         populateTracksTask = nil

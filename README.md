@@ -73,9 +73,10 @@ engine applies its own defaults; see the class KDoc for the semantics.
 
 ## Events
 
-`loader.p2pEvents` exposes engine events as hot `SharedFlow`s — segment lifecycle, peer and
+`loader.p2pEvents` exposes engine events as hot flows — segment lifecycle, peer and
 tracker activity, and per-chunk transfer stats. Collecting a flow subscribes the engine to that
-event; a flow nobody collects never emits.
+event; a flow nobody collects never emits. Every stream completes once the loader reaches a
+terminal state, so a Swift `for await` loop ends after `release()` instead of suspending forever.
 
 ## Custom engine page
 
