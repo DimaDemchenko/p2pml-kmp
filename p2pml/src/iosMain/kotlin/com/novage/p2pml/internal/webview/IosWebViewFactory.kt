@@ -18,6 +18,8 @@ import platform.Foundation.NSError
 import platform.Foundation.NSSelectorFromString
 import platform.Foundation.NSThread
 import platform.Foundation.NSURL
+import platform.Foundation.NSURLErrorCancelled
+import platform.Foundation.NSURLErrorDomain
 import platform.Foundation.NSURLRequest
 import platform.Foundation.setValue
 import platform.WebKit.WKErrorDomain
@@ -270,17 +272,28 @@ private class IosHeadlessWebView(
 private class NavigationDelegate(private val onError: (String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
+    
+    private val logger = CoreLogger("WKNavigationDelegate")
+
+    private fun isDeliberateCancellation(error: NSError): Boolean =
+        error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled
 
     @ObjCSignatureOverride
     override fun webView(webView: WKWebView, didFailProvisionalNavigation: WKNavigation?, withError: NSError) {
-        val msg = "WebView Error: ${withError.code} ${withError.localizedDescription}"
-        onError(msg)
+        if (isDeliberateCancellation(withError)) {
+            logger.d { "Ignoring NSURLErrorCancelled from deliberate stopLoading()" }
+            return
+        }
+        onError("WebView Error: ${withError.code} ${withError.localizedDescription}")
     }
 
     @ObjCSignatureOverride
     override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
-        val msg = "WebView Navigation Error: ${withError.code} ${withError.localizedDescription}"
-        onError(msg)
+        if (isDeliberateCancellation(withError)) {
+            logger.d { "Ignoring NSURLErrorCancelled from deliberate stopLoading()" }
+            return
+        }
+        onError("WebView Navigation Error: ${withError.code} ${withError.localizedDescription}")
     }
 
     override fun webViewWebContentProcessDidTerminate(webView: WKWebView) {
