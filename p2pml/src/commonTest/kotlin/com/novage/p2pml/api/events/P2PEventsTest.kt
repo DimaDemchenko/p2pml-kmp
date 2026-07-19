@@ -100,4 +100,38 @@ class P2PEventsTest {
 
         harness.coreScope.cancel()
     }
+
+    @Test
+    fun highFrequencyBurstDeliversCompletelyAndInOrder() = runTest {
+        val harness = Harness(this)
+        val received = mutableListOf<Int>()
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            harness.events.onChunkDownloaded.collect { received.add(it.bytesLength) }
+        }
+
+        // Larger than both the shared-flow buffer (256) and the channelFlow buffer (64):
+        // a keeping-up collector must see every emission, in order, with no drops.
+        repeat(BURST_SIZE) { i ->
+            harness.events.emitChunkDownloaded(
+                ChunkDownloadedDetails(
+                    bytesLength = i,
+                    downloadSource = DownloadSource.P2P,
+                    peerId = null,
+                    streamType = "main",
+                    infoHash = "aabbccdd"
+                )
+            )
+        }
+
+        assertEquals(List(BURST_SIZE) { it }, received)
+
+        harness.coreScope.cancel()
+        collector.join()
+        assertTrue(collector.isCompleted)
+        assertFalse(collector.isCancelled)
+    }
+
+    private companion object {
+        const val BURST_SIZE = 2048
+    }
 }
