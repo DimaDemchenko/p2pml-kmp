@@ -85,7 +85,7 @@ class PlayerViewModel: ObservableObject {
                 if state.status == .failed {
                     fallBackToHttp(reason: "state=FAILED code=\(String(describing: state.error?.code))")
                 }
-                
+
                 if state.status == .failed || state.status == .released {
                     break
                 }
