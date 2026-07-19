@@ -11,10 +11,10 @@ import kotlinx.serialization.Transient
  * [CoreConfig] value). A boolean, once assigned, is always serialized — including
  * `false`, so a per-stream `false` can override a top-level `true`.
  *
- * Properties are declared as class-body `var` fields (rather than constructor parameters)
- * so that Kotlin/Native exports a true no-arg `init()` to Swift/ObjC.
- * SKIE's [DefaultArgumentInterop] is disabled because the number of parameters
- * exceeds the practical 2^N overload limit.
+ * Properties are declared as class-body `var` fields (rather than constructor parameters
+ * with default values) so that Kotlin/Native exports a true no-arg `init()` to Swift/ObjC,
+ * and so SKIE's DefaultArgumentInterop has no constructor defaults to expand into 2^N
+ * overloads for this many parameters.
  *
  * **Kotlin:**
  * ```kotlin
