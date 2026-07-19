@@ -71,29 +71,32 @@ internal class P2PMediaLoaderCore(
 
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
-        withContext(Dispatchers.Default) {
-            if (!_state.compareAndSet(
-                    P2PMediaLoaderState(P2PMediaLoaderStatus.IDLE),
-                    P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING)
-                )
-            ) {
-                val message = "initialize() requires IDLE state; current state: ${_state.value.status}"
-                logger.w { message }
-                throw P2PMediaLoaderException(P2PMediaLoaderErrorCode.INVALID_STATE, message)
-            }
+        claimBoot()
+        logger.d { "Initializing P2PMediaLoaderCore..." }
 
-            logger.d { "Initializing P2PMediaLoaderCore..." }
-
-            runCatching {
+        runCatching {
+            withContext(Dispatchers.Default) {
                 performSessionInitialization(provider, webViewFactory)
-            }.onFailure { e ->
-                val mappedException = if (e !is Exception) e else handleInitializationException(e)
-                when (mappedException) {
-                    is P2PMediaLoaderException -> release(failure = mappedException)
-                    else -> release()
-                }
-                throw mappedException
             }
+        }.onFailure { e ->
+            val mappedException = if (e !is Exception) e else handleInitializationException(e)
+            when (mappedException) {
+                is P2PMediaLoaderException -> release(failure = mappedException)
+                else -> release()
+            }
+            throw mappedException
+        }
+    }
+
+    private fun claimBoot() {
+        if (!_state.compareAndSet(
+                P2PMediaLoaderState(P2PMediaLoaderStatus.IDLE),
+                P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING)
+            )
+        ) {
+            val message = "initialize() requires IDLE state; current state: ${_state.value.status}"
+            logger.w { message }
+            throw P2PMediaLoaderException(P2PMediaLoaderErrorCode.INVALID_STATE, message)
         }
     }
 

@@ -1,11 +1,13 @@
 package com.novage.p2pml.internal.server.utils
 
+import com.novage.p2pml.internal.http.MANIFEST_REQUEST_TIMEOUT_MS
 import com.novage.p2pml.internal.parser.byteRangeFromRuntimeId
 import com.novage.p2pml.internal.parser.segmentUrlFromRuntimeId
 import com.novage.p2pml.internal.server.services.SegmentPayload
 import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.prepareGet
@@ -45,6 +47,7 @@ internal data class ManifestFetchResult(val manifestContent: String, val respons
 internal suspend fun HttpClient.fetchManifest(call: ApplicationCall, manifestUrl: String): ManifestFetchResult {
     val response = this.get(manifestUrl) {
         copyProxyHeaders(call.request.headers)
+        timeout { requestTimeoutMillis = MANIFEST_REQUEST_TIMEOUT_MS }
     }
 
     return ManifestFetchResult(

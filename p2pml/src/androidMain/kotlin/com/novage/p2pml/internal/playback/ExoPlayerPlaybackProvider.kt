@@ -1,7 +1,6 @@
 package com.novage.p2pml.internal.playback
 
 import android.os.Handler
-import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -11,8 +10,9 @@ import com.novage.p2pml.api.playback.PlaybackInfo
 import com.novage.p2pml.api.playback.PlaybackListener
 import com.novage.p2pml.api.playback.PlaybackProvider
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -27,7 +27,19 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     @Volatile
     private var listener: PlaybackListener? = null
 
-    private val providerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    // media3 requires Player access on the player's applicationLooper (main by default, but
+    // reconfigurable via setLooper); Player.Listener callbacks already arrive on that looper.
+    private val playerHandler = Handler(exoPlayer.applicationLooper)
+
+    // Minimal Handler-backed dispatcher so this stays a coroutines-core-only module. delay()
+    // uses the default timer and resumes back here, i.e. on the player's looper. A post to a
+    // quit looper is dropped, which is fine: the player is gone and the scope gets cancelled.
+    private val playerDispatcher = object : CoroutineDispatcher() {
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            playerHandler.post(block)
+        }
+    }
+    private val providerScope = CoroutineScope(playerDispatcher + SupervisorJob())
     private var progressTrackerJob: Job? = null
 
     private val window = Timeline.Window()
@@ -122,7 +134,7 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     override fun release() {
         providerScope.cancel()
         listener = null
-        Handler(Looper.getMainLooper()).post {
+        playerHandler.post {
             exoPlayer.removeListener(playerListener)
         }
     }
