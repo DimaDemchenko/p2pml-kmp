@@ -272,7 +272,7 @@ private class IosHeadlessWebView(
 private class NavigationDelegate(private val onError: (String) -> Unit) :
     NSObject(),
     WKNavigationDelegateProtocol {
-    
+
     private val logger = CoreLogger("WKNavigationDelegate")
 
     private fun isDeliberateCancellation(error: NSError): Boolean =
