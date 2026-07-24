@@ -86,18 +86,43 @@ class P2PEvents internal constructor(
     )
     private val channelsByName: Map<String, EventChannel<*>> = channels.associateBy { it.name }
 
+    /** A segment finished loading (from peers or HTTP). */
     val onSegmentLoaded: Flow<SegmentLoadDetails> = segmentLoaded.untilCoreShutdown()
+
+    /** A segment download started. */
     val onSegmentStart: Flow<SegmentStartDetails> = segmentStart.untilCoreShutdown()
+
+    /** A segment download failed. */
     val onSegmentError: Flow<SegmentErrorDetails> = segmentError.untilCoreShutdown()
+
+    /** A segment download was aborted (e.g. ABR switch or seek). */
     val onSegmentAbort: Flow<SegmentAbortDetails> = segmentAbort.untilCoreShutdown()
+
+    /** A peer connection was established. */
     val onPeerConnect: Flow<PeerDetails> = peerConnect.untilCoreShutdown()
+
+    /** A peer connection attempt failed. */
     val onPeerConnectError: Flow<PeerConnectErrorDetails> = peerConnectError.untilCoreShutdown()
+
+    /** A peer disconnected. */
     val onPeerClose: Flow<PeerDetails> = peerClose.untilCoreShutdown()
+
+    /** A peer-level error occurred. */
     val onPeerError: Flow<PeerErrorDetails> = peerError.untilCoreShutdown()
+
+    /** A non-fatal peer warning. */
     val onPeerWarning: Flow<PeerWarningDetails> = peerWarning.untilCoreShutdown()
+
+    /** A tracker request errored. */
     val onTrackerError: Flow<TrackerErrorDetails> = trackerError.untilCoreShutdown()
+
+    /** A tracker warning. */
     val onTrackerWarning: Flow<TrackerWarningDetails> = trackerWarning.untilCoreShutdown()
+
+    /** A chunk was downloaded (high-frequency — consume promptly if aggregating transfer stats). */
     val onChunkDownloaded: Flow<ChunkDownloadedDetails> = chunkDownloaded.untilCoreShutdown()
+
+    /** A chunk was uploaded to a peer (high-frequency — consume promptly if aggregating stats). */
     val onChunkUploaded: Flow<ChunkUploadedDetails> = chunkUploaded.untilCoreShutdown()
 
     private fun <T> EventChannel<T>.untilCoreShutdown(): Flow<T> = channelFlow {

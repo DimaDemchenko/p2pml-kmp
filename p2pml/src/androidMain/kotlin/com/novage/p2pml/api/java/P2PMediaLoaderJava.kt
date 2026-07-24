@@ -5,7 +5,6 @@ import com.novage.p2pml.P2PMediaLoader
 import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.playback.PlaybackProvider
-import java.lang.AutoCloseable
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +14,17 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.future.future
 
+/**
+ * Java-friendly facade over [P2PMediaLoader]: `suspend` functions are exposed as
+ * [CompletableFuture]s and event flows as listener subscriptions. Wrap a configured
+ * [P2PMediaLoader] and drive it entirely through this class.
+ *
+ * Single-use, mirroring [P2PMediaLoader]: once [release] is called the instance cannot be reused —
+ * create a new one to restart.
+ *
+ * All listener callbacks run on a background thread (`Dispatchers.Default`); switch to the main
+ * thread before touching UI.
+ */
 class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -103,11 +113,25 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
         return AutoCloseable { job.cancel() }
     }
 
+    /**
+     * Initializes the loader with a custom [PlaybackProvider]. The returned future completes when
+     * startup succeeds, or completes exceptionally with [P2PMediaLoaderException] on failure.
+     *
+     * The caller owns the provider's lifecycle and must release it when done — the loader does not
+     * release custom providers.
+     */
     fun initialize(provider: PlaybackProvider): CompletableFuture<Void?> = scope.future {
         loader.initialize(provider)
         null
     }
 
+    /**
+     * Initializes the loader with an [ExoPlayer]. The returned future completes when startup
+     * succeeds, or completes exceptionally with [P2PMediaLoaderException] on failure.
+     *
+     * The loader creates and manages an internal playback provider for the player and releases it
+     * when [release] is called.
+     */
     fun initialize(exoPlayer: ExoPlayer): CompletableFuture<Void?> = scope.future {
         loader.initialize(exoPlayer)
         null
@@ -120,6 +144,10 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     /** See [P2PMediaLoader.applyDynamicConfig]: partial patch; pre-initialization calls are last-wins. */
     fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
 
+    /**
+     * Cancels all listener/state subscriptions and releases the underlying [P2PMediaLoader].
+     * Idempotent; the instance cannot be reused afterwards.
+     */
     fun release() {
         scope.cancel()
         loader.release()

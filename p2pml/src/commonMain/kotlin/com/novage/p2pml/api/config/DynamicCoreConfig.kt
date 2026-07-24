@@ -6,12 +6,12 @@ import kotlinx.serialization.Transient
 
 /**
  * Subset of [CoreConfig] properties that can be updated at runtime
- * via [P2PMediaLoader.applyDynamicConfig] without restarting the engine.
+ * via `P2PMediaLoader.applyDynamicConfig` without restarting the engine.
  *
  * Same mutability note as [CoreConfig]: properties are `var` for cross-platform interop.
- * Each call to [P2PMediaLoader.applyDynamicConfig] snapshots the current property values
+ * Each call to `P2PMediaLoader.applyDynamicConfig` snapshots the current property values
  * and pushes them to the JS engine. Mutating the object afterwards has no effect
- * until you call [P2PMediaLoader.applyDynamicConfig] again.
+ * until you call `P2PMediaLoader.applyDynamicConfig` again.
  *
  * **Kotlin:**
  * ```kotlin

@@ -90,12 +90,14 @@ class P2PMediaLoader @JvmOverloads constructor(
          * switch is applied when the internal WebView boots.
          * Debug output includes manifest and segment URLs, which may carry signed query parameters.
          */
+        @JvmStatic
         fun enableLogging() = P2PLogging.enableLogging()
 
         /**
          * Restores the default log verbosity (WARN and above). To silence the library entirely,
          * set [com.novage.p2pml.api.logging.P2PLogging.sink] to null instead.
          */
+        @JvmStatic
         fun disableLogging() = P2PLogging.disableLogging()
     }
 

@@ -3,10 +3,11 @@ package com.novage.p2pml.api.playback
 import kotlinx.serialization.Serializable
 
 /**
- * Playback info
+ * A snapshot of the player's current playback state, reported to the engine via
+ * [PlaybackListener.onPlaybackInfoUpdated].
  *
- * @param currentPlayPosition current play position in seconds
- * @param currentPlaybackSpeed current play speed
+ * @property currentPlayPosition Current playback position, in seconds.
+ * @property currentPlaybackSpeed Current playback speed multiplier (1.0 = normal speed).
  */
 @Serializable
 data class PlaybackInfo(val currentPlayPosition: Double, val currentPlaybackSpeed: Float)
