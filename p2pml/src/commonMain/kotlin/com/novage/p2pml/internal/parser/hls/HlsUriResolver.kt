@@ -1,4 +1,4 @@
-package com.novage.p2pml.internal.parser.hlsPlaylistParser
+package com.novage.p2pml.internal.parser.hls
 
 // --- Constants used for URI indices ---
 private const val INDEX_COUNT = 4

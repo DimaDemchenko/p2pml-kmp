@@ -1,4 +1,4 @@
-package com.novage.p2pml.internal.parser.hlsPlaylistParser
+package com.novage.p2pml.internal.parser.hls
 
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.time.Instant

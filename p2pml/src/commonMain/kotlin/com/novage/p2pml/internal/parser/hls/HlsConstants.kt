@@ -1,4 +1,4 @@
-package com.novage.p2pml.internal.parser.hlsPlaylistParser
+package com.novage.p2pml.internal.parser.hls
 
 internal const val MICROS_PER_SECOND = 1_000_000L
 internal const val PLAYLIST_HEADER = "#EXTM3U"

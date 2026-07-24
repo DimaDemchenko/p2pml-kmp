@@ -10,6 +10,7 @@ android-target-sdk = "36"
 
 # Lint & Formatter
 spotless = "8.5.1"
+ktlint = "1.8.0"
 detekt = "1.23.8"
 skie = "0.10.12"
 
