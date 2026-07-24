@@ -93,3 +93,9 @@ hosted instead via `customEngineUrl`; it must implement this library version's b
 ## Status
 
 Pre-release. APIs may change without deprecation cycles until the first published version.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). The bundled
+[Novage p2p-media-loader](https://github.com/Novage/p2p-media-loader) engine is also
+licensed under Apache-2.0.

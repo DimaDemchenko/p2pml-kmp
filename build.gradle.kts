@@ -16,14 +16,14 @@ subprojects {
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         kotlin {
             target("**/*.kt")
-            targetExclude("**/generated/**/*.kt", "**/demo/Streams.kt")
+            targetExclude("**/generated/**/*.kt")
 
-            ktlint()
+            ktlint(libs.versions.ktlint.get())
         }
 
         kotlinGradle {
             target("*.gradle.kts")
-            ktlint()
+            ktlint(libs.versions.ktlint.get())
         }
     }
 
@@ -32,7 +32,6 @@ subprojects {
         buildUponDefaultConfig = true
 
         parallel = true
-        autoCorrect = true
 
         source.setFrom("src")
     }
