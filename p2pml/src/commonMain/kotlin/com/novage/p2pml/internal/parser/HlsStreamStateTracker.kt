@@ -1,13 +1,13 @@
 package com.novage.p2pml.internal.parser
 
 import com.novage.p2pml.api.events.Segment
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMediaPlaylist
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsMultivariantPlaylist
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.HlsSegment
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.Rendition
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.extractVideoCodec
+import com.novage.p2pml.internal.parser.hls.HlsMediaPlaylist
+import com.novage.p2pml.internal.parser.hls.HlsMultivariantPlaylist
+import com.novage.p2pml.internal.parser.hls.HlsSegment
+import com.novage.p2pml.internal.parser.hls.Rendition
+import com.novage.p2pml.internal.parser.hls.Stream
+import com.novage.p2pml.internal.parser.hls.UpdateStreamParams
+import com.novage.p2pml.internal.parser.hls.extractVideoCodec
 import com.novage.p2pml.internal.utils.Clock
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.SystemClock

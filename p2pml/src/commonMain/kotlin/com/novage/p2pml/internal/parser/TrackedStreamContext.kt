@@ -1,8 +1,8 @@
 package com.novage.p2pml.internal.parser
 
 import com.novage.p2pml.api.events.Segment
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.Stream
-import com.novage.p2pml.internal.parser.hlsPlaylistParser.UpdateStreamParams
+import com.novage.p2pml.internal.parser.hls.Stream
+import com.novage.p2pml.internal.parser.hls.UpdateStreamParams
 import kotlin.time.TimeMark
 
 internal class TrackedStreamContext(
