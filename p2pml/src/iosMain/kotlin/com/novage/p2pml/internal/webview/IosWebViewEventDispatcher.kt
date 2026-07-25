@@ -42,39 +42,57 @@ internal class IosWebViewEventDispatcher(
 
     private class ChunkFields(val bytesLength: Int, val streamType: String, val infoHash: String)
 
-    private fun NSDictionary.chunkFields(): ChunkFields? {
-        val bytesLength = (objectForKey("bytesLength") as? Number)?.toInt() ?: return null
-        val streamType = objectForKey("streamType") as? String ?: return null
-        val infoHash = objectForKey("infoHash") as? String ?: return null
+    private fun logDrop(event: String, reason: String): Nothing? {
+        logger.w { "Dropping $event: $reason" }
+        return null
+    }
+
+    private fun NSDictionary.chunkFields(event: String): ChunkFields? {
+        val bytesLength = (objectForKey("bytesLength") as? Number)?.toInt()
+            ?: return logDrop(event, "missing or invalid 'bytesLength'")
+        val streamType = objectForKey("streamType") as? String
+            ?: return logDrop(event, "missing or invalid 'streamType'")
+        val infoHash = objectForKey("infoHash") as? String
+            ?: return logDrop(event, "missing or invalid 'infoHash'")
         return ChunkFields(bytesLength, streamType, infoHash)
     }
 
     private fun handleChunkDownloaded(body: Any?) {
-        val dict = body as? NSDictionary ?: return
-        val fields = dict.chunkFields() ?: return
-        val downloadSource = dict.objectForKey("downloadSource") as? String ?: return
+        val details = buildChunkDownloaded(body) ?: return
+        events.emitChunkDownloaded(details)
+    }
 
-        val source = DownloadSource.fromValue(downloadSource) ?: run {
-            logger.w { "Dropping chunk event with unknown download source: $downloadSource" }
-            return
-        }
+    private fun buildChunkDownloaded(body: Any?): ChunkDownloadedDetails? {
+        val dict = body as? NSDictionary
+            ?: return logDrop("onChunkDownloaded", "message body is not a dictionary")
+        val fields = dict.chunkFields("onChunkDownloaded") ?: return null
+        val rawSource = dict.objectForKey("downloadSource") as? String
+        val source = rawSource?.let { DownloadSource.fromValue(it) }
+            ?: return logDrop("onChunkDownloaded", "missing or unknown download source '$rawSource'")
         val peerId = dict.objectForKey("peerId") as? String
-        events.emitChunkDownloaded(
-            ChunkDownloadedDetails(fields.bytesLength, source, peerId, fields.streamType, fields.infoHash)
-        )
+        return ChunkDownloadedDetails(fields.bytesLength, source, peerId, fields.streamType, fields.infoHash)
     }
 
     private fun handleChunkUploaded(body: Any?) {
-        val dict = body as? NSDictionary ?: return
-        val fields = dict.chunkFields() ?: return
-        val peerId = dict.objectForKey("peerId") as? String ?: return
-        events.emitChunkUploaded(
-            ChunkUploadedDetails(fields.bytesLength, peerId, fields.streamType, fields.infoHash)
-        )
+        val details = buildChunkUploaded(body) ?: return
+        events.emitChunkUploaded(details)
+    }
+
+    private fun buildChunkUploaded(body: Any?): ChunkUploadedDetails? {
+        val dict = body as? NSDictionary
+            ?: return logDrop("onChunkUploaded", "message body is not a dictionary")
+        val fields = dict.chunkFields("onChunkUploaded") ?: return null
+        val peerId = dict.objectForKey("peerId") as? String
+            ?: return logDrop("onChunkUploaded", "missing 'peerId'")
+        return ChunkUploadedDetails(fields.bytesLength, peerId, fields.streamType, fields.infoHash)
     }
 
     private fun handleGenericMessage(body: Any?) {
-        val messageString = body as? String ?: return
+        val messageString = body as? String
+        if (messageString == null) {
+            logDrop("generic message", "message body is not a string")
+            return
+        }
         router.handleMessage(messageString)
     }
 }
