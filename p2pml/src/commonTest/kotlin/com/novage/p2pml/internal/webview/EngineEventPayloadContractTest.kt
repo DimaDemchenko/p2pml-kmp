@@ -4,10 +4,14 @@ import com.novage.p2pml.api.events.ByteRange
 import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.JsError
 import com.novage.p2pml.api.events.P2PEvents
+import com.novage.p2pml.api.logging.LogLevel
+import com.novage.p2pml.api.logging.P2PLogger
+import com.novage.p2pml.api.logging.P2PLogging
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -31,10 +35,12 @@ class EngineEventPayloadContractTest {
         isCoreActive = { true }
     )
     private val router = WebViewMessageRouter(events = events)
+    private val originalSink = P2PLogging.sink
 
     @AfterTest
     fun tearDown() {
         scope.cancel()
+        P2PLogging.sink = originalSink
     }
 
     private fun <T> collect(flow: Flow<T>): List<T> {
@@ -282,5 +288,26 @@ class EngineEventPayloadContractTest {
         val details = collected.single()
         assertEquals("aabbccdd", details.infoHash)
         assertEquals(JsError(message = "tracker unreachable", type = "announce-failed"), details.error)
+    }
+
+    @Test
+    fun chunkEventFromGenericDispatchIsReportedNotSilentlyDropped() {
+        val warnings = mutableListOf<String>()
+        P2PLogging.sink = P2PLogger { level, _, message, _ ->
+            if (level == LogLevel.WARN) warnings.add(message)
+        }
+        val collected = collect(events.onChunkDownloaded)
+
+        // Chunk events are delivered through the typed native bridge, never the generic router. A
+        // name-based dispatch to a chunk channel must be reported as unroutable, not silently dropped.
+        router.handleMessage(
+            """
+            {"type":"onChunkDownloaded","payload":{
+                "bytesLength":1024,"downloadSource":"p2p","infoHash":"aabbccdd","streamType":"main"}}
+            """.trimIndent()
+        )
+
+        assertEquals(0, collected.size)
+        assertTrue(warnings.any { it.contains("No dispatcher found for event: onChunkDownloaded") })
     }
 }

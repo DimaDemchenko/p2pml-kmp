@@ -48,6 +48,8 @@ class P2PEvents internal constructor(
         val flow: MutableSharedFlow<T>,
         private val decode: ((JsonElement, Json) -> T)? = null
     ) {
+        val isDispatchable: Boolean get() = decode != null
+
         fun emitJson(payload: JsonElement, json: Json) {
             val decoder = decode ?: return
             flow.tryEmit(decoder(payload, json))
@@ -84,7 +86,9 @@ class P2PEvents internal constructor(
         chunkDownloaded, chunkUploaded,
         trackerError, trackerWarning
     )
-    private val channelsByName: Map<String, EventChannel<*>> = channels.associateBy { it.name }
+
+    private val channelsByName: Map<String, EventChannel<*>> =
+        channels.filter { it.isDispatchable }.associateBy { it.name }
 
     /** A segment finished loading (from peers or HTTP). */
     val onSegmentLoaded: Flow<SegmentLoadDetails> = segmentLoaded.untilCoreShutdown()
