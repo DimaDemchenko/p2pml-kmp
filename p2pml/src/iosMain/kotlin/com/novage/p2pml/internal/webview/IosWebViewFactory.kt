@@ -1,18 +1,12 @@
 package com.novage.p2pml.internal.webview
 
-import com.novage.p2pml.api.errors.P2PMediaLoaderErrorCode
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.api.logging.P2PLogging
 import com.novage.p2pml.internal.utils.CoreLogger
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.readValue
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSError
 import platform.Foundation.NSSelectorFromString
@@ -40,36 +34,20 @@ internal class IosWebViewFactory : WebViewFactory {
     ): HeadlessWebView = IosHeadlessWebView(events, onFatalError)
 }
 
-private class IosHeadlessWebView(
-    private val events: P2PEvents,
-    private val onFatalError: (P2PMediaLoaderException) -> Unit
-) : HeadlessWebView {
+private class IosHeadlessWebView(events: P2PEvents, onFatalError: (P2PMediaLoaderException) -> Unit) :
+    BaseHeadlessWebView(onFatalError) {
     private val logger = CoreLogger("IosHeadlessWebView")
 
     private var webView: WKWebView? = null
-
     private var navigationDelegate: NavigationDelegate? = null
-
-    private var loadUrlContinuation: CancellableContinuation<Unit>? = null
-    private var coreInitContinuation: CancellableContinuation<Unit>? = null
-    private var onPageReadyCallback: (() -> Unit)? = null
-    private var isDestroyed = false
 
     init {
         require(NSThread.isMainThread) { "IosHeadlessWebView must be instantiated on the main thread" }
-        initWebView()
-    }
-
-    private inline fun runOnMainThread(crossinline block: () -> Unit) {
-        if (NSThread.isMainThread) {
-            block()
-        } else {
-            dispatch_async(dispatch_get_main_queue()) { block() }
-        }
+        initWebView(events)
     }
 
     @OptIn(ExperimentalForeignApi::class)
-    private fun initWebView() {
+    private fun initWebView(events: P2PEvents) {
         val configuration = WKWebViewConfiguration()
 
         val preferences = WKPreferences()
@@ -80,7 +58,7 @@ private class IosHeadlessWebView(
 
         val scriptMessageHandler = IosWebViewEventDispatcher(
             events = events,
-            onPageReady = { onPageReadyCallback?.invoke() },
+            onPageReady = { notifyPageReady() },
             onCoreInitResult = { error -> handleCoreInitResult(error) }
         )
 
@@ -106,166 +84,60 @@ private class IosHeadlessWebView(
         this.webView = wkWebView
     }
 
-    override suspend fun loadUrlAndWait(url: String) = suspendCancellableCoroutine<Unit> { continuation ->
-        runOnMainThread {
-            if (!continuation.isActive) return@runOnMainThread
-
-            val view = webView
-            if (view == null) {
-                continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
-                return@runOnMainThread
-            }
-
-            if (this.loadUrlContinuation != null) {
-                continuation.resumeWithException(IllegalStateException("A load is already in progress"))
-                return@runOnMainThread
-            }
-
-            val nsUrl = NSURL.URLWithString(url)
-            if (nsUrl == null) {
-                continuation.resumeWithException(IllegalArgumentException("Invalid URL: $url"))
-                return@runOnMainThread
-            }
-
-            this.loadUrlContinuation = continuation
-            this.onPageReadyCallback = {
-                if (continuation.isActive) continuation.resume(Unit)
-                this.loadUrlContinuation = null
-                this.onPageReadyCallback = null
-            }
-
-            continuation.invokeOnCancellation {
-                runOnMainThread {
-                    view.stopLoading()
-                    loadUrlContinuation = null
-                    onPageReadyCallback = null
-                }
-            }
-
-            val request = NSURLRequest.requestWithURL(nsUrl)
-            view.loadRequest(request)
-        }
-    }
-
-    override fun evaluateJavascript(script: String) {
-        runOnMainThread {
-            webView?.evaluateJavaScript(script, completionHandler = null)
-        }
-    }
-
-    override suspend fun initCoreAndWait(script: String) = suspendCancellableCoroutine<Unit> { continuation ->
-        runOnMainThread {
-            if (!continuation.isActive) return@runOnMainThread
-
-            val view = webView
-            if (view == null) {
-                continuation.resumeWithException(IllegalStateException("WebView is destroyed"))
-                return@runOnMainThread
-            }
-
-            if (this.coreInitContinuation != null) {
-                continuation.resumeWithException(IllegalStateException("A core init is already in progress"))
-                return@runOnMainThread
-            }
-
-            this.coreInitContinuation = continuation
-
-            continuation.invokeOnCancellation {
-                runOnMainThread { coreInitContinuation = null }
-            }
-
-            // A script that throws outside initP2P's try/catch (e.g. missing window.p2p on a
-            // custom page) sends no ack, so a genuine eval NSError means the init can never
-            // complete — fail fast instead of burning the ack timeout with the cause buried in
-            // the log. WKErrorJavaScriptResultTypeIsUnsupported only means the script's
-            // completion value wasn't serializable (e.g. an async initP2P returning a Promise)
-            // — not a failure.
-            view.evaluateJavaScript(script) { _, error ->
-                if (error != null &&
-                    !(error.domain == WKErrorDomain && error.code == WKErrorJavaScriptResultTypeIsUnsupported)
-                ) {
-                    logger.e { "Core init script failed to evaluate: ${error.localizedDescription} ${error.userInfo}" }
-                    handleCoreInitResult("Core init script failed to evaluate: ${error.localizedDescription}")
-                }
-            }
-        }
-    }
-
-    private fun handleCoreInitResult(errorMessage: String?) {
-        val cont = takeCoreInitContinuation() ?: return
-
-        if (errorMessage == null) {
-            cont.resume(Unit)
+    override fun postToMainThread(block: () -> Unit) {
+        if (NSThread.isMainThread) {
+            block()
         } else {
-            cont.resumeWithException(
-                P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED, errorMessage)
-            )
+            dispatch_async(dispatch_get_main_queue()) { block() }
         }
     }
 
-    private fun takeCoreInitContinuation(): CancellableContinuation<Unit>? {
-        val cont = coreInitContinuation
-        coreInitContinuation = null
-        return cont?.takeIf { it.isActive }
+    override fun isWebViewAlive(): Boolean = webView != null
+
+    override fun startLoad(url: String): Exception? {
+        val nsUrl = NSURL.URLWithString(url) ?: return IllegalArgumentException("Invalid URL: $url")
+        webView?.loadRequest(NSURLRequest.requestWithURL(nsUrl))
+        return null
     }
 
-    private fun handleError(msg: String) {
-        val loadCont = loadUrlContinuation
-        when {
-            loadCont != null -> {
-                loadUrlContinuation = null
-                onPageReadyCallback = null
-                if (loadCont.isActive) {
-                    loadCont.resumeWithException(
-                        P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_LOAD_FAILED, msg)
-                    )
-                }
-                // An inactive load continuation was cancelled by the startup timeout, the caller,
-                // or destroy() — that party already owns the terminal report. Escalating this late
-                // callback via onFatalError would race it with a conflicting error code
-                // (ENGINE_CRASHED vs ENGINE_LOAD_TIMEOUT).
-            }
-
-            // Fail a pending init await directly; onFatalError would report the crash once and
-            // the still-pending ack would time out into a second, conflicting failure. With no
-            // active waiter (nothing pending, or the await already cancelled by the ack timeout)
-            // the crash goes to onFatalError.
-            else -> {
-                val error = P2PMediaLoaderException(P2PMediaLoaderErrorCode.ENGINE_CRASHED, msg)
-                val cont = takeCoreInitContinuation()
-                if (cont != null) {
-                    cont.resumeWithException(error)
-                } else if (!isDestroyed) {
-                    onFatalError(error)
-                }
-            }
-        }
-        // If isDestroyed, the error is a late callback from our own teardown (e.g. stopLoading()
-        // aborting navigation) — not a runtime fault, so it must not be surfaced as fatal.
+    override fun stopLoading() {
+        webView?.stopLoading()
     }
 
-    override fun destroy() {
-        runOnMainThread {
-            isDestroyed = true
-            loadUrlContinuation?.cancel(CancellationException("WebView destroyed"))
-            loadUrlContinuation = null
-            coreInitContinuation?.cancel(CancellationException("WebView destroyed"))
-            coreInitContinuation = null
-            onPageReadyCallback = null
+    override fun evaluateFireAndForget(script: String) {
+        webView?.evaluateJavaScript(script, completionHandler = null)
+    }
 
-            val view = webView ?: return@runOnMainThread
-
-            IosBridgeChannels.all.forEach { channel ->
-                view.configuration.userContentController.removeScriptMessageHandlerForName(channel)
+    override fun evaluateInitScript(script: String) {
+        // A script that throws outside initP2P's try/catch (e.g. missing window.p2p on a
+        // custom page) sends no ack, so a genuine eval NSError means the init can never
+        // complete — fail fast instead of burning the ack timeout with the cause buried in
+        // the log. WKErrorJavaScriptResultTypeIsUnsupported only means the script's
+        // completion value wasn't serializable (e.g. an async initP2P returning a Promise)
+        // — not a failure.
+        webView?.evaluateJavaScript(script) { _, error ->
+            if (error != null &&
+                !(error.domain == WKErrorDomain && error.code == WKErrorJavaScriptResultTypeIsUnsupported)
+            ) {
+                logger.e { "Core init script failed to evaluate: ${error.localizedDescription} ${error.userInfo}" }
+                handleCoreInitResult("Core init script failed to evaluate: ${error.localizedDescription}")
             }
-
-            view.stopLoading()
-            view.removeFromSuperview()
-            view.navigationDelegate = null
-
-            navigationDelegate = null
-            webView = null
         }
+    }
+
+    override fun teardownWebView() {
+        val view = webView ?: return
+
+        IosBridgeChannels.all.forEach { channel ->
+            view.configuration.userContentController.removeScriptMessageHandlerForName(channel)
+        }
+
+        view.stopLoading()
+        view.removeFromSuperview()
+        view.navigationDelegate = null
+
+        navigationDelegate = null
+        webView = null
     }
 }
 
