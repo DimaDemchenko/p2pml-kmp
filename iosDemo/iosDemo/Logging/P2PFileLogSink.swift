@@ -12,7 +12,7 @@ enum P2PFileLogSink {
     private static let writeQueue = DispatchQueue(label: "com.novage.p2pml.demo.logsink")
     private static var fileHandle: FileHandle?
 
-    private(set) static var currentLogURL: URL?
+    private(set) static var currentLogUrl: URL?
 
     private static let lineTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -21,8 +21,8 @@ enum P2PFileLogSink {
     }()
 
     static func install() {
-        guard currentLogURL == nil, let url = createSessionFile() else { return }
-        currentLogURL = url
+        guard currentLogUrl == nil, let url = createSessionFile() else { return }
+        currentLogUrl = url
 
         let device = UIDevice.current
         let sessionHeader = "--- P2PML demo session, \(device.model), iOS \(device.systemVersion) ---"

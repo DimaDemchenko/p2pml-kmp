@@ -9,11 +9,10 @@ struct VideoPlayerSurface: View {
 
     var body: some View {
         ZStack {
-            Color.black.aspectRatio(16 / 9, contentMode: .fit)
+            Color.black
 
             if let player {
                 VideoPlayer(player: player)
-                    .aspectRatio(16 / 9, contentMode: .fit)
             }
 
             if !isVideoReady {

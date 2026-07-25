@@ -3,7 +3,7 @@ import SwiftUI
 struct VideoListScreen: View {
     @State private var customUrl: String = ""
 
-    var isUrlValid: Bool {
+    private var isUrlValid: Bool {
         guard !customUrl.isEmpty else { return true }
         guard let url = URL(string: customUrl),
               let scheme = url.scheme,
@@ -12,7 +12,7 @@ struct VideoListScreen: View {
         return true
     }
 
-    var canPlay: Bool {
+    private var canPlay: Bool {
         !customUrl.isEmpty && isUrlValid
     }
 
@@ -98,7 +98,7 @@ struct VideoListScreen: View {
             }
             .padding(.horizontal, 16)
         }
-        .background(AppTheme.background.edgesIgnoringSafeArea(.all))
+        .background(AppTheme.background.ignoresSafeArea())
         .navigationTitle("P2P Media Loader")
         .navigationBarTitleDisplayMode(.inline)
     }
