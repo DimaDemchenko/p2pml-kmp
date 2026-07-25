@@ -135,12 +135,13 @@ class PlayerViewModel: ObservableObject {
 
     private func populateAvailableTracks(for playerItem: AVPlayerItem) {
         populateTracksTask?.cancel()
-        populateTracksTask = Task {
+        populateTracksTask = Task { [weak self] in
+            guard let self else { return }
             let videoTracks = await loadVideoTracks(for: playerItem)
 
             var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true, isAudio: true)]
             if let audioGroup = try? await playerItem.asset.loadMediaSelectionGroup(for: .audible) {
-                self.audioSelectionGroup = audioGroup
+                audioSelectionGroup = audioGroup
                 let selectedOption = playerItem.currentMediaSelection.selectedMediaOption(in: audioGroup)
                 let options = audioGroup.options.map { option in
                     MediaTrack(
@@ -246,7 +247,6 @@ class PlayerViewModel: ObservableObject {
         Task { [weak self] in
             for await details in loader.p2pEvents.onChunkDownloaded {
                 guard let self else { return }
-                uiState.totalDownloaded += Int64(details.bytesLength)
                 if details.downloadSource == .p2p {
                     uiState.p2pDownloaded += Int64(details.bytesLength)
                 } else {
@@ -299,7 +299,7 @@ class PlayerViewModel: ObservableObject {
         loader.applyDynamicConfig(dynamicCoreConfig: config)
     }
 
-    func releaseResources() {
+    private func releaseResources() {
         player?.pause()
         playerItemObserver?.invalidate()
 

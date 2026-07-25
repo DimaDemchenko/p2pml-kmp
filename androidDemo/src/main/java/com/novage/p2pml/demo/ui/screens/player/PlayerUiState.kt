@@ -11,7 +11,6 @@ data class PlayerUiState(
     val fatalError: String? = null,
     val userMessage: String? = null,
 
-    val totalDownloaded: Long = 0,
     val p2pDownloaded: Long = 0,
     val httpDownloaded: Long = 0,
     val uploadTotal: Long = 0,

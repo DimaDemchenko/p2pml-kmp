@@ -6,12 +6,11 @@ struct PlayerScreen: View {
 
     @StateObject private var viewModel = PlayerViewModel()
     @Environment(\.dismiss) private var dismiss
-    @State private var showSnackbar = false
     @State private var showLogShareSheet = false
 
     var body: some View {
         ZStack {
-            AppTheme.background.edgesIgnoringSafeArea(.all)
+            AppTheme.background.ignoresSafeArea()
 
             if let error = viewModel.uiState.fatalError {
                 VideoErrorView(errorMessage: error, onBackClick: { dismiss() })
@@ -23,7 +22,7 @@ struct PlayerScreen: View {
                 )
             }
 
-            if showSnackbar, let message = viewModel.uiState.userMessage {
+            if let message = viewModel.uiState.userMessage {
                 VStack {
                     Spacer()
                     Text(message)
@@ -34,7 +33,7 @@ struct PlayerScreen: View {
                         .padding(.bottom, 32)
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.easeInOut, value: showSnackbar)
+                .animation(.easeInOut, value: viewModel.uiState.userMessage)
             }
         }
         .modifier(PlayerLifecycleObserver(viewModel: viewModel))
@@ -46,27 +45,21 @@ struct PlayerScreen: View {
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
-                .disabled(P2PFileLogSink.currentLogURL == nil)
+                .disabled(P2PFileLogSink.currentLogUrl == nil)
                 .accessibilityLabel("Share P2P logs")
             }
         }
         .sheet(isPresented: $showLogShareSheet) {
-            if let logURL = P2PFileLogSink.currentLogURL {
-                ShareSheet(activityItems: [logURL])
+            if let logUrl = P2PFileLogSink.currentLogUrl {
+                ShareSheet(activityItems: [logUrl])
             }
         }
         .onAppear {
             viewModel.initializePlayer(manifestUrl: videoUrl, customEngineUrl: customEngineUrl)
         }
-        .onChange(of: viewModel.uiState.userMessage) { newValue in
-            if newValue != nil {
-                showSnackbar = true
-            }
-        }
-        .task(id: showSnackbar) {
-            guard showSnackbar else { return }
+        .task(id: viewModel.uiState.userMessage) {
+            guard viewModel.uiState.userMessage != nil else { return }
             try? await Task.sleep(for: .seconds(3))
-            showSnackbar = false
             viewModel.onMessageConsumed()
         }
     }

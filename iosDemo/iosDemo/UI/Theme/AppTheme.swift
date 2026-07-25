@@ -9,7 +9,6 @@ enum AppTheme {
     static let surface = AppColors.gray800
 
     static let onPrimary = Color.black
-    static let onSecondary = Color.white
     static let onError = Color.white
     static let onErrorContainer = AppColors.onErrorContainer
     static let onBackground = AppColors.gray200

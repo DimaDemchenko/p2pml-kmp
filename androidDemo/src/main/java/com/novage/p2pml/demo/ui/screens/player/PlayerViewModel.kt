@@ -5,6 +5,9 @@ import android.content.Context
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -55,7 +58,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private var currentTracks: Tracks? = null
 
     private var shouldAutoPlay = true
-    var player: ExoPlayer? = null
+
+    var player: ExoPlayer? by mutableStateOf(null)
         private set
 
     private var p2pLoader: P2PMediaLoader? = null
@@ -70,7 +74,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     }
 
     @OptIn(UnstableApi::class)
-    fun initializePlayer(manifestUrl: String, customEngineUrl: String?) {
+    private fun initializePlayer(manifestUrl: String, customEngineUrl: String?) {
         if (player != null || playerInitializationJob?.isActive == true) return
 
         playerInitializationJob = viewModelScope.launch {
@@ -222,7 +226,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             loader.p2pEvents.onChunkDownloaded.collect { chunk ->
                 _uiState.update { state ->
                     state.copy(
-                        totalDownloaded = state.totalDownloaded + chunk.bytesLength,
                         p2pDownloaded = if (chunk.downloadSource == DownloadSource.P2P) {
                             state.p2pDownloaded + chunk.bytesLength
                         } else {

@@ -44,46 +44,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.novage.p2pml.demo.data.MediaSample
 import com.novage.p2pml.demo.data.VideoStreams
+import com.novage.p2pml.demo.ui.components.DemoTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoListScreen(onVideoSelected: (String, String?) -> Unit) {
     var customUrl by remember { mutableStateOf("") }
-    val isUrlValid by remember(customUrl) {
-        derivedStateOf {
-            if (customUrl.isBlank()) return@derivedStateOf true
-
-            val hasProtocol = customUrl.startsWith("http://") || customUrl.startsWith("https://")
-            val isWebUrl = Patterns.WEB_URL.matcher(customUrl).matches()
-
-            hasProtocol && isWebUrl
-        }
+    val isUrlValid = if (customUrl.isBlank()) {
+        true
+    } else {
+        val hasProtocol = customUrl.startsWith("http://") || customUrl.startsWith("https://")
+        hasProtocol && Patterns.WEB_URL.matcher(customUrl).matches()
     }
-
-    val canPlay = remember(customUrl, isUrlValid) {
-        customUrl.isNotBlank() && isUrlValid
-    }
+    val canPlay = customUrl.isNotBlank() && isUrlValid
 
     Scaffold(
-        topBar = {
-            Column {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "P2P Media Loader",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    expandedHeight = 44.dp,
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground
-                    )
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            }
-        },
+        topBar = { DemoTopBar(title = "P2P Media Loader", centered = true) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(

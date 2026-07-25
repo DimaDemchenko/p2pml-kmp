@@ -4,7 +4,7 @@ struct StatsSection: View {
     let uiState: PlayerUiState
     let isInitialLoading: Bool
 
-    let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -13,7 +13,7 @@ struct StatsSection: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(AppTheme.onErrorContainer)
                     VStack(alignment: .leading) {
-                        Text("P2P Disabled").font(.subheadline).bold()
+                        Text("P2P Disabled").font(.subheadline).fontWeight(.bold)
                         Text("Engine failed. Playing via standard HTTP.").font(.caption)
                     }
                     .foregroundColor(AppTheme.onErrorContainer)
