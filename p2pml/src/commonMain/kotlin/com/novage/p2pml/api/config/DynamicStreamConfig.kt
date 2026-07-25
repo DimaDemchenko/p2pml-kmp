@@ -6,7 +6,7 @@ import kotlinx.serialization.Transient
 
 /**
  * Subset of [StreamConfig] properties that can be updated at runtime
- * via [P2PMediaLoader.applyDynamicConfig] without restarting the engine.
+ * via `P2PMediaLoader.applyDynamicConfig` without restarting the engine.
  *
  * @see DynamicCoreConfig
  */

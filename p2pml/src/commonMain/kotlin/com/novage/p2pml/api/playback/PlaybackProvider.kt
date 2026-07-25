@@ -1,11 +1,22 @@
 package com.novage.p2pml.api.playback
 
-import com.novage.p2pml.api.playback.PlaybackInfo
-
+/**
+ * Receives playback progress updates from a [PlaybackProvider]. The engine uses these to align P2P
+ * segment prioritization with the current playback position.
+ */
 interface PlaybackListener {
+    /**
+     * Called when the player's position or speed changes. Expected to fire frequently (roughly once
+     * per playback tick / second), so keep the implementation cheap.
+     */
     fun onPlaybackInfoUpdated(info: PlaybackInfo)
 }
 
+/**
+ * Bridges a media player to the P2P engine, reporting playback progress via a [PlaybackListener] so
+ * the engine knows what to prioritize. The library ships providers for ExoPlayer (Android) and
+ * AVPlayer (iOS); implement this to integrate a custom player.
+ */
 interface PlaybackProvider {
     /**
      * Registers a listener to receive playback progress updates.

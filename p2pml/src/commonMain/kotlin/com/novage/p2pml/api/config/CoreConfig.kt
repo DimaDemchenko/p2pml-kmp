@@ -14,7 +14,7 @@ import kotlinx.serialization.Transient
 const val USE_ENGINE_DEFAULT = -1
 
 /**
- * Core P2P engine configuration passed to [P2PMediaLoader] at initialization.
+ * Core P2P engine configuration passed to `P2PMediaLoader` at initialization.
  * Set only the properties you want to override; numeric properties left at
  * [USE_ENGINE_DEFAULT] and booleans that were never assigned are omitted during JSON
  * serialization (`encodeDefaults = false`) and the JS engine fills in its own defaults.
@@ -25,7 +25,7 @@ const val USE_ENGINE_DEFAULT = -1
  * does not export constructor default values to Swift/ObjC). The config is serialized
  * to JSON and sent to the JS engine **once** when the loader is initialized.
  * Mutating properties after initialization has no effect. To change settings at
- * runtime, use [DynamicCoreConfig] with [P2PMediaLoader.applyDynamicConfig] instead.
+ * runtime, use [DynamicCoreConfig] with `P2PMediaLoader.applyDynamicConfig` instead.
  *
  * Top-level stream properties (e.g. [highDemandTimeWindow]) apply to **both** streams
  * unless overridden via [mainStream] or [secondaryStream].
