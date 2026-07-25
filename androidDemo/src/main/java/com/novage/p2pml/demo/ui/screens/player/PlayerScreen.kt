@@ -21,22 +21,23 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.novage.p2pml.demo.logging.P2PFileLogSink
+import com.novage.p2pml.demo.ui.components.DemoTopBar
 import com.novage.p2pml.demo.ui.screens.player.components.PlayerContent
 import com.novage.p2pml.demo.ui.screens.player.components.VideoErrorView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel()) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -51,40 +52,27 @@ fun PlayerScreen(onBackClick: () -> Unit, viewModel: PlayerViewModel = viewModel
 
     Scaffold(
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Text(
-                            "P2P Media Loader",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+            DemoTopBar(
+                title = "P2P Media Loader",
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { P2PFileLogSink.share(context) }) {
-                            Icon(
-                                imageVector = Icons.Filled.Share,
-                                contentDescription = "Share P2P logs",
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    },
-                    expandedHeight = 44.dp,
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { P2PFileLogSink.share(context) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Share,
+                            contentDescription = "Share P2P logs",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+            )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,

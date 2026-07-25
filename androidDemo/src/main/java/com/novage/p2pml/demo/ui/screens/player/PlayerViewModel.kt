@@ -74,7 +74,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     }
 
     @OptIn(UnstableApi::class)
-    fun initializePlayer(manifestUrl: String, customEngineUrl: String?) {
+    private fun initializePlayer(manifestUrl: String, customEngineUrl: String?) {
         if (player != null || playerInitializationJob?.isActive == true) return
 
         playerInitializationJob = viewModelScope.launch {
@@ -226,7 +226,6 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
             loader.p2pEvents.onChunkDownloaded.collect { chunk ->
                 _uiState.update { state ->
                     state.copy(
-                        totalDownloaded = state.totalDownloaded + chunk.bytesLength,
                         p2pDownloaded = if (chunk.downloadSource == DownloadSource.P2P) {
                             state.p2pDownloaded + chunk.bytesLength
                         } else {
