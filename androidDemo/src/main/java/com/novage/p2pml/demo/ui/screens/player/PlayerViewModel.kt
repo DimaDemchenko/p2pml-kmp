@@ -5,6 +5,9 @@ import android.content.Context
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -55,7 +58,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     private var currentTracks: Tracks? = null
 
     private var shouldAutoPlay = true
-    var player: ExoPlayer? = null
+
+    var player: ExoPlayer? by mutableStateOf(null)
         private set
 
     private var p2pLoader: P2PMediaLoader? = null
