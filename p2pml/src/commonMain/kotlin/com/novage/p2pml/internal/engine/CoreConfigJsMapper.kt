@@ -17,31 +17,18 @@ internal object CoreConfigJsMapper {
 
     private class StreamScope(val path: String, val functions: List<Pair<String, String>>)
 
+    private class StreamFunctions(val validateP2P: String?, val validateHttp: String?, val httpSetup: String?)
+
     fun toJsExpression(config: CoreConfig): String = buildConfigExpression(
         configJson = p2pConfigJson.encodeToString(config),
         customSegmentStorageFactoryJs = config.customSegmentStorageFactoryJs,
-        streamScopes = listOfNotNull(
-            streamScope(
-                "config",
-                VALIDATE_P2P to config.validateP2PSegmentJs,
-                VALIDATE_HTTP to config.validateHTTPSegmentJs,
-                HTTP_SETUP to config.httpRequestSetupJs
-            ),
-            config.mainStream?.let {
-                streamScope(
-                    "config.mainStream",
-                    VALIDATE_P2P to it.validateP2PSegmentJs,
-                    VALIDATE_HTTP to it.validateHTTPSegmentJs,
-                    HTTP_SETUP to it.httpRequestSetupJs
-                )
+        streamScopes = streamScopes(
+            top = StreamFunctions(config.validateP2PSegmentJs, config.validateHTTPSegmentJs, config.httpRequestSetupJs),
+            mainStream = config.mainStream?.let {
+                StreamFunctions(it.validateP2PSegmentJs, it.validateHTTPSegmentJs, it.httpRequestSetupJs)
             },
-            config.secondaryStream?.let {
-                streamScope(
-                    "config.secondaryStream",
-                    VALIDATE_P2P to it.validateP2PSegmentJs,
-                    VALIDATE_HTTP to it.validateHTTPSegmentJs,
-                    HTTP_SETUP to it.httpRequestSetupJs
-                )
+            secondaryStream = config.secondaryStream?.let {
+                StreamFunctions(it.validateP2PSegmentJs, it.validateHTTPSegmentJs, it.httpRequestSetupJs)
             }
         )
     )
@@ -49,30 +36,32 @@ internal object CoreConfigJsMapper {
     fun toJsExpression(config: DynamicCoreConfig): String = buildConfigExpression(
         configJson = p2pConfigJson.encodeToString(config),
         customSegmentStorageFactoryJs = config.customSegmentStorageFactoryJs,
-        streamScopes = listOfNotNull(
-            streamScope(
-                "config",
-                VALIDATE_P2P to config.validateP2PSegmentJs,
-                VALIDATE_HTTP to config.validateHTTPSegmentJs,
-                HTTP_SETUP to config.httpRequestSetupJs
-            ),
-            config.mainStream?.let {
-                streamScope(
-                    "config.mainStream",
-                    VALIDATE_P2P to it.validateP2PSegmentJs,
-                    VALIDATE_HTTP to it.validateHTTPSegmentJs,
-                    HTTP_SETUP to it.httpRequestSetupJs
-                )
+        streamScopes = streamScopes(
+            top = StreamFunctions(config.validateP2PSegmentJs, config.validateHTTPSegmentJs, config.httpRequestSetupJs),
+            mainStream = config.mainStream?.let {
+                StreamFunctions(it.validateP2PSegmentJs, it.validateHTTPSegmentJs, it.httpRequestSetupJs)
             },
-            config.secondaryStream?.let {
-                streamScope(
-                    "config.secondaryStream",
-                    VALIDATE_P2P to it.validateP2PSegmentJs,
-                    VALIDATE_HTTP to it.validateHTTPSegmentJs,
-                    HTTP_SETUP to it.httpRequestSetupJs
-                )
+            secondaryStream = config.secondaryStream?.let {
+                StreamFunctions(it.validateP2PSegmentJs, it.validateHTTPSegmentJs, it.httpRequestSetupJs)
             }
         )
+    )
+
+    private fun streamScopes(
+        top: StreamFunctions,
+        mainStream: StreamFunctions?,
+        secondaryStream: StreamFunctions?
+    ): List<StreamScope> = listOfNotNull(
+        top.scopeAt("config"),
+        mainStream?.scopeAt("config.mainStream"),
+        secondaryStream?.scopeAt("config.secondaryStream")
+    )
+
+    private fun StreamFunctions.scopeAt(path: String): StreamScope? = streamScope(
+        path,
+        VALIDATE_P2P to validateP2P,
+        VALIDATE_HTTP to validateHttp,
+        HTTP_SETUP to httpSetup
     )
 
     private fun streamScope(path: String, vararg functions: Pair<String, String?>): StreamScope? {

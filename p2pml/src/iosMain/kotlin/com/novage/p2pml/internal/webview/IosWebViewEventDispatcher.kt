@@ -5,7 +5,6 @@ import com.novage.p2pml.api.events.ChunkUploadedDetails
 import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.P2PEvents
 import com.novage.p2pml.internal.utils.CoreLogger
-import kotlinx.serialization.json.Json
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage
 import platform.WebKit.WKScriptMessageHandlerProtocol
@@ -22,14 +21,13 @@ internal object IosBridgeChannels {
 
 internal class IosWebViewEventDispatcher(
     private val events: P2PEvents,
-    json: Json = Json { ignoreUnknownKeys = true },
     onPageReady: () -> Unit,
     onCoreInitResult: (errorMessage: String?) -> Unit
 ) : NSObject(),
     WKScriptMessageHandlerProtocol {
 
     private val logger = CoreLogger("IosWebViewEventDispatcher")
-    private val router = WebViewMessageRouter(events, json, onPageReady, onCoreInitResult)
+    private val router = WebViewMessageRouter(events, onPageReady = onPageReady, onCoreInitResult = onCoreInitResult)
 
     override fun userContentController(
         userContentController: WKUserContentController,
