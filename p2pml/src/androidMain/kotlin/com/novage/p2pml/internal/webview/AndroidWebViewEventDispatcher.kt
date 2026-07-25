@@ -1,7 +1,5 @@
 package com.novage.p2pml.internal.webview
 
-import android.os.Handler
-import android.os.Looper
 import android.webkit.JavascriptInterface
 import com.novage.p2pml.api.events.ChunkDownloadedDetails
 import com.novage.p2pml.api.events.ChunkUploadedDetails
@@ -15,12 +13,10 @@ internal class AndroidWebViewEventDispatcher(
     onCoreInitResult: (errorMessage: String?) -> Unit
 ) {
     private val logger = CoreLogger("AndroidWebViewEventDispatcher")
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val router = WebViewMessageRouter(
-        events,
-        onPageReady = { mainHandler.post { onPageReady() } },
-        onCoreInitResult = { error -> mainHandler.post { onCoreInitResult(error) } }
-    )
+
+    // onPageReady / onCoreInitResult drive the WebView state machine, which marshals to the main
+    // thread itself, so these @JavascriptInterface callbacks can hand off directly from the JS thread.
+    private val router = WebViewMessageRouter(events, onPageReady = onPageReady, onCoreInitResult = onCoreInitResult)
 
     @JavascriptInterface
     fun onChunkDownloaded(
