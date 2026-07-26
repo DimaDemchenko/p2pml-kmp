@@ -43,9 +43,6 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
     private var progressTrackerJob: Job? = null
 
     private val window = Timeline.Window()
-    private var syntheticWindowStartTimeMs: Long = C.TIME_UNSET
-
-    private var currentWindowUid: Any? = null
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -99,36 +96,25 @@ internal class ExoPlayerPlaybackProvider(private val exoPlayer: ExoPlayer) : Pla
 
     private fun emitCurrentState() {
         val speed = exoPlayer.playbackParameters.speed
-        val relativePositionMs = exoPlayer.currentPosition
-        val absolutePositionSec = resolveAbsolutePositionMs(relativePositionMs) / MILLISECONDS_IN_SECOND
-        listener?.onPlaybackInfoUpdated(PlaybackInfo(absolutePositionSec, speed))
+        val positionSec = exoPlayer.currentPosition / MILLISECONDS_IN_SECOND
+        listener?.onPlaybackInfoUpdated(PlaybackInfo(positionSec, speed, resolveLiveEdgeSec()))
     }
 
-    private fun resolveAbsolutePositionMs(relativePositionMs: Long): Double {
+    /**
+     * The live edge on the same scale as [ExoPlayer.getCurrentPosition], or null for on-demand.
+     *
+     * `currentPosition` is measured from the start of the live window, and `durationMs` is that
+     * window's length, so the window end is the live edge on that same scale. Both shift together as
+     * the playlist slides, which is exactly why this is read fresh on every tick and never cached.
+     */
+    private fun resolveLiveEdgeSec(): Double? {
         val timeline = exoPlayer.currentTimeline
-        if (timeline.isEmpty) return relativePositionMs.toDouble()
+        if (timeline.isEmpty) return null
 
         timeline.getWindow(exoPlayer.currentMediaItemIndex, window)
+        if (!window.isLive || window.durationMs == C.TIME_UNSET) return null
 
-        if (currentWindowUid != window.uid) {
-            currentWindowUid = window.uid
-            syntheticWindowStartTimeMs = C.TIME_UNSET
-        }
-
-        if (window.windowStartTimeMs != C.TIME_UNSET) {
-            syntheticWindowStartTimeMs = C.TIME_UNSET
-            return (window.windowStartTimeMs + relativePositionMs).toDouble()
-        }
-
-        if (window.isLive && window.durationMs != C.TIME_UNSET) {
-            if (syntheticWindowStartTimeMs == C.TIME_UNSET) {
-                syntheticWindowStartTimeMs = System.currentTimeMillis() - window.durationMs
-            }
-            return (syntheticWindowStartTimeMs + relativePositionMs).toDouble()
-        }
-
-        syntheticWindowStartTimeMs = C.TIME_UNSET
-        return relativePositionMs.toDouble()
+        return window.durationMs / MILLISECONDS_IN_SECOND
     }
 
     override fun release() {

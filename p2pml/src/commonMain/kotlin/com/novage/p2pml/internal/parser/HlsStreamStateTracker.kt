@@ -50,6 +50,29 @@ internal class HlsStreamStateTracker(
 
     fun getSegmentWithManifestByUrl(runtimeId: String): Pair<String, Segment>? = runtimeIdToSegmentMap[runtimeId]
 
+    /**
+     * Timeline extent of the main stream, or `null` while no main-stream segments are tracked yet.
+     *
+     * Spans every tracked main variant rather than one "active" variant: the live edge is the newest
+     * segment end seen on any of them, so a variant the player stopped refreshing after an ABR switch
+     * cannot hold the edge back. Secondary (audio) streams are excluded — the engine is given a single
+     * position, and the main timeline is the one it must be expressed on.
+     */
+    fun getMainTimelineBounds(): TimelineBounds? {
+        var start = Double.POSITIVE_INFINITY
+        var liveEdge = Double.NEGATIVE_INFINITY
+
+        for (context in trackedStreams.values) {
+            if (context.stream.type != MAIN_STREAM) continue
+            for (segment in context.segments.values) {
+                if (segment.startTime < start) start = segment.startTime
+                if (segment.endTime > liveEdge) liveEdge = segment.endTime
+            }
+        }
+
+        return if (start.isFinite() && liveEdge.isFinite()) TimelineBounds(start, liveEdge) else null
+    }
+
     fun reset() {
         logger.i { "Resetting tracker state." }
         trackedStreams.clear()

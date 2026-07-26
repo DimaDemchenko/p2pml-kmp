@@ -6,12 +6,13 @@ import com.novage.p2pml.internal.parser.hls.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hls.HlsPlaylistParser
 import com.novage.p2pml.internal.parser.hls.Stream
 import com.novage.p2pml.internal.parser.hls.UpdateStreamParams
+import com.novage.p2pml.internal.playback.PlaybackTimelineSource
 import com.novage.p2pml.internal.server.config.LocalUrlFactory
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
+internal class HlsManifestManager(urlFactory: LocalUrlFactory) : PlaybackTimelineSource {
     private val logger = CoreLogger("HlsManifestManager")
     private val rewriter = LocalHlsUrlRewriter(urlFactory)
     private val parser = HlsPlaylistParser(urlRewriter = rewriter)
@@ -66,7 +67,7 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
         tracker.isManifestTracked(manifestUrl)
     }
 
-    suspend fun getSegmentWithManifestByUrl(runtimeId: String): Pair<String, Segment>? = mutex.withLock {
+    override suspend fun getSegmentWithManifestByUrl(runtimeId: String): Pair<String, Segment>? = mutex.withLock {
         tracker.getSegmentWithManifestByUrl(runtimeId)
     }
 
@@ -76,6 +77,10 @@ internal class HlsManifestManager(urlFactory: LocalUrlFactory) {
 
     suspend fun getStreams(): List<Stream> = mutex.withLock {
         tracker.getStreams()
+    }
+
+    override suspend fun getMainTimelineBounds(): TimelineBounds? = mutex.withLock {
+        tracker.getMainTimelineBounds()
     }
 
     suspend fun reset() = mutex.withLock {

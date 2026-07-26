@@ -2,7 +2,6 @@ package com.novage.p2pml.internal.engine
 
 import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.config.DynamicCoreConfig
-import com.novage.p2pml.api.playback.PlaybackInfo
 import com.novage.p2pml.internal.parser.hls.Stream
 import com.novage.p2pml.internal.parser.hls.UpdateStreamParams
 
@@ -20,5 +19,6 @@ internal interface P2PEngine {
     fun subscribeToP2PEvent(eventName: String)
     fun unsubscribeFromP2PEvent(eventName: String)
 
-    fun updatePlaybackInfo(info: PlaybackInfo)
+    /** Position must already be on the parser's segment timeline — see `mapToStreamTime`. */
+    fun updatePlaybackInfo(positionSec: Double, speed: Float)
 }
