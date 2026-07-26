@@ -2,12 +2,16 @@ package com.novage.p2pml.internal.engine
 
 import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.config.DynamicCoreConfig
-import com.novage.p2pml.api.playback.PlaybackInfo
 import com.novage.p2pml.internal.parser.hls.Stream
 import com.novage.p2pml.internal.parser.hls.UpdateStreamParams
 import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.webview.HeadlessWebView
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+
+/** Wire shape the bridge page destructures in `updatePlaybackInfo`. Keep the field names in sync. */
+@Serializable
+private data class EnginePlaybackPayload(val currentPlayPosition: Double, val currentPlaybackSpeed: Float)
 
 internal class P2PEngineManager(
     private val webView: HeadlessWebView,
@@ -78,8 +82,8 @@ internal class P2PEngineManager(
         webView.evaluateJavascript(script)
     }
 
-    override fun updatePlaybackInfo(info: PlaybackInfo) {
-        val jsonString = json.encodeToString(info)
+    override fun updatePlaybackInfo(positionSec: Double, speed: Float) {
+        val jsonString = json.encodeToString(EnginePlaybackPayload(positionSec, speed))
         evaluate("$JS_BRIDGE.updatePlaybackInfo($jsonString);")
     }
 }

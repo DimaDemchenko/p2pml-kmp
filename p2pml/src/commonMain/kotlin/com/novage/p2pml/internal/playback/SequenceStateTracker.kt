@@ -4,9 +4,9 @@ import com.novage.p2pml.api.playback.PlaybackInfo
 import com.novage.p2pml.api.playback.PlaybackListener
 import com.novage.p2pml.api.playback.PlaybackProvider
 import com.novage.p2pml.internal.engine.P2PEngine
-import com.novage.p2pml.internal.parser.HlsManifestManager
 import com.novage.p2pml.internal.utils.CoreLogger
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,10 +23,11 @@ import kotlinx.serialization.SerializationException
 internal class SequenceStateTracker(
     private val playbackProvider: PlaybackProvider,
     private val p2pEngine: P2PEngine,
-    private val hlsManifestManager: HlsManifestManager
+    private val timelineSource: PlaybackTimelineSource,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : PlaybackListener {
     private val logger = CoreLogger("SequenceStateTracker")
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val scope = CoroutineScope(dispatcher + SupervisorJob())
     private val mutex = Mutex()
 
     private val playbackInfoFlow = MutableStateFlow<PlaybackInfo?>(null)
@@ -60,27 +61,40 @@ internal class SequenceStateTracker(
         playbackInfoFlow.value = info
     }
 
-    private suspend fun processPlaybackUpdate(actualInfo: PlaybackInfo) {
+    private suspend fun processPlaybackUpdate(playerInfo: PlaybackInfo) {
+        // Resolved before taking this tracker's lock: the source guards itself with its own mutex, and
+        // onSegmentRequested also reads it before locking here, so acquiring the two in opposite
+        // orders would risk a deadlock.
+        val bounds = timelineSource.getMainTimelineBounds()
+        if (bounds == null) {
+            logger.d { "No main-stream segments tracked yet; skipping playback update." }
+            return
+        }
+
+        // From here on everything is on the parser's timeline, including the forced seek position, so
+        // the catch-up comparison below compares like with like.
+        val streamPosition = mapToStreamTime(playerInfo, bounds)
+
         mutex.withLock {
             val forcedPos = forcedPlaybackPosition
-            val effectiveInfo = when {
-                forcedPos == null -> actualInfo
+            val effectivePosition = when {
+                forcedPos == null -> streamPosition
 
-                abs(actualInfo.currentPlayPosition - forcedPos) <= catchUpThresholdSec -> {
+                abs(streamPosition - forcedPos) <= catchUpThresholdSec -> {
                     logger.i { "Native player caught up to seek target ($forcedPos). Resuming standard tracking." }
                     resumeStandardTrackingLocked()
-                    actualInfo
+                    streamPosition
                 }
 
-                else -> actualInfo.copy(currentPlayPosition = forcedPos)
+                else -> forcedPos
             }
 
-            updateEnginePlaybackInfoSafely(effectiveInfo)
+            updateEnginePlaybackInfoSafely(effectivePosition, playerInfo.currentPlaybackSpeed)
         }
     }
 
     suspend fun onSegmentRequested(runtimeId: String) {
-        val (manifestUrl, segment) = hlsManifestManager.getSegmentWithManifestByUrl(runtimeId) ?: run {
+        val (manifestUrl, segment) = timelineSource.getSegmentWithManifestByUrl(runtimeId) ?: run {
             logger.w { "Segment requested but not tracked in manifest: $runtimeId" }
             return
         }
@@ -104,7 +118,7 @@ internal class SequenceStateTracker(
                 suspendPollingLocked(segment.startTime, duration)
 
                 val speed = playbackInfoFlow.value?.currentPlaybackSpeed ?: 1.0f
-                updateEnginePlaybackInfoSafely(PlaybackInfo(segment.startTime, speed))
+                updateEnginePlaybackInfoSafely(segment.startTime, speed)
             }
         }
     }
@@ -144,9 +158,9 @@ internal class SequenceStateTracker(
         scope.cancel()
     }
 
-    private fun updateEnginePlaybackInfoSafely(info: PlaybackInfo) {
+    private fun updateEnginePlaybackInfoSafely(positionSec: Double, speed: Float) {
         try {
-            p2pEngine.updatePlaybackInfo(info)
+            p2pEngine.updatePlaybackInfo(positionSec, speed)
         } catch (e: SerializationException) {
             logger.e(e) { "Serialization error updating P2P engine (e.g. NaN/Infinity)" }
         }
