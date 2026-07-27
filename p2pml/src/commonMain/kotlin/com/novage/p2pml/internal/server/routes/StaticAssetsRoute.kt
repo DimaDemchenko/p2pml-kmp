@@ -13,21 +13,18 @@ internal fun Route.registerWebAssets() {
         val path = call.parameters.getAll("path")?.joinToString("/")?.ifEmpty { null }
             ?: P2PAssets.HTML_FILENAME
 
-        val bytes = when (path) {
-            P2PAssets.HTML_FILENAME -> P2PAssets.INDEX_HTML_BYTES
-            P2PAssets.JS_FILENAME -> P2PAssets.CORE_JS_BYTES
+        val asset = when (path) {
+            P2PAssets.HTML_FILENAME -> P2PAssets.INDEX_HTML_BYTES to ContentType.Text.Html
+            P2PAssets.JS_FILENAME -> P2PAssets.CORE_JS_BYTES to ContentType.Application.JavaScript
             else -> null
         }
 
-        if (bytes != null) {
-            val contentType = when {
-                path.endsWith(".js") -> ContentType.Application.JavaScript
-                path.endsWith(".html") -> ContentType.Text.Html
-                else -> ContentType.Application.OctetStream
-            }
-            call.respondBytes(bytes, contentType)
-        } else {
+        if (asset == null) {
             call.respond(HttpStatusCode.NotFound)
+            return@get
         }
+
+        val (bytes, contentType) = asset
+        call.respondBytes(bytes, contentType)
     }
 }

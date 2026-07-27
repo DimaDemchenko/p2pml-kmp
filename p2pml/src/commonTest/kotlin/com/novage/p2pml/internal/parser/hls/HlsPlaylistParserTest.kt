@@ -384,6 +384,40 @@ class HlsPlaylistParserTest {
     }
 
     @Test
+    fun undefinedVariableReferenceIsKeptLiteral() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val playlist = """
+            #EXTM3U
+            #EXT-X-DEFINE:NAME="defined",VALUE="abc"
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            seg_{${'$'}defined}_{${'$'}missing}.ts
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/video.m3u8", playlist)
+
+        val media = result.playlist as HlsMediaPlaylist
+        assertEquals("http://example.com/seg_abc_{${'$'}missing}.ts", media.hlsSegments.single().url.absolute)
+    }
+
+    @Test
+    fun variableValueWithReplacementMetacharactersSubstitutesVerbatim() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val playlist = """
+            #EXTM3U
+            #EXT-X-DEFINE:NAME="token",VALUE="a${'$'}b\c"
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            seg_{${'$'}token}.ts
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/video.m3u8", playlist)
+
+        val media = result.playlist as HlsMediaPlaylist
+        assertEquals("""http://example.com/seg_a${'$'}b\c.ts""", media.hlsSegments.single().url.absolute)
+    }
+
+    @Test
     fun importDefineResolvesFromParentVariables() {
         val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
 

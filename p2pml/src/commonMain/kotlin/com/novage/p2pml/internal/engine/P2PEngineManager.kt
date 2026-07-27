@@ -13,13 +13,13 @@ import kotlinx.serialization.json.Json
 @Serializable
 private data class EnginePlaybackPayload(val currentPlayPosition: Double, val currentPlaybackSpeed: Float)
 
-internal class P2PEngineManager(
-    private val webView: HeadlessWebView,
-    private val json: Json = Json {
-        encodeDefaults = false
-        explicitNulls = false
-    }
-) : P2PEngine {
+internal val engineBridgeJson = Json {
+    encodeDefaults = false
+    explicitNulls = false
+}
+
+internal class P2PEngineManager(private val webView: HeadlessWebView, private val json: Json = engineBridgeJson) :
+    P2PEngine {
     private val logger = CoreLogger("P2PEngineManager")
 
     companion object {
