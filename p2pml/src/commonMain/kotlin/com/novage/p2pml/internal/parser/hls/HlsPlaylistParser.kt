@@ -557,7 +557,7 @@ private fun replaceVariableReferences(string: String, vars: Map<String, String>)
         string
     } else {
         REGEX_VARIABLE_REFERENCE.replace(string) { match ->
-            vars[match.groupValues[1]]?.let { Regex.escapeReplacement(it) } ?: ""
+            vars[match.groupValues[1]] ?: match.value
         }
     }
 }
