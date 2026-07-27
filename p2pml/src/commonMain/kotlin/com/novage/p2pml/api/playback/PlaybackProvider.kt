@@ -25,9 +25,12 @@ interface PlaybackProvider {
     fun setPlaybackListener(listener: PlaybackListener?)
 
     /**
-     * Releases any resources held by this provider.
-     * Implementations must clear any listener references here to prevent memory leaks
-     * if the provider instance outlives the core session.
+     * Releases any resources held by this provider. The default implementation does nothing,
+     * which is only correct for providers that hold no state of their own.
+     *
+     * Override this if the provider retains the [PlaybackListener], player callbacks, timers or
+     * similar, and clear them here so a provider instance that outlives the core session does
+     * not leak.
      */
     fun release() {}
 }
