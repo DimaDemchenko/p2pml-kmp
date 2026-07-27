@@ -2,15 +2,8 @@ package com.novage.p2pml.internal.engine
 
 import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.config.DynamicCoreConfig
-import kotlinx.serialization.json.Json
 
 internal object CoreConfigJsMapper {
-    private val p2pConfigJson = Json {
-        encodeDefaults = false
-        explicitNulls = false
-        ignoreUnknownKeys = true
-    }
-
     private const val VALIDATE_P2P = "validateP2PSegment"
     private const val VALIDATE_HTTP = "validateHTTPSegment"
     private const val HTTP_SETUP = "httpRequestSetup"
@@ -20,7 +13,7 @@ internal object CoreConfigJsMapper {
     private class StreamFunctions(val validateP2P: String?, val validateHttp: String?, val httpSetup: String?)
 
     fun toJsExpression(config: CoreConfig): String = buildConfigExpression(
-        configJson = p2pConfigJson.encodeToString(config),
+        configJson = engineBridgeJson.encodeToString(config),
         customSegmentStorageFactoryJs = config.customSegmentStorageFactoryJs,
         streamScopes = streamScopes(
             top = StreamFunctions(config.validateP2PSegmentJs, config.validateHTTPSegmentJs, config.httpRequestSetupJs),
@@ -34,7 +27,7 @@ internal object CoreConfigJsMapper {
     )
 
     fun toJsExpression(config: DynamicCoreConfig): String = buildConfigExpression(
-        configJson = p2pConfigJson.encodeToString(config),
+        configJson = engineBridgeJson.encodeToString(config),
         customSegmentStorageFactoryJs = config.customSegmentStorageFactoryJs,
         streamScopes = streamScopes(
             top = StreamFunctions(config.validateP2PSegmentJs, config.validateHTTPSegmentJs, config.httpRequestSetupJs),
