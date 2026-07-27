@@ -568,11 +568,7 @@ private fun parseStringAttr(line: String, regex: Regex, vars: Map<String, String
     parseOptionalStringAttr(line, regex, vars)
         ?: throw NoSuchElementException("Missing required attribute in line: ${line.take(ERROR_LINE_PREVIEW_LENGTH)}")
 
-private fun parseOptionalStringAttr(
-    line: String,
-    regex: Regex,
-    vars: Map<String, String>,
-    default: String? = null
-): String? = (regex.find(line)?.groups?.get(1)?.value ?: default)?.let { replaceVariableReferences(it, vars) }
+private fun parseOptionalStringAttr(line: String, regex: Regex, vars: Map<String, String>): String? =
+    regex.find(line)?.groups?.get(1)?.value?.let { replaceVariableReferences(it, vars) }
 
 private fun parseLongAttr(line: String, regex: Regex): Long = parseStringAttr(line, regex, emptyMap()).toLong()
