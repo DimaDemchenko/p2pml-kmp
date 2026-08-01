@@ -82,7 +82,16 @@ internal class P2PMediaLoaderCore(
             val mappedException = if (e !is Exception) e else handleInitializationException(e)
             when (mappedException) {
                 is P2PMediaLoaderException -> release(failure = mappedException)
-                else -> release()
+
+                is CancellationException -> release()
+
+                else -> release(
+                    failure = P2PMediaLoaderException(
+                        P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED,
+                        mappedException.message ?: "Fatal error during initialization",
+                        cause = mappedException
+                    )
+                )
             }
             throw mappedException
         }

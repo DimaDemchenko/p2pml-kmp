@@ -145,6 +145,26 @@ class P2PMediaLoaderCoreTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
+    fun nonExceptionBootFailureRethrowsAndLatchesFailed() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val core = P2PMediaLoaderCore()
+
+            val thrown = assertFailsWith<FatalBootError> {
+                core.initialize(StubPlaybackProvider(), ErrorThrowingWebViewFactory())
+            }
+
+            assertEquals(P2PMediaLoaderStatus.FAILED, core.state.value.status)
+            val latched = core.state.value.error
+            assertEquals(P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED, latched?.code)
+            assertEquals(thrown, latched?.cause)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
     fun initializeReachesActiveAndReleaseIsTerminal() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
@@ -256,6 +276,14 @@ class P2PMediaLoaderCoreTest {
     private class ThrowingWebViewFactory : WebViewFactory {
         override fun createHeadlessWebView(events: P2PEvents, onFatalError: (P2PMediaLoaderException) -> Unit) =
             throw WebViewCreationException()
+    }
+
+    /** Non-Exception Throwable: must rethrow unmapped while still latching FAILED for observers. */
+    private class FatalBootError : Error("boot exploded")
+
+    private class ErrorThrowingWebViewFactory : WebViewFactory {
+        override fun createHeadlessWebView(events: P2PEvents, onFatalError: (P2PMediaLoaderException) -> Unit) =
+            throw FatalBootError()
     }
 
     private class StubWebViewFactory : WebViewFactory {
