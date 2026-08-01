@@ -40,6 +40,8 @@ private class AndroidHeadlessWebView(
         webViewClient = object : WebViewClient() {
             override fun onReceivedError(v: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request == null || !request.isForMainFrame) return
+                // A main-frame abort can only come from our own stopLoading() — not an engine fault.
+                if (error?.description?.toString() == "net::ERR_ABORTED") return
                 handleError("WebView Error: ${error?.errorCode} ${error?.description}")
             }
 
