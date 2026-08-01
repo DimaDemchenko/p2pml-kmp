@@ -109,7 +109,7 @@ internal class P2PMediaLoaderCore(
 
         activeSession.store(session)
 
-        drainPendingConfig(session, "cached before initialization")
+        applyConfigPatches(session)
 
         if (!_state.compareAndSet(
                 P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING),
@@ -137,7 +137,7 @@ internal class P2PMediaLoaderCore(
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
-        drainPendingConfig(session, "arrived during initialization handoff")
+        applyConfigPatches(session)
 
         p2pEvents.syncEarlySubscriptions()
     }
@@ -184,7 +184,7 @@ internal class P2PMediaLoaderCore(
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
             pendingDynamicConfig.value = dynamicCoreConfig
             if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
-                drainPendingConfig(activeSession.load(), "stored during activation handoff")
+                activeSession.load()?.let { applyConfigPatches(it) }
             }
             return
         }
@@ -194,14 +194,16 @@ internal class P2PMediaLoaderCore(
             logger.w { "Session was null during ACTIVE state; release likely in progress. Ignoring." }
             return
         }
-        session.applyDynamicConfig(dynamicCoreConfig)
+
+        applyConfigPatches(session, dynamicCoreConfig)
     }
 
-    private fun drainPendingConfig(session: P2PSession?, context: String) {
-        val pending = pendingDynamicConfig.getAndUpdate { null } ?: return
-        if (session == null) return
-        logger.i { "Applying pending dynamic config ($context)." }
-        session.applyDynamicConfig(pending)
+    private fun applyConfigPatches(session: P2PSession, newPatch: DynamicCoreConfig? = null) {
+        pendingDynamicConfig.getAndUpdate { null }?.let { cached ->
+            logger.i { "Applying dynamic config cached before activation." }
+            session.applyDynamicConfig(cached)
+        }
+        newPatch?.let { session.applyDynamicConfig(it) }
     }
 
     /**

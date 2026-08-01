@@ -171,6 +171,67 @@ class P2PMediaLoaderCoreTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
+    fun configCachedBeforeInitializeIsAppliedBeforeLaterConfigs() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val core = P2PMediaLoaderCore()
+            val webView = FakeBootingWebView(awaitBeforeLoad = CompletableDeferred(Unit))
+
+            core.applyDynamicConfig(DynamicCoreConfig().apply { highDemandTimeWindow = 11 })
+            core.initialize(StubPlaybackProvider(), FakeWebViewFactory(webView))
+            core.applyDynamicConfig(DynamicCoreConfig().apply { highDemandTimeWindow = 22 })
+
+            assertEquals(2, webView.dynamicConfigScripts.size)
+            assertTrue("\"highDemandTimeWindow\":11" in webView.dynamicConfigScripts[0])
+            assertTrue("\"highDemandTimeWindow\":22" in webView.dynamicConfigScripts[1])
+
+            core.release()
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun configsCachedBeforeInitializeAreLastWins() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val core = P2PMediaLoaderCore()
+            val webView = FakeBootingWebView(awaitBeforeLoad = CompletableDeferred(Unit))
+
+            core.applyDynamicConfig(DynamicCoreConfig().apply { highDemandTimeWindow = 11 })
+            core.applyDynamicConfig(DynamicCoreConfig().apply { highDemandTimeWindow = 22 })
+            core.initialize(StubPlaybackProvider(), FakeWebViewFactory(webView))
+
+            assertEquals(1, webView.dynamicConfigScripts.size)
+            assertTrue("\"highDemandTimeWindow\":22" in webView.dynamicConfigScripts[0])
+
+            core.release()
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun configAfterReleaseIsIgnored() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val core = P2PMediaLoaderCore()
+            val webView = FakeBootingWebView(awaitBeforeLoad = CompletableDeferred(Unit))
+            core.initialize(StubPlaybackProvider(), FakeWebViewFactory(webView))
+            core.release()
+
+            core.applyDynamicConfig(DynamicCoreConfig().apply { highDemandTimeWindow = 33 })
+
+            assertEquals(0, webView.dynamicConfigScripts.size)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
     fun releaseCompletesEventStreams() = runTest {
         val core = P2PMediaLoaderCore()
         val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -205,12 +266,17 @@ class P2PMediaLoaderCoreTest {
     /** Completes the boot protocol instantly; [onDynamicConfigEvaluated] fires in the activation tail. */
     private class FakeBootingWebView(
         private val awaitBeforeLoad: CompletableDeferred<Unit>,
-        private val onDynamicConfigEvaluated: () -> Unit
+        private val onDynamicConfigEvaluated: () -> Unit = {}
     ) : HeadlessWebView {
+        val dynamicConfigScripts = mutableListOf<String>()
+
         override suspend fun loadUrlAndWait(url: String) = awaitBeforeLoad.await()
 
         override fun evaluateJavascript(script: String) {
-            if ("applyDynamicP2PCoreConfig" in script) onDynamicConfigEvaluated()
+            if ("applyDynamicP2PCoreConfig" in script) {
+                dynamicConfigScripts += script
+                onDynamicConfigEvaluated()
+            }
         }
 
         override suspend fun initCoreAndWait(script: String) = Unit
