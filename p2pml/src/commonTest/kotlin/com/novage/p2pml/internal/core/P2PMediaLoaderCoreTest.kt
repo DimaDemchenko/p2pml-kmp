@@ -97,10 +97,9 @@ class P2PMediaLoaderCoreTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
             val core = P2PMediaLoaderCore()
-            // A cached config is drained in the non-suspending activation tail, right after the
-            // session is created and before the state latches ACTIVE. Cancelling the initializing
-            // job from inside that drain lands cancellation in the tail window deterministically:
-            // no suspension point remains, so it only surfaces when initialize() returns.
+            // A cached config is applied in the activation tail, right after the session is
+            // created. Cancelling the initializing job from inside that hook races cancellation
+            // against the tail; whichever side wins, the loader must end terminally RELEASED.
             core.applyDynamicConfig(DynamicCoreConfig())
 
             var initJob: Job? = null

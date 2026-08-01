@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,11 +74,11 @@ internal class P2PMediaLoaderCore(
     internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         claimBoot()
         logger.d { "Initializing P2PMediaLoaderCore..." }
+        
+        val boot = coreScope.async { performSessionInitialization(provider, webViewFactory) }
 
         runCatching {
-            withContext(Dispatchers.Default) {
-                performSessionInitialization(provider, webViewFactory)
-            }
+            boot.await()
         }.onFailure { e ->
             val mappedException = if (e !is Exception) e else handleInitializationException(e)
             when (mappedException) {
