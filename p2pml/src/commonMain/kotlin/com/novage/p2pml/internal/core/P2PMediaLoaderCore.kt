@@ -74,7 +74,7 @@ internal class P2PMediaLoaderCore(
     internal suspend fun initialize(provider: PlaybackProvider, webViewFactory: WebViewFactory) {
         claimBoot()
         logger.d { "Initializing P2PMediaLoaderCore..." }
-        
+
         val boot = coreScope.async { performSessionInitialization(provider, webViewFactory) }
 
         runCatching {
