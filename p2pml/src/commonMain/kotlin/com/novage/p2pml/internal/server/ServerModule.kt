@@ -16,6 +16,8 @@ import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -70,6 +72,7 @@ internal class ServerModule(
         } catch (e: IOException) {
             handleStartupError("Network Error starting server: ${e.message}", e)
         } catch (e: IllegalStateException) {
+            currentCoroutineContext().ensureActive()
             handleStartupError("Invalid server state: ${e.message}", e)
         } catch (e: IllegalArgumentException) {
             handleStartupError("Invalid server configuration: ${e.message}", e)
