@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        P2PMediaLoader.enableLogging()
+        P2PMediaLoader.enableDebugLogging()
         P2PFileLogSink.install(applicationContext)
 
         // Pre-warm the native Chromium engine during Activity startup.

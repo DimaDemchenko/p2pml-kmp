@@ -33,12 +33,12 @@ object P2PLogging {
      * Enables verbose (DEBUG) diagnostics. Process-global: this affects every loader instance.
      * Debug output includes manifest and segment URLs, which may carry signed query parameters.
      */
-    fun enableLogging() {
+    fun enableDebugLogging() {
         minLevel = LogLevel.DEBUG
     }
 
     /** Restores the default verbosity ([LogLevel.WARN] and above). Process-global. */
-    fun disableLogging() {
+    fun disableDebugLogging() {
         minLevel = LogLevel.WARN
     }
 }
