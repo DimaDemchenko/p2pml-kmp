@@ -374,11 +374,11 @@
         }
 
         async processSegmentRequest(segmentUrl) {
-          const uploadToKtor = (status, body = null, errorType = null) => {
+          const uploadToKtor = (body = null, errorType = null) => {
             let url = `${this.uploadUrl}?segmentId=${encodeURIComponent(
               segmentUrl,
             )}`;
-            if (errorType) url += `&error=${errorType}`;
+            if (errorType) url += `&error=${encodeURIComponent(errorType)}`;
 
             const options = { method: "POST" };
             if (body) {
@@ -395,17 +395,17 @@
 
           try {
             await this.core.loadSegment(segmentUrl, {
-              onSuccess: (response) => uploadToKtor("success", response.data),
+              onSuccess: (response) => uploadToKtor(response.data),
               onError: (error) => {
                 console.error(
                   `Segment with URL ${segmentUrl} failed to load`,
                   error,
                 );
-                uploadToKtor("error", null, error.type);
+                uploadToKtor(null, error.type);
               },
             });
           } catch (e) {
-            uploadToKtor("error", null, "not_found");
+            uploadToKtor(null, "not_found");
           }
         }
       }

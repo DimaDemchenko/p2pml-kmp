@@ -4,7 +4,7 @@ import SwiftUI
 @main
 struct IOSDemoApp: App {
     init() {
-        P2PMediaLoader.companion.enableLogging()
+        P2PMediaLoader.companion.enableDebugLogging()
         P2PFileLogSink.install()
 
         let appearance = UINavigationBarAppearance()

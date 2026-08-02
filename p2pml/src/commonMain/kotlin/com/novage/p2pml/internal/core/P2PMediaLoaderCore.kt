@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,15 +75,24 @@ internal class P2PMediaLoaderCore(
         claimBoot()
         logger.d { "Initializing P2PMediaLoaderCore..." }
 
+        val boot = coreScope.async { performSessionInitialization(provider, webViewFactory) }
+
         runCatching {
-            withContext(Dispatchers.Default) {
-                performSessionInitialization(provider, webViewFactory)
-            }
+            boot.await()
         }.onFailure { e ->
             val mappedException = if (e !is Exception) e else handleInitializationException(e)
             when (mappedException) {
                 is P2PMediaLoaderException -> release(failure = mappedException)
-                else -> release()
+
+                is CancellationException -> release()
+
+                else -> release(
+                    failure = P2PMediaLoaderException(
+                        P2PMediaLoaderErrorCode.ENGINE_INIT_FAILED,
+                        mappedException.message ?: "Fatal error during initialization",
+                        cause = mappedException
+                    )
+                )
             }
             throw mappedException
         }
@@ -109,7 +119,7 @@ internal class P2PMediaLoaderCore(
 
         activeSession.store(session)
 
-        drainPendingConfig(session, "cached before initialization")
+        applyConfigPatches(session)
 
         if (!_state.compareAndSet(
                 P2PMediaLoaderState(P2PMediaLoaderStatus.STARTING),
@@ -137,7 +147,7 @@ internal class P2PMediaLoaderCore(
             throw CancellationException("Session initialization aborted due to concurrent release.")
         }
 
-        drainPendingConfig(session, "arrived during initialization handoff")
+        applyConfigPatches(session)
 
         p2pEvents.syncEarlySubscriptions()
     }
@@ -184,7 +194,7 @@ internal class P2PMediaLoaderCore(
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
             pendingDynamicConfig.value = dynamicCoreConfig
             if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
-                drainPendingConfig(activeSession.load(), "stored during activation handoff")
+                activeSession.load()?.let { applyConfigPatches(it) }
             }
             return
         }
@@ -194,14 +204,16 @@ internal class P2PMediaLoaderCore(
             logger.w { "Session was null during ACTIVE state; release likely in progress. Ignoring." }
             return
         }
-        session.applyDynamicConfig(dynamicCoreConfig)
+
+        applyConfigPatches(session, dynamicCoreConfig)
     }
 
-    private fun drainPendingConfig(session: P2PSession?, context: String) {
-        val pending = pendingDynamicConfig.getAndUpdate { null } ?: return
-        if (session == null) return
-        logger.i { "Applying pending dynamic config ($context)." }
-        session.applyDynamicConfig(pending)
+    private fun applyConfigPatches(session: P2PSession, newPatch: DynamicCoreConfig? = null) {
+        pendingDynamicConfig.getAndUpdate { null }?.let { cached ->
+            logger.i { "Applying dynamic config cached before activation." }
+            session.applyDynamicConfig(cached)
+        }
+        newPatch?.let { session.applyDynamicConfig(it) }
     }
 
     /**

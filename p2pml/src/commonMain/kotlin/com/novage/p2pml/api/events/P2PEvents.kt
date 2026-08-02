@@ -1,6 +1,7 @@
 package com.novage.p2pml.api.events
 
 import com.novage.p2pml.internal.utils.CoreLogger
+import kotlin.jvm.JvmSynthetic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
@@ -135,9 +136,13 @@ class P2PEvents internal constructor(
         forwarder.cancel()
     }
 
+    @JvmSynthetic
     internal fun emitChunkDownloaded(d: ChunkDownloadedDetails) = chunkDownloaded.flow.tryEmit(d)
+
+    @JvmSynthetic
     internal fun emitChunkUploaded(d: ChunkUploadedDetails) = chunkUploaded.flow.tryEmit(d)
 
+    @JvmSynthetic
     internal fun dispatchEvent(eventName: String, payload: JsonElement, json: Json) {
         val channel = channelsByName[eventName]
         if (channel == null) {
@@ -165,6 +170,7 @@ class P2PEvents internal constructor(
         }
     }
 
+    @JvmSynthetic
     internal fun syncEarlySubscriptions() {
         if (!isCoreActive()) return
 

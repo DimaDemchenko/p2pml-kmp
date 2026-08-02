@@ -15,21 +15,21 @@ class P2PLoggingTest {
     }
 
     @Test
-    fun enableLoggingLowersLevelToDebug() {
-        P2PLogging.disableLogging()
+    fun enableDebugLoggingLowersLevelToDebug() {
+        P2PLogging.disableDebugLogging()
         assertFalse(P2PLogging.isDebugEnabled)
 
-        P2PLogging.enableLogging()
+        P2PLogging.enableDebugLogging()
 
         assertEquals(LogLevel.DEBUG, P2PLogging.minLevel)
         assertTrue(P2PLogging.isDebugEnabled)
     }
 
     @Test
-    fun disableLoggingRestoresWarn() {
-        P2PLogging.enableLogging()
+    fun disableDebugLoggingRestoresWarn() {
+        P2PLogging.enableDebugLogging()
 
-        P2PLogging.disableLogging()
+        P2PLogging.disableDebugLogging()
 
         assertEquals(LogLevel.WARN, P2PLogging.minLevel)
         assertFalse(P2PLogging.isDebugEnabled)
