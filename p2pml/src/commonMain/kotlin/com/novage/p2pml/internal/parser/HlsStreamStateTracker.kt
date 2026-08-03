@@ -141,7 +141,7 @@ internal class HlsStreamStateTracker(
             context.lastUpdated = clock.timeSource.markNow()
         }
 
-        var segmentIndex = if (isStreamLive) newMediaSequence else 0
+        var segmentIndex = newMediaSequence
         val segmentsToAdd = mutableListOf<Segment>()
 
         mediaPlaylist.hlsSegments.forEach { segment ->
@@ -151,8 +151,7 @@ internal class HlsStreamStateTracker(
             newSegment?.let { segmentsToAdd.add(it) }
         }
 
-        val removeUntilId = if (isStreamLive) newMediaSequence else 0L
-        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, removeUntilId, isStreamLive)
+        val segmentsToRemove = enforceLiveTtlAndGetObsoleteSegments(manifestUrl, newMediaSequence, isStreamLive)
 
         context.updateParams = UpdateStreamParams(
             streamRuntimeId = manifestUrl,

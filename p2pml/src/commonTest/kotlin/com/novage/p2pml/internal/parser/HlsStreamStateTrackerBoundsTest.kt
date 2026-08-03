@@ -150,6 +150,38 @@ class HlsStreamStateTrackerBoundsTest {
     }
 
     @Test
+    fun liveStreamEndingKeepsItsTimelineAndAddsNoDuplicates() {
+        val tracker = tracker()
+        val url = "http://example.com/live.m3u8"
+
+        tracker.postProcessMediaPlaylist(
+            url,
+            playlist(url, listOf(segment("a.ts"), segment("b.ts")), mediaSequence = 0)
+        )
+        tracker.postProcessMediaPlaylist(
+            url,
+            playlist(url, listOf(segment("b.ts"), segment("c.ts")), mediaSequence = 1)
+        )
+        val boundsWhileLive = assertNotNull(tracker.getMainTimelineBounds())
+
+        // The event ends: the same playlist arrives once more with #EXT-X-ENDLIST appended.
+        tracker.postProcessMediaPlaylist(
+            url,
+            playlist(url, listOf(segment("b.ts"), segment("c.ts")), mediaSequence = 1, isLive = false)
+        )
+
+        val update = assertNotNull(tracker.getUpdateStreamParams(url))
+        assertEquals(emptyList(), update.addSegments, "final window must not re-register as new segments")
+
+        val trackedB = assertNotNull(tracker.getSegmentWithManifestByUrl("http://example.com/b.ts"))
+        assertEquals(1L, trackedB.second.externalId, "ids must stay stable across the live-to-VOD flip")
+
+        val bounds = assertNotNull(tracker.getMainTimelineBounds())
+        assertEquals(boundsWhileLive.start, bounds.start, TOLERANCE)
+        assertEquals(boundsWhileLive.liveEdge, bounds.liveEdge, TOLERANCE)
+    }
+
+    @Test
     fun boundsAreClearedOnReset() {
         val tracker = tracker()
         val url = "http://example.com/live.m3u8"

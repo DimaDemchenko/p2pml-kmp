@@ -11,6 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import kotlinx.coroutines.CancellationException
 import kotlinx.io.IOException
 import kotlinx.serialization.SerializationException
 
@@ -38,6 +39,9 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
             )
 
             call.respondText(modifiedManifest, ContentType.parse("application/vnd.apple.mpegurl"))
+        } catch (e: CancellationException) {
+            logger.d { "Manifest request cancelled (player abort or shutdown): $manifestUrl" }
+            throw e
         } catch (e: ResponseException) {
             val status = e.response.status
             logger.w { "Upstream error fetching manifest [$manifestUrl]: $status" }
