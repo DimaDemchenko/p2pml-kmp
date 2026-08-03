@@ -1,5 +1,7 @@
 package com.novage.p2pml.internal.server.utils
 
+import io.ktor.http.Parameters
+import io.ktor.http.parametersOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -10,6 +12,63 @@ class NetworkUtilsTest {
 
     private val wholeSegment = "https://example.com/seg0.ts"
     private val rangedSegment = "https://example.com/seg0.ts|500-999"
+
+    @Test
+    fun upstreamManifestUrlIsUntouchedWithoutDeliveryDirectives() {
+        val signedUrl = "https://cdn.example.com/live/video.m3u8?token=a%2Fb&exp=123"
+
+        assertEquals(signedUrl, buildUpstreamManifestUrl(signedUrl, Parameters.Empty))
+    }
+
+    @Test
+    fun blockingReloadDirectivesAreAppended() {
+        val params = parametersOf("_HLS_msn" to listOf("266"), "_HLS_part" to listOf("3"))
+
+        assertEquals(
+            "https://cdn.example.com/v.m3u8?_HLS_msn=266&_HLS_part=3",
+            buildUpstreamManifestUrl("https://cdn.example.com/v.m3u8", params)
+        )
+    }
+
+    @Test
+    fun deliveryDirectivesMergeWithExistingQuery() {
+        val params = parametersOf("_HLS_msn", "266")
+
+        assertEquals(
+            "https://cdn.example.com/v.m3u8?token=abc&_HLS_msn=266",
+            buildUpstreamManifestUrl("https://cdn.example.com/v.m3u8?token=abc", params)
+        )
+    }
+
+    @Test
+    fun skipDirectiveIsNeverForwarded() {
+        val params = parametersOf("_HLS_skip" to listOf("YES"), "_HLS_msn" to listOf("266"))
+
+        assertEquals(
+            "https://cdn.example.com/v.m3u8?_HLS_msn=266",
+            buildUpstreamManifestUrl("https://cdn.example.com/v.m3u8", params)
+        )
+    }
+
+    @Test
+    fun nonDirectiveParametersAreNotForwarded() {
+        val params = parametersOf("cacheBust" to listOf("42"), "_HLS_part" to listOf("3"))
+
+        assertEquals(
+            "https://cdn.example.com/v.m3u8?_HLS_part=3",
+            buildUpstreamManifestUrl("https://cdn.example.com/v.m3u8", params)
+        )
+    }
+
+    @Test
+    fun directiveValuesAreUrlEncoded() {
+        val params = parametersOf("_HLS_part", "a b&c")
+
+        assertEquals(
+            "https://cdn.example.com/v.m3u8?_HLS_part=a%20b%26c",
+            buildUpstreamManifestUrl("https://cdn.example.com/v.m3u8", params)
+        )
+    }
 
     @Test
     fun parsesOpenEndedRange() {

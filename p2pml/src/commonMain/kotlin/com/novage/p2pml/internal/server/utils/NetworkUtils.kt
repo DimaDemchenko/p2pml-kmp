@@ -18,9 +18,11 @@ import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.contentLength
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.utils.io.ByteReadChannel
@@ -62,6 +64,34 @@ private fun HttpRequestBuilder.copyProxyHeaders(requestHeaders: Headers) {
             values.forEach { value -> headers.append(key, value) }
         }
     }
+}
+
+/** LL-HLS delivery directives (RFC 8216bis §6.2.5); the `_HLS_` query prefix is reserved for them. */
+private const val DELIVERY_DIRECTIVE_PREFIX = "_HLS_"
+
+/**
+ * Never forwarded: a delta-update response carries EXT-X-SKIP, which the parser does not
+ * understand and which would shrink P2P tracking to the un-skipped tail. The parser also strips
+ * the CAN-SKIP-* attributes from rewritten manifests, so a spec-conforming player never sends
+ * this.
+ */
+private const val SKIP_DIRECTIVE = "_HLS_skip"
+
+/**
+ * Appends the player's LL-HLS delivery directives (`_HLS_msn`, `_HLS_part`, …) to the upstream
+ * manifest URL so blocking playlist reload works through the proxy. Only `_HLS_`-prefixed
+ * parameters are relayed — anything else on the local URL is dropped as before — and
+ * [manifestUrl] is preserved byte-for-byte (directives are appended, nothing is re-encoded)
+ * because origin URLs may carry signed query parameters that must not be altered.
+ */
+internal fun buildUpstreamManifestUrl(manifestUrl: String, playerParameters: Parameters): String {
+    val directives = playerParameters.entries()
+        .filter { (key, _) -> key.startsWith(DELIVERY_DIRECTIVE_PREFIX) && key != SKIP_DIRECTIVE }
+        .flatMap { (key, values) -> values.map { "${key.encodeURLParameter()}=${it.encodeURLParameter()}" } }
+    if (directives.isEmpty()) return manifestUrl
+
+    val separator = if ('?' in manifestUrl) '&' else '?'
+    return manifestUrl + separator + directives.joinToString("&")
 }
 
 private const val BYTES_PREFIX = "bytes="
