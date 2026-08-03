@@ -14,8 +14,8 @@ URL directly — playback never depends on P2P.
 
 - HLS only (multivariant and media playlists, live and VOD). DASH is not supported.
 - Low-Latency HLS: blocking playlist reloads are relayed to the origin, delta updates are
-  disabled (`CAN-SKIP-UNTIL` is stripped from proxied playlists), and partial segments load
-  directly from the origin without P2P — only full segments are shared.
+  disabled (the `CAN-SKIP-*` attributes are stripped from proxied playlists), and partial
+  segments load directly from the origin without P2P — only full segments are shared.
 - One active stream per loader instance; use one instance per concurrent stream.
 - Instances are single-use: initialize → play → release → discard.
 

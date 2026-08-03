@@ -72,7 +72,8 @@ private const val DELIVERY_DIRECTIVE_PREFIX = "_HLS_"
 /**
  * Never forwarded: a delta-update response carries EXT-X-SKIP, which the parser does not
  * understand and which would shrink P2P tracking to the un-skipped tail. The parser also strips
- * CAN-SKIP-UNTIL from rewritten manifests, so a spec-conforming player never sends this.
+ * the CAN-SKIP-* attributes from rewritten manifests, so a spec-conforming player never sends
+ * this.
  */
 private const val SKIP_DIRECTIVE = "_HLS_skip"
 
