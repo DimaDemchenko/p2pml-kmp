@@ -224,6 +224,10 @@ internal class HlsPlaylistParser(
             processLowLatencyTag(originalLine, trimmedLine, context)
         }
 
+        trimmedLine.startsWith(TAG_SERVER_CONTROL) -> {
+            stripDeltaUpdateAdvertisement(trimmedLine)
+        }
+
         else -> originalLine
     }
 
@@ -401,6 +405,20 @@ internal class HlsPlaylistParser(
             urlExtractor = { parseUrlAttribute(trimmedLine, context.vars, context.baseUri) },
             rewriter = { urlRewriter.rewriteSessionKeyUrl(it) }
         )
+}
+
+/**
+ * Removes CAN-SKIP-* from EXT-X-SERVER-CONTROL so players never request delta updates: the proxy
+ * does not forward `_HLS_skip`, and this parser does not understand EXT-X-SKIP. Blocking reload
+ * (CAN-BLOCK-RELOAD) is kept \u2014 its directives are relayed to the origin. Splitting on ',' is safe
+ * because SERVER-CONTROL attribute values are numbers or YES, never quoted strings. If nothing
+ * remains the whole tag is dropped, since a bare EXT-X-SERVER-CONTROL: is malformed.
+ */
+private fun stripDeltaUpdateAdvertisement(trimmedLine: String): String {
+    val attributes = trimmedLine.substringAfter(':', missingDelimiterValue = "")
+        .split(',')
+        .filter { it.isNotBlank() && !it.trim().startsWith("CAN-SKIP-") }
+    return if (attributes.isEmpty()) "" else "$TAG_SERVER_CONTROL:${attributes.joinToString(",")}"
 }
 
 private fun cleanBOM(data: String): String = if (data.startsWith("\uFEFF")) data.substring(1) else data

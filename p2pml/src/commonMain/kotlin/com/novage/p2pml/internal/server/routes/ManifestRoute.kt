@@ -2,6 +2,7 @@ package com.novage.p2pml.internal.server.routes
 
 import com.novage.p2pml.internal.parser.ManifestParseException
 import com.novage.p2pml.internal.server.services.ManifestService
+import com.novage.p2pml.internal.server.utils.buildUpstreamManifestUrl
 import com.novage.p2pml.internal.server.utils.fetchManifest
 import com.novage.p2pml.internal.utils.CoreLogger
 import io.ktor.client.HttpClient
@@ -30,7 +31,10 @@ internal fun Route.registerManifestRoute(httpClient: HttpClient, manifestService
         }
 
         try {
-            val fetchResult = httpClient.fetchManifest(call, manifestUrl)
+            // LL-HLS delivery directives ride the local URL's query string and must reach the
+            // origin; the stream identity stays the bare manifestUrl.
+            val upstreamUrl = buildUpstreamManifestUrl(manifestUrl, call.request.queryParameters)
+            val fetchResult = httpClient.fetchManifest(call, upstreamUrl)
 
             val modifiedManifest = manifestService.processManifest(
                 requestUrl = manifestUrl,

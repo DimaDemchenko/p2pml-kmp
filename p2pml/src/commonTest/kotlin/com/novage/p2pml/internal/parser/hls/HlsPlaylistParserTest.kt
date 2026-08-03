@@ -461,6 +461,39 @@ class HlsPlaylistParserTest {
     }
 
     @Test
+    fun serverControlDeltaUpdateAdvertisementIsStripped() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val manifest = """
+            #EXTM3U
+            #EXT-X-TARGETDURATION:4
+            #EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,CAN-SKIP-UNTIL=24.0,PART-HOLD-BACK=3.0
+            #EXTINF:4.0,
+            segment.ts
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/media.m3u8", manifest)
+
+        assertTrue(result.rewrittenManifest.contains("#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=3.0"))
+        assertFalse(result.rewrittenManifest.contains("CAN-SKIP"))
+    }
+
+    @Test
+    fun serverControlWithOnlySkipAttributesIsDroppedEntirely() {
+        val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
+        val manifest = """
+            #EXTM3U
+            #EXT-X-TARGETDURATION:4
+            #EXT-X-SERVER-CONTROL:CAN-SKIP-UNTIL=24.0,CAN-SKIP-DATERANGES=YES
+            #EXTINF:4.0,
+            segment.ts
+        """.trimIndent()
+
+        val result = parser.parse("http://example.com/media.m3u8", manifest)
+
+        assertFalse(result.rewrittenManifest.contains("EXT-X-SERVER-CONTROL"))
+    }
+
+    @Test
     fun sessionDataAndContentSteeringUrisAreAbsolutized() {
         val parser = HlsPlaylistParser(urlRewriter = mockRewriter)
         val master = """

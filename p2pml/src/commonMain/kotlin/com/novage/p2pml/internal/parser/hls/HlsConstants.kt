@@ -21,6 +21,7 @@ internal const val TAG_PRELOAD_HINT = "#EXT-X-PRELOAD-HINT"
 internal const val TAG_RENDITION_REPORT = "#EXT-X-RENDITION-REPORT"
 internal const val TAG_SESSION_DATA = "#EXT-X-SESSION-DATA"
 internal const val TAG_CONTENT_STEERING = "#EXT-X-CONTENT-STEERING"
+internal const val TAG_SERVER_CONTROL = "#EXT-X-SERVER-CONTROL"
 
 // Type constants.
 internal const val TYPE_AUDIO = "AUDIO"
