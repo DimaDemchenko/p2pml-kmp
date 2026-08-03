@@ -33,7 +33,6 @@ internal class SegmentService(
 
     suspend fun createOrReplaceRequest(segmentUrl: String): CompletableDeferred<SegmentPayload> {
         val newDeferred = CompletableDeferred<SegmentPayload>()
-        var isFirstRequest = false
         var oldDeferred: CompletableDeferred<SegmentPayload>? = null
         var oldException: Exception? = null
 
@@ -55,7 +54,8 @@ internal class SegmentService(
                 oldException = SegmentReplacedException("Segment request replaced by newer one")
             } else {
                 logger.d { "Registered pending download for: $segmentUrl" }
-                isFirstRequest = true
+                sequenceStateTracker.onSegmentRequested(segmentUrl)
+                p2pEngine.requestSegmentBytes(segmentUrl)
             }
 
             requests[segmentUrl] = RequestState(newDeferred, currentAttempts + 1)
@@ -68,11 +68,6 @@ internal class SegmentService(
 
         if (errorToThrow != null) {
             throw errorToThrow
-        }
-
-        if (isFirstRequest) {
-            sequenceStateTracker.onSegmentRequested(segmentUrl)
-            p2pEngine.requestSegmentBytes(segmentUrl)
         }
 
         return newDeferred
