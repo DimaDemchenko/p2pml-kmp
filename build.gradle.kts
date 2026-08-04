@@ -16,7 +16,7 @@ subprojects {
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         kotlin {
             target("**/*.kt")
-            targetExclude("**/generated/**/*.kt", "**/RealWorldManifests.kt")
+            targetExclude("**/generated/**/*.kt")
 
             ktlint(libs.versions.ktlint.get())
         }
@@ -37,6 +37,6 @@ subprojects {
     }
 
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-        exclude("**/generated/**", "**/RealWorldManifests.kt")
+        exclude("**/generated/**")
     }
 }

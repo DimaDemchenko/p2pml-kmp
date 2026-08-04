@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength", "LargeClass")
+
 package com.novage.p2pml.internal.parser.hls
 
 /**
@@ -7,7 +9,7 @@ package com.novage.p2pml.internal.parser.hls
  */
 internal object ReferenceStreamManifests {
     /** https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8 */
-    val MUX_MASTER = """#EXTM3U
+    const val MUX_MASTER = """#EXTM3U
 #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=2149280,CODECS="mp4a.40.2,avc1.64001f",RESOLUTION=1280x720,NAME="720"
 url_0/193039199_mp4_h264_aac_hd_7.m3u8
 #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=246440,CODECS="mp4a.40.5,avc1.42000d",RESOLUTION=320x184,NAME="240"
@@ -21,7 +23,7 @@ url_8/193039199_mp4_h264_aac_fhd_7.m3u8
 """
 
     /** https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8 */
-    val MUX_MEDIA = """#EXTM3U
+    const val MUX_MEDIA = """#EXTM3U
 #EXT-X-VERSION:3
 #EXT-X-PLAYLIST-TYPE:VOD
 #EXT-X-TARGETDURATION:11
@@ -157,7 +159,7 @@ url_525/193039199_mp4_h264_aac_hd_7.ts
 """
 
     /** https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8 */
-    val APPLE_HEVC_MASTER = """#EXTM3U
+    const val APPLE_HEVC_MASTER = """#EXTM3U
 #EXT-X-VERSION:6
 #EXT-X-INDEPENDENT-SEGMENTS
 
@@ -312,7 +314,7 @@ v10/prog_index.m3u8
 """
 
     /** https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/v5/prog_index.m3u8 */
-    val APPLE_HEVC_MEDIA = """#EXTM3U
+    const val APPLE_HEVC_MEDIA = """#EXTM3U
 #EXT-X-TARGETDURATION:8
 #EXT-X-VERSION:7
 #EXT-X-MEDIA-SEQUENCE:1
@@ -551,7 +553,7 @@ main.mp4
 """
 
     /** https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8 */
-    val APPLE_DV_MASTER = """#EXTM3U
+    const val APPLE_DV_MASTER = """#EXTM3U
 #EXT-X-VERSION:6
 #EXT-X-INDEPENDENT-SEGMENTS
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aachev2-44-32",NAME="English",LANGUAGE="en-US",AUTOSELECT=YES,DEFAULT=YES,CHANNELS="2",URI="Job932393e2-1e4f-4fdb-ab59-0d201f752656-107660254-Transcode_audio_en_stereo32w441_audio/prog_index.m3u8"
@@ -798,7 +800,7 @@ Job8208634a-0add-4223-9782-600c14a70339-139240443-hls_bundle_hdrhls705_hdr10plus
 """
 
     /** https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/Job2dae5735-d6ca-48ca-91be-0ec0bead535c-107702578-hls_bundle_hls240/prog_index.m3u8 */
-    val APPLE_DV_MEDIA = """#EXTM3U
+    const val APPLE_DV_MEDIA = """#EXTM3U
 #EXT-X-TARGETDURATION:6
 #EXT-X-VERSION:7
 #EXT-X-MEDIA-SEQUENCE:0
@@ -864,5 +866,4 @@ fileSequence18.m4s
 fileSequence19.m4s
 #EXT-X-ENDLIST
 """
-
 }
