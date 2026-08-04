@@ -102,19 +102,26 @@ internal class SequenceStateTracker(
         mutex.withLock {
             val lastState = trackStates[manifestUrl]
 
-            val isFirstRequest = lastState == null
             val isExactMatch = lastState != null &&
                 segment.externalId == lastState.lastId &&
                 segment.startTime == lastState.lastStartTime
             val isNextSegment = lastState != null && segment.externalId == lastState.lastId + 1
 
-            val isSequential = isFirstRequest || isExactMatch || isNextSegment
+            // A first request (lastState == null) must sync like a seek: the engine's playhead
+            // starts at zero, and on a PROGRAM-DATE-TIME timeline the segments sit at epoch
+            // values — without the sync the engine aborts every initial load and live playback
+            // never starts.
+            val isSequential = isExactMatch || isNextSegment
 
             trackStates[manifestUrl] = TrackState(segment.externalId, segment.startTime)
 
             if (!isSequential) {
                 val duration = (segment.endTime - segment.startTime).coerceAtLeast(DEFAULT_CATCH_UP_THRESHOLD_SEC)
-                logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
+                if (lastState == null) {
+                    logger.i { "Stream start on $manifestUrl. Syncing engine position to ${segment.startTime}." }
+                } else {
+                    logger.w { "SEEK DETECTED on $manifestUrl. Forcing position to ${segment.startTime}." }
+                }
                 suspendPollingLocked(segment.startTime, duration)
 
                 val speed = playbackInfoFlow.value?.currentPlaybackSpeed ?: 1.0f

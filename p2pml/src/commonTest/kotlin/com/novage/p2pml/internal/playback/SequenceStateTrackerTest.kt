@@ -154,18 +154,23 @@ class SequenceStateTrackerTest {
         assertEquals(2.5f, f.engine.positions.single().second)
     }
 
+    /**
+     * The engine's playhead defaults to zero, but a PROGRAM-DATE-TIME playlist (AWS IVS, most
+     * live origins) puts segments at epoch values. Without a cold-start sync the engine aborts
+     * every initial load and live playback never starts — found on-device against IVS.
+     */
     @Test
-    fun firstSegmentRequestIsNotTreatedAsASeek() = withTracker { f ->
-        f.source.register("seg10", externalId = 10, startTime = 40.0)
+    fun firstSegmentRequestSyncsTheEnginePositionToTheStreamStart() = withTracker { f ->
+        f.source.register("seg10", externalId = 10, startTime = 1_785_867_483.0)
 
         f.tracker.onSegmentRequested("seg10")
         runCurrent()
 
-        assertTrue(f.engine.positions.isEmpty())
+        assertEquals(1_785_867_483.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
     }
 
     @Test
-    fun sequentialSegmentRequestsAreNotSeeks() = withTracker { f ->
+    fun sequentialSegmentRequestsAfterTheStartSyncAreNotSeeks() = withTracker { f ->
         f.source.register("seg10", externalId = 10, startTime = 40.0)
         f.source.register("seg11", externalId = 11, startTime = 44.0)
         f.source.register("seg12", externalId = 12, startTime = 48.0)
@@ -175,7 +180,9 @@ class SequenceStateTrackerTest {
         f.tracker.onSegmentRequested("seg12")
         runCurrent()
 
-        assertTrue(f.engine.positions.isEmpty())
+        // Only the cold-start sync is sent; normal progression forces nothing further.
+        assertEquals(1, f.engine.positions.size)
+        assertEquals(40.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
     }
 
     @Test
@@ -186,7 +193,7 @@ class SequenceStateTrackerTest {
         f.tracker.onSegmentRequested("seg10")
         runCurrent()
 
-        assertTrue(f.engine.positions.isEmpty())
+        assertEquals(1, f.engine.positions.size)
     }
 
     @Test
@@ -203,17 +210,21 @@ class SequenceStateTrackerTest {
     }
 
     @Test
-    fun seekOnAnotherVariantDoesNotDisturbTheFirstVariantSequence() = withTracker { f ->
+    fun variantSequencesAreTrackedIndependently() = withTracker { f ->
         val other = "https://example.com/480p.m3u8"
         f.source.register("a10", externalId = 10, startTime = 40.0)
         f.source.register("b11", externalId = 11, startTime = 44.0, variant = other)
+        f.source.register("a11", externalId = 11, startTime = 44.0)
 
         f.tracker.onSegmentRequested("a10")
-        // First request on a different variant — sequence state is per variant, so not a seek.
+        // First request on a different variant re-syncs (an ABR switch lands near the playhead,
+        // so the sync is a no-op for the engine's window) without disturbing the first variant.
         f.tracker.onSegmentRequested("b11")
+        f.tracker.onSegmentRequested("a11")
         runCurrent()
 
-        assertTrue(f.engine.positions.isEmpty())
+        // Two start syncs (one per variant); a11 continues variant A's sequence and forces nothing.
+        assertEquals(2, f.engine.positions.size)
     }
 
     @Test
@@ -320,7 +331,9 @@ class SequenceStateTrackerTest {
         f.tracker.onSegmentRequested("seg50")
         runCurrent()
 
-        assertEquals(1.75f, f.engine.positions.single().second)
+        // Both the start sync and the seek force carry the player's last reported speed.
+        assertEquals(2, f.engine.positions.size)
+        assertTrue(f.engine.positions.all { it.second == 1.75f })
     }
 
     @Test
@@ -350,11 +363,12 @@ class SequenceStateTrackerTest {
         runCurrent()
         assertEquals(50.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
 
-        // Sequence history is gone too, so the same jump now counts as a first request.
+        // Sequence history is gone too: the same segment now counts as a stream start and
+        // re-syncs the engine — exactly what the next stream needs after a switch.
         f.engine.positions.clear()
         f.tracker.onSegmentRequested("seg50")
         runCurrent()
-        assertTrue(f.engine.positions.isEmpty())
+        assertEquals(200.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
     }
 
     @Test
