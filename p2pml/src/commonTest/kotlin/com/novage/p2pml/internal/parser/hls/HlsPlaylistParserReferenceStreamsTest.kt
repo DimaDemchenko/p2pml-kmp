@@ -29,6 +29,15 @@ class HlsPlaylistParserReferenceStreamsTest {
     private fun proxiedSegmentUrl(runtimeId: String) =
         "http://127.0.0.1:8080/tok/segment/${encodeToUrlSafeBase64(runtimeId)}"
 
+    @Test
+    fun fixturesRetainTheirVerbatimQuirks() {
+        fun trailingTabExtinfCount(manifest: String) =
+            manifest.lineSequence().count { it.startsWith("#EXTINF") && it.endsWith("\t") }
+
+        assertEquals(76, trailingTabExtinfCount(ReferenceStreamManifests.APPLE_HEVC_MEDIA))
+        assertEquals(19, trailingTabExtinfCount(ReferenceStreamManifests.APPLE_DV_MEDIA))
+    }
+
     // ------------------------------------------------------------------ mux Big Buck Bunny
 
     private val muxMasterUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
