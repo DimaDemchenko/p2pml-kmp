@@ -154,8 +154,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         try {
             loader.initialize(exoPlayer)
 
-            val activeLoader = p2pLoader ?: return
-            val p2pUrl = activeLoader.createPlaybackUrl(manifestUrl)
+            val p2pUrl = loader.createPlaybackUrl(manifestUrl)
 
             startPlayback(exoPlayer, p2pUrl)
             _uiState.update { it.copy(isP2PActive = true) }
@@ -271,14 +270,15 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         releaseResources()
     }
 
-    fun play() {
-        shouldAutoPlay = true
-        player?.play()
+    fun onAppForegrounded() {
+        if (shouldAutoPlay) player?.play()
         setP2PEnabled(true)
     }
 
-    fun pause() {
-        shouldAutoPlay = false
+    fun onAppBackgrounded() {
+        // playWhenReady rather than isPlaying: a video that was still buffering has not been
+        // paused by the user, so it should resume on return.
+        shouldAutoPlay = player?.playWhenReady == true
         player?.pause()
         setP2PEnabled(false)
     }

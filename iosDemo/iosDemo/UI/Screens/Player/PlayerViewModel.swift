@@ -67,7 +67,7 @@ class PlayerViewModel: ObservableObject {
             do {
                 try await loader.initialize(player: newPlayer)
 
-                let p2pUrl = try p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                let p2pUrl = try loader.createPlaybackUrl(manifestUrl: manifestUrl)
                 startPlayback(url: p2pUrl)
                 uiState.isP2PActive = true
             } catch let error as P2PMediaLoaderException {
@@ -278,14 +278,17 @@ class PlayerViewModel: ObservableObject {
         uiState.userMessage = nil
     }
 
-    func play() {
-        shouldAutoPlay = true
-        player?.play()
+    func onAppForegrounded() {
+        if shouldAutoPlay {
+            player?.play()
+        }
         applyP2PEnabled(true)
     }
 
-    func pause() {
-        shouldAutoPlay = false
+    func onAppBackgrounded() {
+        // Only .paused means the user stopped playback; a video still buffering
+        // (.waitingToPlayAtSpecifiedRate) has not been paused and should resume on return.
+        shouldAutoPlay = player.map { $0.timeControlStatus != .paused } ?? false
         player?.pause()
         applyP2PEnabled(false)
     }

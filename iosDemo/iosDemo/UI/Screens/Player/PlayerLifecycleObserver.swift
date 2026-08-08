@@ -6,10 +6,10 @@ struct PlayerLifecycleObserver: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                viewModel.pause()
+                viewModel.onAppBackgrounded()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                viewModel.play()
+                viewModel.onAppForegrounded()
             }
     }
 }
