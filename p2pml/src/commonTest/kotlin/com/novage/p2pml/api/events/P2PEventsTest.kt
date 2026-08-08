@@ -55,7 +55,7 @@ class P2PEventsTest {
             bytesLength = 42,
             downloadSource = DownloadSource.P2P,
             peerId = "peer-1",
-            streamType = "main",
+            streamType = StreamType.MAIN,
             infoHash = "aabbccdd"
         )
         harness.events.emitChunkDownloaded(details)
@@ -117,7 +117,7 @@ class P2PEventsTest {
                     bytesLength = i,
                     downloadSource = DownloadSource.P2P,
                     peerId = null,
-                    streamType = "main",
+                    streamType = StreamType.MAIN,
                     infoHash = "aabbccdd"
                 )
             )

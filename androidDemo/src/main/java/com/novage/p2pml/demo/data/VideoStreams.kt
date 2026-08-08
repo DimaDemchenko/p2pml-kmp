@@ -15,11 +15,6 @@ object VideoStreams {
             "Reliable HLS test stream (Mux.dev)"
         ),
         MediaSample(
-            "Sintel (HLS)",
-            "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
-            "Multi-audio track example"
-        ),
-        MediaSample(
             "Bunny (Invalid P2P Engine)",
             "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
             "Tests fallback when P2P engine is unreachable",

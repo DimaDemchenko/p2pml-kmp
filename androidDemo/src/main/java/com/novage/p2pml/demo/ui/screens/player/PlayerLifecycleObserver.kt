@@ -10,10 +10,10 @@ fun PlayerLifecycleObserver(viewModel: PlayerViewModel) {
     val appLifecycle = ProcessLifecycleOwner.get()
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE, appLifecycle) {
-        viewModel.pause()
+        viewModel.onAppBackgrounded()
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME, appLifecycle) {
-        viewModel.play()
+        viewModel.onAppForegrounded()
     }
 }

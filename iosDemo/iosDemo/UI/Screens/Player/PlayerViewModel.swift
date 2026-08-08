@@ -6,8 +6,8 @@ import P2PML
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.novage.p2pml", category: "PlayerViewModel")
 
-private let highDemandWindowSec: Int32 = 45
-private let preferredBufferDurationSec = 45.0
+private let highDemandWindowSec: Int32 = 20
+private let preferredBufferDurationSec = Double(highDemandWindowSec)
 private let simultaneousP2PDownloads: Int32 = 3
 private let webRtcMaxMessageSize: Int32 = 65535
 private let p2pNotReceivingBytesTimeoutMs: Int32 = 1000
@@ -21,6 +21,7 @@ class PlayerViewModel: ObservableObject {
     private var populateTracksTask: Task<Void, Never>?
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
+    private var isAudioSelectionAutomatic = true
     private var shouldAutoPlay = true
     private var originalManifestUrl: String?
     private var hasFallenBackToHttp = false
@@ -67,7 +68,7 @@ class PlayerViewModel: ObservableObject {
             do {
                 try await loader.initialize(player: newPlayer)
 
-                let p2pUrl = try p2pLoader?.createPlaybackUrl(manifestUrl: manifestUrl) ?? manifestUrl
+                let p2pUrl = try loader.createPlaybackUrl(manifestUrl: manifestUrl)
                 startPlayback(url: p2pUrl)
                 uiState.isP2PActive = true
             } catch let error as P2PMediaLoaderException {
@@ -139,20 +140,30 @@ class PlayerViewModel: ObservableObject {
             guard let self else { return }
             let videoTracks = await loadVideoTracks(for: playerItem)
 
-            var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true, isAudio: true)]
+            var audioTracks: [MediaTrack] = []
             if let audioGroup = try? await playerItem.asset.loadMediaSelectionGroup(for: .audible) {
                 audioSelectionGroup = audioGroup
                 let selectedOption = playerItem.currentMediaSelection.selectedMediaOption(in: audioGroup)
-                let options = audioGroup.options.map { option in
-                    MediaTrack(
-                        label: option.displayName,
-                        isSelected: option == selectedOption,
-                        isAuto: false,
+
+                // A lone rendition is not a choice: automatic and explicit resolve to the same
+                // track, so the section is only worth offering when the stream has alternatives.
+                // The auto row leads and is the only way back — AVFoundation always reports a
+                // selected option, even while it is choosing automatically.
+                if audioGroup.options.count > 1 {
+                    let automatic = MediaTrack(
+                        label: "Default",
+                        isSelected: isAudioSelectionAutomatic,
+                        isAuto: true,
                         isAudio: true
                     )
-                }
-                if !options.isEmpty {
-                    audioTracks = options
+                    audioTracks = [automatic] + audioGroup.options.map { option in
+                        MediaTrack(
+                            label: option.displayName,
+                            isSelected: !isAudioSelectionAutomatic && option == selectedOption,
+                            isAuto: false,
+                            isAudio: true
+                        )
+                    }
                 }
             }
 
@@ -221,8 +232,12 @@ class PlayerViewModel: ObservableObject {
         if track.isAudio {
             if let audioGroup = audioSelectionGroup {
                 if track.isAuto {
-                    playerItem.select(nil, in: audioGroup)
+                    // select(nil:) only clears groups that allow an empty selection, which audible
+                    // groups do not; this is the call that hands the choice back to AVFoundation.
+                    isAudioSelectionAutomatic = true
+                    playerItem.selectMediaOptionAutomatically(in: audioGroup)
                 } else if let option = audioGroup.options.first(where: { $0.displayName == track.label }) {
+                    isAudioSelectionAutomatic = false
                     playerItem.select(option, in: audioGroup)
                 }
             }
@@ -262,13 +277,17 @@ class PlayerViewModel: ObservableObject {
         Task { [weak self] in
             for await details in loader.p2pEvents.onPeerConnect {
                 guard let self else { return }
-                if !uiState.peers.contains(details.peerId) {
-                    uiState.peers.append(details.peerId)
-                }
+                // Main swarm only: a peer that also joins the audio swarm reports twice, and
+                // counting both would double it. Same rule as the upstream web demo.
+                guard details.streamType == .main else { continue }
+
+                uiState.peers.append(details.peerId)
             }
         }
         Task { [weak self] in
             for await details in loader.p2pEvents.onPeerClose {
+                guard details.streamType == .main else { continue }
+
                 self?.uiState.peers.removeAll { $0 == details.peerId }
             }
         }
@@ -278,14 +297,17 @@ class PlayerViewModel: ObservableObject {
         uiState.userMessage = nil
     }
 
-    func play() {
-        shouldAutoPlay = true
-        player?.play()
+    func onAppForegrounded() {
+        if shouldAutoPlay {
+            player?.play()
+        }
         applyP2PEnabled(true)
     }
 
-    func pause() {
-        shouldAutoPlay = false
+    func onAppBackgrounded() {
+        // Only .paused means the user stopped playback; a video still buffering
+        // (.waitingToPlayAtSpecifiedRate) has not been paused and should resume on return.
+        shouldAutoPlay = player.map { $0.timeControlStatus != .paused } ?? false
         player?.pause()
         applyP2PEnabled(false)
     }
