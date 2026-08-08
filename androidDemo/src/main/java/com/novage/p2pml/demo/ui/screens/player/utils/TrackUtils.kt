@@ -3,6 +3,7 @@ package com.novage.p2pml.demo.ui.screens.player.utils
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters
@@ -12,6 +13,7 @@ import com.novage.p2pml.demo.ui.screens.player.models.AvailableTracks
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
 
 private const val BITRATE_DIVISOR = 1000
+private const val LABEL_SEPARATOR = " • "
 
 @OptIn(UnstableApi::class)
 fun getAvailableTracks(tracks: Tracks, params: TrackSelectionParameters): AvailableTracks {
@@ -50,26 +52,20 @@ private fun extractTracksFromGroup(
     groupIndex: Int,
     trackType: Int,
     isAutoSelected: Boolean,
-    labelFormatter: (Format) -> String
-): List<MediaTrack> {
-    val extracted = mutableListOf<MediaTrack>()
+    labelFormatter: (Format) -> String?
+): List<MediaTrack> = (0 until group.length)
+    .filter { group.isTrackSupported(it) }
+    .mapNotNull { trackIndex ->
+        val label = labelFormatter(group.getTrackFormat(trackIndex)) ?: return@mapNotNull null
 
-    for (trackIndex in 0 until group.length) {
-        if (group.isTrackSupported(trackIndex)) {
-            val isSelected = !isAutoSelected && group.isTrackSelected(trackIndex)
-            extracted.add(
-                MediaTrack(
-                    label = labelFormatter(group.getTrackFormat(trackIndex)),
-                    isSelected = isSelected,
-                    groupIndex = groupIndex,
-                    trackIndex = trackIndex,
-                    trackType = trackType
-                )
-            )
-        }
+        MediaTrack(
+            label = label,
+            isSelected = !isAutoSelected && group.isTrackSelected(trackIndex),
+            groupIndex = groupIndex,
+            trackIndex = trackIndex,
+            trackType = trackType
+        )
     }
-    return extracted
-}
 
 fun applyTrackSelection(player: Player, track: MediaTrack, tracks: Tracks) {
     val newParams = player.trackSelectionParameters.buildUpon()
@@ -94,9 +90,26 @@ private fun formatVideoLabel(format: Format): String {
 }
 
 @OptIn(UnstableApi::class)
-private fun formatAudioLabel(format: Format): String {
-    val language = format.language ?: "Unknown"
-    val bitrateStr = if (format.bitrate > 0) " • ${format.bitrate / BITRATE_DIVISOR} kbps" else ""
+private fun formatAudioLabel(format: Format): String? {
+    val name = format.label ?: format.language ?: return null
 
-    return language + bitrateStr
+    val codec = audioCodecName(format.sampleMimeType)
+    val bitrate = if (format.bitrate > 0) "${format.bitrate / BITRATE_DIVISOR} kbps" else null
+
+    return listOfNotNull(name, codec, bitrate).joinToString(LABEL_SEPARATOR)
+}
+
+/**
+ * Gives the codecs whose MIME subtype reads badly ("mp4a-latm", "eac3-joc") their canonical short
+ * name. Everything else falls back to the subtype: an unrecognised codec still has to tell two
+ * identically named renditions apart, and dropping it would let [getAvailableTracks] collapse them.
+ * Names stay short on purpose — a rendition named "English (DVS)" leaves little room beside it.
+ */
+private fun audioCodecName(sampleMimeType: String?): String? = when (sampleMimeType) {
+    MimeTypes.AUDIO_AAC -> "AAC"
+    MimeTypes.AUDIO_MPEG -> "MP3"
+    MimeTypes.AUDIO_AC3 -> "AC-3"
+    MimeTypes.AUDIO_E_AC3, MimeTypes.AUDIO_E_AC3_JOC -> "E-AC-3"
+    MimeTypes.AUDIO_AC4 -> "AC-4"
+    else -> sampleMimeType?.substringAfter('/')?.uppercase()
 }
