@@ -15,11 +15,6 @@ enum VideoStreams {
             description: "Reliable HLS test stream (Mux.dev)"
         ),
         MediaSample(
-            title: "Sintel (HLS)",
-            uri: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
-            description: "Multi-audio track example"
-        ),
-        MediaSample(
             title: "Bunny (Invalid P2P Engine)",
             uri: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
             description: "Tests fallback when P2P engine is unreachable",

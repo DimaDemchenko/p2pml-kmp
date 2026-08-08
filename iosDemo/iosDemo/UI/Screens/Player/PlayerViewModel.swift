@@ -6,8 +6,8 @@ import P2PML
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.novage.p2pml", category: "PlayerViewModel")
 
-private let highDemandWindowSec: Int32 = 45
-private let preferredBufferDurationSec = 45.0
+private let highDemandWindowSec: Int32 = 20
+private let preferredBufferDurationSec = Double(highDemandWindowSec)
 private let simultaneousP2PDownloads: Int32 = 3
 private let webRtcMaxMessageSize: Int32 = 65535
 private let p2pNotReceivingBytesTimeoutMs: Int32 = 1000
