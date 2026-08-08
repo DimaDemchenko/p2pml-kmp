@@ -33,7 +33,8 @@ struct PlayerContent: View {
                     showQualityDialog = false
                 }
             )
-            .presentationDetents([.medium])
+
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
     }

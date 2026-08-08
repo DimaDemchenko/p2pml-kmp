@@ -21,7 +21,7 @@ fun getAvailableTracks(tracks: Tracks, params: TrackSelectionParameters): Availa
     val isAudioAuto = params.overrides.values.none { it.mediaTrackGroup.type == C.TRACK_TYPE_AUDIO }
 
     val videoTracks = mutableListOf(MediaTrack("Auto", isVideoAuto, -1, -1, C.TRACK_TYPE_VIDEO, true))
-    val audioTracks = mutableListOf(MediaTrack("Default", isAudioAuto, -1, -1, C.TRACK_TYPE_AUDIO, true))
+    val audioTracks = mutableListOf<MediaTrack>()
 
     tracks.groups.forEachIndexed { groupIndex, group ->
         when (group.type) {
@@ -44,7 +44,15 @@ fun getAvailableTracks(tracks: Tracks, params: TrackSelectionParameters): Availa
     )
     val distinctAudio = audioTracks.distinctBy { it.label }
 
-    return AvailableTracks(videoTracks = sortedVideo, audioTracks = distinctAudio)
+    // A lone rendition is not a choice: "Default" and the track itself resolve to the same audio,
+    // so the section is only worth offering when the stream has alternatives.
+    val audioWithDefault = if (distinctAudio.size > 1) {
+        listOf(MediaTrack("Default", isAudioAuto, -1, -1, C.TRACK_TYPE_AUDIO, true)) + distinctAudio
+    } else {
+        emptyList()
+    }
+
+    return AvailableTracks(videoTracks = sortedVideo, audioTracks = audioWithDefault)
 }
 
 private fun extractTracksFromGroup(

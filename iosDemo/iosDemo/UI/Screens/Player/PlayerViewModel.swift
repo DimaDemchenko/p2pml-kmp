@@ -21,6 +21,7 @@ class PlayerViewModel: ObservableObject {
     private var populateTracksTask: Task<Void, Never>?
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
+    private var isAudioSelectionAutomatic = true
     private var shouldAutoPlay = true
     private var originalManifestUrl: String?
     private var hasFallenBackToHttp = false
@@ -139,20 +140,30 @@ class PlayerViewModel: ObservableObject {
             guard let self else { return }
             let videoTracks = await loadVideoTracks(for: playerItem)
 
-            var audioTracks = [MediaTrack(label: "Default", isSelected: true, isAuto: true, isAudio: true)]
+            var audioTracks: [MediaTrack] = []
             if let audioGroup = try? await playerItem.asset.loadMediaSelectionGroup(for: .audible) {
                 audioSelectionGroup = audioGroup
                 let selectedOption = playerItem.currentMediaSelection.selectedMediaOption(in: audioGroup)
-                let options = audioGroup.options.map { option in
-                    MediaTrack(
-                        label: option.displayName,
-                        isSelected: option == selectedOption,
-                        isAuto: false,
+
+                // A lone rendition is not a choice: automatic and explicit resolve to the same
+                // track, so the section is only worth offering when the stream has alternatives.
+                // The auto row leads and is the only way back — AVFoundation always reports a
+                // selected option, even while it is choosing automatically.
+                if audioGroup.options.count > 1 {
+                    let automatic = MediaTrack(
+                        label: "Default",
+                        isSelected: isAudioSelectionAutomatic,
+                        isAuto: true,
                         isAudio: true
                     )
-                }
-                if !options.isEmpty {
-                    audioTracks = options
+                    audioTracks = [automatic] + audioGroup.options.map { option in
+                        MediaTrack(
+                            label: option.displayName,
+                            isSelected: !isAudioSelectionAutomatic && option == selectedOption,
+                            isAuto: false,
+                            isAudio: true
+                        )
+                    }
                 }
             }
 
@@ -221,8 +232,12 @@ class PlayerViewModel: ObservableObject {
         if track.isAudio {
             if let audioGroup = audioSelectionGroup {
                 if track.isAuto {
-                    playerItem.select(nil, in: audioGroup)
+                    // select(nil:) only clears groups that allow an empty selection, which audible
+                    // groups do not; this is the call that hands the choice back to AVFoundation.
+                    isAudioSelectionAutomatic = true
+                    playerItem.selectMediaOptionAutomatically(in: audioGroup)
                 } else if let option = audioGroup.options.first(where: { $0.displayName == track.label }) {
+                    isAudioSelectionAutomatic = false
                     playerItem.select(option, in: audioGroup)
                 }
             }
