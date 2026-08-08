@@ -25,6 +25,7 @@ import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.DownloadSource
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.api.state.P2PMediaLoaderStatus
 import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
@@ -250,6 +251,10 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         viewModelScope.launch {
             loader.p2pEvents.onPeerConnect.collect { peer ->
+                // Main swarm only: a peer that also joins the audio swarm reports twice, and
+                // counting both would double it. Same rule as the upstream web demo.
+                if (peer.streamType != StreamType.MAIN) return@collect
+
                 _uiState.update { state ->
                     state.copy(peers = state.peers + peer)
                 }
@@ -258,6 +263,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         viewModelScope.launch {
             loader.p2pEvents.onPeerClose.collect { peer ->
+                if (peer.streamType != StreamType.MAIN) return@collect
+
                 _uiState.update { state ->
                     state.copy(peers = state.peers.filter { it.peerId != peer.peerId })
                 }

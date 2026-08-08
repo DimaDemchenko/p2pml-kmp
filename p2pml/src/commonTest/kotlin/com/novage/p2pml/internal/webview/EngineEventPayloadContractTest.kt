@@ -4,6 +4,7 @@ import com.novage.p2pml.api.events.ByteRange
 import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.JsError
 import com.novage.p2pml.api.events.P2PEvents
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.api.logging.LogLevel
 import com.novage.p2pml.api.logging.P2PLogger
 import com.novage.p2pml.api.logging.P2PLogging
@@ -74,7 +75,7 @@ class EngineEventPayloadContractTest {
         assertEquals(DownloadSource.P2P, details.downloadSource)
         assertEquals("peer-1", details.peerId)
         assertEquals("aabbccdd", details.infoHash)
-        assertEquals("main", details.streamType)
+        assertEquals(StreamType.MAIN, details.streamType)
     }
 
     @Test
@@ -97,7 +98,7 @@ class EngineEventPayloadContractTest {
         assertNull(details.peerId)
         assertNull(details.segment.byteRange)
         assertEquals("aabbccdd", details.infoHash)
-        assertEquals("main", details.streamType)
+        assertEquals(StreamType.MAIN, details.streamType)
     }
 
     @Test

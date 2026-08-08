@@ -262,13 +262,17 @@ class PlayerViewModel: ObservableObject {
         Task { [weak self] in
             for await details in loader.p2pEvents.onPeerConnect {
                 guard let self else { return }
-                if !uiState.peers.contains(details.peerId) {
-                    uiState.peers.append(details.peerId)
-                }
+                // Main swarm only: a peer that also joins the audio swarm reports twice, and
+                // counting both would double it. Same rule as the upstream web demo.
+                guard details.streamType == .main else { continue }
+
+                uiState.peers.append(details.peerId)
             }
         }
         Task { [weak self] in
             for await details in loader.p2pEvents.onPeerClose {
+                guard details.streamType == .main else { continue }
+
                 self?.uiState.peers.removeAll { $0 == details.peerId }
             }
         }
