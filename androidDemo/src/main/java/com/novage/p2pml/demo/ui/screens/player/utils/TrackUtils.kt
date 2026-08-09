@@ -117,7 +117,8 @@ private fun audioCodecName(sampleMimeType: String?): String? = when (sampleMimeT
     MimeTypes.AUDIO_AAC -> "AAC"
     MimeTypes.AUDIO_MPEG -> "MP3"
     MimeTypes.AUDIO_AC3 -> "AC-3"
-    MimeTypes.AUDIO_E_AC3, MimeTypes.AUDIO_E_AC3_JOC -> "E-AC-3"
+    MimeTypes.AUDIO_E_AC3 -> "E-AC-3"
+    MimeTypes.AUDIO_E_AC3_JOC -> "E-AC-3 JOC"
     MimeTypes.AUDIO_AC4 -> "AC-4"
     else -> sampleMimeType?.substringAfter('/')?.uppercase()
 }
