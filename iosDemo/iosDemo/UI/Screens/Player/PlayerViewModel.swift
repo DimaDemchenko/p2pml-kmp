@@ -22,9 +22,15 @@ class PlayerViewModel: ObservableObject {
     private var playerItemObserver: NSKeyValueObservation?
     private var audioSelectionGroup: AVMediaSelectionGroup?
     private var isAudioSelectionAutomatic = true
-    private var shouldAutoPlay = true
+    private var isForeground = true
+    private var resumeWhenForegrounded = false
     private var originalManifestUrl: String?
     private var hasFallenBackToHttp = false
+
+    private var isPlaybackWanted: Bool {
+        guard let player, player.currentItem != nil else { return isForeground }
+        return player.timeControlStatus != .paused
+    }
 
     func initializePlayer(manifestUrl: String, customEngineUrl: String?) {
         guard player == nil else { return }
@@ -38,7 +44,7 @@ class PlayerViewModel: ObservableObject {
 
         let coreConfig = CoreConfig()
         coreConfig.highDemandTimeWindow = highDemandWindowSec
-        coreConfig.isP2PDisabled = !shouldAutoPlay
+        coreConfig.isP2PDisabled = !isForeground
         coreConfig.simultaneousP2PDownloads = simultaneousP2PDownloads
         coreConfig.webRtcMaxMessageSize = webRtcMaxMessageSize
         coreConfig.p2pNotReceivingBytesTimeoutMs = p2pNotReceivingBytesTimeoutMs
@@ -111,6 +117,8 @@ class PlayerViewModel: ObservableObject {
             return
         }
 
+        let resumeAfterSwap = isPlaybackWanted
+
         let playerItem = AVPlayerItem(url: urlObj)
         playerItem.preferredForwardBufferDuration = preferredBufferDurationSec
 
@@ -129,7 +137,7 @@ class PlayerViewModel: ObservableObject {
             }
         }
 
-        if shouldAutoPlay {
+        if resumeAfterSwap {
             player?.play()
         }
     }
@@ -298,16 +306,18 @@ class PlayerViewModel: ObservableObject {
     }
 
     func onAppForegrounded() {
-        if shouldAutoPlay {
+        isForeground = true
+
+        if resumeWhenForegrounded {
+            resumeWhenForegrounded = false
             player?.play()
         }
         applyP2PEnabled(true)
     }
 
     func onAppBackgrounded() {
-        // Only .paused means the user stopped playback; a video still buffering
-        // (.waitingToPlayAtSpecifiedRate) has not been paused and should resume on return.
-        shouldAutoPlay = player.map { $0.timeControlStatus != .paused } ?? false
+        resumeWhenForegrounded = isPlaybackWanted
+        isForeground = false
         player?.pause()
         applyP2PEnabled(false)
     }

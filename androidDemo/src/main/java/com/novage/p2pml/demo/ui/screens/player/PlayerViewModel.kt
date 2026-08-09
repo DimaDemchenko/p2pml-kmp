@@ -58,7 +58,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
     private var currentTracks: Tracks? = null
 
-    private var shouldAutoPlay = true
+    private var isForeground = true
+    private var resumeWhenForegrounded = false
 
     var player: ExoPlayer? by mutableStateOf(null)
         private set
@@ -113,8 +114,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 }
             })
 
-            exoPlayer.playWhenReady = shouldAutoPlay
-            Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader shouldAutoPlay=$shouldAutoPlay")
+            exoPlayer.playWhenReady = isForeground
+            Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader isForeground=$isForeground")
             player = exoPlayer
 
             initializeP2PLoader(context, exoPlayer, manifestUrl, customEngineUrl)
@@ -129,7 +130,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     ) {
         val coreConfig = CoreConfig().apply {
             highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC
-            isP2PDisabled = !shouldAutoPlay
+            isP2PDisabled = !isForeground
             simultaneousP2PDownloads = P2P_SIMULTANEOUS_DOWNLOADS
             webRtcMaxMessageSize = WEBRTC_MAX_MESSAGE_SIZE
             p2pNotReceivingBytesTimeoutMs = P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS
@@ -278,14 +279,18 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     }
 
     fun onAppForegrounded() {
-        if (shouldAutoPlay) player?.play()
+        isForeground = true
+
+        if (resumeWhenForegrounded) {
+            resumeWhenForegrounded = false
+            player?.play()
+        }
         setP2PEnabled(true)
     }
 
     fun onAppBackgrounded() {
-        // playWhenReady rather than isPlaying: a video that was still buffering has not been
-        // paused by the user, so it should resume on return.
-        shouldAutoPlay = player?.playWhenReady == true
+        resumeWhenForegrounded = player?.playWhenReady ?: isForeground
+        isForeground = false
         player?.pause()
         setP2PEnabled(false)
     }
