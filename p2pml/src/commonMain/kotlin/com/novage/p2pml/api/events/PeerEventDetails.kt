@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  * @property infoHash The info hash of the swarm that the peer is part of.
  * @property streamType The type of stream that the peer is connected to.
  */
-@Serializable data class PeerDetails(val peerId: String, val infoHash: String, val streamType: String)
+@Serializable data class PeerDetails(val peerId: String, val infoHash: String, val streamType: StreamType)
 
 /**
  * Represents the details of a peer error event.
@@ -20,7 +20,7 @@ import kotlinx.serialization.Serializable
  * @property error The error that occurred during the peer-to-peer connection.
  */
 @Serializable
-data class PeerErrorDetails(val peerId: String, val infoHash: String, val streamType: String, val error: JsError)
+data class PeerErrorDetails(val peerId: String, val infoHash: String, val streamType: StreamType, val error: JsError)
 
 /**
  * Represents the details of a peer warning event.
@@ -31,7 +31,12 @@ data class PeerErrorDetails(val peerId: String, val infoHash: String, val stream
  * @property warning The warning that occurred during the peer-to-peer connection.
  */
 @Serializable
-data class PeerWarningDetails(val peerId: String, val infoHash: String, val streamType: String, val warning: JsError)
+data class PeerWarningDetails(
+    val peerId: String,
+    val infoHash: String,
+    val streamType: StreamType,
+    val warning: JsError
+)
 
 /**
  * Represents the details of a peer connection error event.
@@ -46,7 +51,7 @@ data class PeerWarningDetails(val peerId: String, val infoHash: String, val stre
 data class PeerConnectErrorDetails(
     val peerId: String,
     val infoHash: String,
-    val streamType: String,
+    val streamType: StreamType,
     val trackerUrl: String,
     val error: JsError
 )

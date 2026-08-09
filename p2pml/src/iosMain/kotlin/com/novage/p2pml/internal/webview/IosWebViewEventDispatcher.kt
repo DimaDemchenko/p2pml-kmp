@@ -4,6 +4,7 @@ import com.novage.p2pml.api.events.ChunkDownloadedDetails
 import com.novage.p2pml.api.events.ChunkUploadedDetails
 import com.novage.p2pml.api.events.DownloadSource
 import com.novage.p2pml.api.events.P2PEvents
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.internal.utils.CoreLogger
 import platform.Foundation.NSDictionary
 import platform.WebKit.WKScriptMessage
@@ -40,7 +41,7 @@ internal class IosWebViewEventDispatcher(
         }
     }
 
-    private class ChunkFields(val bytesLength: Int, val streamType: String, val infoHash: String)
+    private class ChunkFields(val bytesLength: Int, val streamType: StreamType, val infoHash: String)
 
     private fun logDrop(event: String, reason: String): Nothing? {
         logger.w { "Dropping $event: $reason" }
@@ -50,8 +51,9 @@ internal class IosWebViewEventDispatcher(
     private fun NSDictionary.chunkFields(event: String): ChunkFields? {
         val bytesLength = (objectForKey("bytesLength") as? Number)?.toInt()
             ?: return logDrop(event, "missing or invalid 'bytesLength'")
-        val streamType = objectForKey("streamType") as? String
-            ?: return logDrop(event, "missing or invalid 'streamType'")
+        val rawStreamType = objectForKey("streamType") as? String
+        val streamType = rawStreamType?.let { StreamType.fromValue(it) }
+            ?: return logDrop(event, "missing or unknown 'streamType' '$rawStreamType'")
         val infoHash = objectForKey("infoHash") as? String
             ?: return logDrop(event, "missing or invalid 'infoHash'")
         return ChunkFields(bytesLength, streamType, infoHash)

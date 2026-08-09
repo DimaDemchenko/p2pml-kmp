@@ -2,6 +2,7 @@ package com.novage.p2pml.internal.parser.hls
 
 import com.novage.p2pml.api.events.ByteRange
 import com.novage.p2pml.api.events.Segment
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.internal.parser.buildSegmentRuntimeId
 import kotlinx.serialization.Serializable
 
@@ -80,7 +81,7 @@ internal data class UpdateStreamParams(
 @Serializable
 internal data class Stream(
     val runtimeId: String,
-    val type: String,
+    val type: StreamType,
     val bitrate: Int? = null,
     val codecs: String? = null,
     val width: Int? = null,

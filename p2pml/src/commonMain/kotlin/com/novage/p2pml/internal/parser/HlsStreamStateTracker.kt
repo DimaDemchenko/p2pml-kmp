@@ -1,6 +1,7 @@
 package com.novage.p2pml.internal.parser
 
 import com.novage.p2pml.api.events.Segment
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.internal.parser.hls.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hls.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hls.HlsSegment
@@ -13,8 +14,6 @@ import com.novage.p2pml.internal.utils.CoreLogger
 import com.novage.p2pml.internal.utils.SystemClock
 import kotlin.time.Duration.Companion.seconds
 
-private const val MAIN_STREAM = "main"
-private const val SECONDARY_STREAM = "secondary"
 private const val MICROSECONDS_IN_SECOND = 1_000_000.0
 private val LIVE_VARIANT_TTL = 60.seconds
 
@@ -63,7 +62,7 @@ internal class HlsStreamStateTracker(
         var liveEdge = Double.NEGATIVE_INFINITY
 
         for (context in trackedStreams.values) {
-            if (context.stream.type != MAIN_STREAM) continue
+            if (context.stream.type != StreamType.MAIN) continue
             for (segment in context.segments.values) {
                 if (segment.startTime < start) start = segment.startTime
                 if (segment.endTime > liveEdge) liveEdge = segment.endTime
@@ -91,7 +90,7 @@ internal class HlsStreamStateTracker(
                 getOrCreateContext(variant.url.absolute) {
                     Stream(
                         runtimeId = variant.url.absolute,
-                        type = MAIN_STREAM,
+                        type = StreamType.MAIN,
                         bitrate = variant.bandwidth ?: variant.averageBandwidth,
                         codecs = extractVideoCodec(variant.codecs),
                         width = variant.width,
@@ -102,11 +101,11 @@ internal class HlsStreamStateTracker(
                 }
             }
         }
-        addRenditionStreams(hlsPlaylist.videos, MAIN_STREAM)
-        addRenditionStreams(hlsPlaylist.audios, SECONDARY_STREAM)
+        addRenditionStreams(hlsPlaylist.videos, StreamType.MAIN)
+        addRenditionStreams(hlsPlaylist.audios, StreamType.SECONDARY)
     }
 
-    private fun addRenditionStreams(renditions: List<Rendition>, streamType: String) {
+    private fun addRenditionStreams(renditions: List<Rendition>, streamType: StreamType) {
         renditions.forEach { rendition ->
             rendition.url?.let { url ->
                 masterDeclaredUrls.add(url.absolute)
@@ -125,7 +124,7 @@ internal class HlsStreamStateTracker(
     }
 
     fun postProcessMediaPlaylist(manifestUrl: String, mediaPlaylist: HlsMediaPlaylist) {
-        val mediaType = trackedStreams[manifestUrl]?.stream?.type ?: MAIN_STREAM
+        val mediaType = trackedStreams[manifestUrl]?.stream?.type ?: StreamType.MAIN
         val isStreamLive = !mediaPlaylist.hasEndTag
         val newMediaSequence = mediaPlaylist.mediaSequence
 

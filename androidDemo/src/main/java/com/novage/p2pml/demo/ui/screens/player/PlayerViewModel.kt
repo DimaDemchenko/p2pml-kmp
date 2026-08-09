@@ -25,6 +25,7 @@ import com.novage.p2pml.api.config.CoreConfig
 import com.novage.p2pml.api.config.DynamicCoreConfig
 import com.novage.p2pml.api.errors.P2PMediaLoaderException
 import com.novage.p2pml.api.events.DownloadSource
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.api.state.P2PMediaLoaderStatus
 import com.novage.p2pml.demo.ui.navigation.Player as PlayerRoute
 import com.novage.p2pml.demo.ui.screens.player.models.MediaTrack
@@ -57,7 +58,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
     private var currentTracks: Tracks? = null
 
-    private var shouldAutoPlay = true
+    private var isForeground = true
+    private var resumeWhenForegrounded = false
 
     var player: ExoPlayer? by mutableStateOf(null)
         private set
@@ -112,8 +114,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
                 }
             })
 
-            exoPlayer.playWhenReady = shouldAutoPlay
-            Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader shouldAutoPlay=$shouldAutoPlay")
+            exoPlayer.playWhenReady = isForeground
+            Log.d("PlayerViewModel", "Starting ExoPlayer with P2P Media Loader isForeground=$isForeground")
             player = exoPlayer
 
             initializeP2PLoader(context, exoPlayer, manifestUrl, customEngineUrl)
@@ -128,7 +130,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
     ) {
         val coreConfig = CoreConfig().apply {
             highDemandTimeWindow = HIGH_DEMAND_WINDOW_SEC
-            isP2PDisabled = !shouldAutoPlay
+            isP2PDisabled = !isForeground
             simultaneousP2PDownloads = P2P_SIMULTANEOUS_DOWNLOADS
             webRtcMaxMessageSize = WEBRTC_MAX_MESSAGE_SIZE
             p2pNotReceivingBytesTimeoutMs = P2P_NOT_RECEIVING_BYTES_TIMEOUT_MS
@@ -154,8 +156,7 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         try {
             loader.initialize(exoPlayer)
 
-            val activeLoader = p2pLoader ?: return
-            val p2pUrl = activeLoader.createPlaybackUrl(manifestUrl)
+            val p2pUrl = loader.createPlaybackUrl(manifestUrl)
 
             startPlayback(exoPlayer, p2pUrl)
             _uiState.update { it.copy(isP2PActive = true) }
@@ -251,6 +252,10 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         viewModelScope.launch {
             loader.p2pEvents.onPeerConnect.collect { peer ->
+                // Main swarm only: a peer that also joins the audio swarm reports twice, and
+                // counting both would double it. Same rule as the upstream web demo.
+                if (peer.streamType != StreamType.MAIN) return@collect
+
                 _uiState.update { state ->
                     state.copy(peers = state.peers + peer)
                 }
@@ -259,6 +264,8 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
 
         viewModelScope.launch {
             loader.p2pEvents.onPeerClose.collect { peer ->
+                if (peer.streamType != StreamType.MAIN) return@collect
+
                 _uiState.update { state ->
                     state.copy(peers = state.peers.filter { it.peerId != peer.peerId })
                 }
@@ -271,14 +278,19 @@ class PlayerViewModel(application: Application, savedStateHandle: SavedStateHand
         releaseResources()
     }
 
-    fun play() {
-        shouldAutoPlay = true
-        player?.play()
+    fun onAppForegrounded() {
+        isForeground = true
+
+        if (resumeWhenForegrounded) {
+            resumeWhenForegrounded = false
+            player?.play()
+        }
         setP2PEnabled(true)
     }
 
-    fun pause() {
-        shouldAutoPlay = false
+    fun onAppBackgrounded() {
+        resumeWhenForegrounded = player?.playWhenReady ?: isForeground
+        isForeground = false
         player?.pause()
         setP2PEnabled(false)
     }

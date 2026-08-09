@@ -11,7 +11,12 @@ import kotlinx.serialization.Serializable
  * @property error The error that occurred during the tracker request.
  */
 @Serializable
-data class TrackerErrorDetails(val trackerUrl: String, val infoHash: String, val streamType: String, val error: JsError)
+data class TrackerErrorDetails(
+    val trackerUrl: String,
+    val infoHash: String,
+    val streamType: StreamType,
+    val error: JsError
+)
 
 /**
  * Represents the details of a tracker warning event.
@@ -25,7 +30,7 @@ data class TrackerErrorDetails(val trackerUrl: String, val infoHash: String, val
 data class TrackerWarningDetails(
     val trackerUrl: String,
     val infoHash: String,
-    val streamType: String,
+    val streamType: StreamType,
     val warning: JsError
 )
 

@@ -19,7 +19,7 @@ data class SegmentLoadDetails(
     val downloadSource: DownloadSource,
     val peerId: String? = null,
     val infoHash: String,
-    val streamType: String
+    val streamType: StreamType
 )
 
 /**
@@ -37,7 +37,7 @@ data class SegmentStartDetails(
     val downloadSource: DownloadSource,
     val peerId: String? = null,
     val infoHash: String,
-    val streamType: String
+    val streamType: StreamType
 )
 
 /**
@@ -57,7 +57,7 @@ data class SegmentErrorDetails(
     val downloadSource: DownloadSource,
     val peerId: String? = null,
     val infoHash: String,
-    val streamType: String
+    val streamType: StreamType
 )
 
 /**
@@ -76,5 +76,5 @@ data class SegmentAbortDetails(
     val downloadSource: DownloadSource? = null,
     val peerId: String? = null,
     val infoHash: String,
-    val streamType: String
+    val streamType: StreamType
 )

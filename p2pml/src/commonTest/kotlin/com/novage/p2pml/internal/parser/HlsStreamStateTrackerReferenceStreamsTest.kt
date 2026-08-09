@@ -1,5 +1,6 @@
 package com.novage.p2pml.internal.parser
 
+import com.novage.p2pml.api.events.StreamType
 import com.novage.p2pml.internal.parser.hls.HlsMediaPlaylist
 import com.novage.p2pml.internal.parser.hls.HlsMultivariantPlaylist
 import com.novage.p2pml.internal.parser.hls.HlsPlaylistParser
@@ -49,8 +50,8 @@ class HlsStreamStateTrackerReferenceStreamsTest {
         // become secondary streams. Subtitles and i-frame playlists are not P2P streams.
         val streams = tracker.getStreams()
         assertEquals(21, streams.size)
-        assertEquals(18, streams.count { it.type == "main" })
-        assertEquals(3, streams.count { it.type == "secondary" })
+        assertEquals(18, streams.count { it.type == StreamType.MAIN })
+        assertEquals(3, streams.count { it.type == StreamType.SECONDARY })
 
         assertTrue(tracker.isManifestTracked(hevcMasterUrl))
         assertTrue(tracker.isManifestTracked(hevcMediaUrl))

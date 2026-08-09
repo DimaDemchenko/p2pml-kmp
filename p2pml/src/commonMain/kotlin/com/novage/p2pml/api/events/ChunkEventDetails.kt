@@ -14,7 +14,7 @@ data class ChunkDownloadedDetails(
     val bytesLength: Int,
     val downloadSource: DownloadSource,
     val peerId: String?,
-    val streamType: String,
+    val streamType: StreamType,
     val infoHash: String
 )
 
@@ -26,4 +26,9 @@ data class ChunkDownloadedDetails(
  * @property streamType The type of stream that the chunk belongs to.
  * @property infoHash The info hash of the swarm that the chunk belongs to.
  */
-data class ChunkUploadedDetails(val bytesLength: Int, val peerId: String, val streamType: String, val infoHash: String)
+data class ChunkUploadedDetails(
+    val bytesLength: Int,
+    val peerId: String,
+    val streamType: StreamType,
+    val infoHash: String
+)
