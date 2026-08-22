@@ -66,9 +66,8 @@ class P2PMediaLoader @JvmOverloads constructor(
      * Applies [config] to the running engine as a partial patch: only explicitly set
      * properties are overridden, and successive calls accumulate in the engine.
      *
-     * Calls made before initialization completes are cached and applied once the loader becomes
-     * active; only the most recent pre-initialization config is kept — earlier ones are dropped,
-     * not merged. Calls after the loader has failed or been released are ignored.
+     * Calls made before initialization completes are queued and replayed in order once the loader
+     * becomes active. Calls after the loader has failed or been released are ignored.
      */
     fun applyDynamicConfig(config: DynamicCoreConfig) = core.applyDynamicConfig(config)
 

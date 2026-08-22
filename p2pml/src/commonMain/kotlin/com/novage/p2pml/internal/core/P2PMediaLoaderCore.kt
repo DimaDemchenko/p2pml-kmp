@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -57,7 +58,8 @@ internal class P2PMediaLoaderCore(
 
     private val activeSession = AtomicReference<P2PSession?>(null)
 
-    private val pendingDynamicConfig = MutableStateFlow<DynamicCoreConfig?>(null)
+    /** Patches submitted before activation, kept in call order and replayed once a session exists. */
+    private val pendingDynamicConfigs = MutableStateFlow<List<DynamicCoreConfig>>(emptyList())
 
     private val _state = MutableStateFlow(P2PMediaLoaderState(P2PMediaLoaderStatus.IDLE))
 
@@ -192,7 +194,7 @@ internal class P2PMediaLoaderCore(
         }
 
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
-            pendingDynamicConfig.value = config
+            pendingDynamicConfigs.update { it + config }
             if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
                 activeSession.load()?.let { applyConfigPatches(it) }
             }
@@ -209,9 +211,10 @@ internal class P2PMediaLoaderCore(
     }
 
     private fun applyConfigPatches(session: P2PSession, newPatch: DynamicCoreConfig? = null) {
-        pendingDynamicConfig.getAndUpdate { null }?.let { cached ->
-            logger.i { "Applying dynamic config cached before activation." }
-            session.applyDynamicConfig(cached)
+        val cached = pendingDynamicConfigs.getAndUpdate { emptyList() }
+        if (cached.isNotEmpty()) {
+            logger.i { "Applying ${cached.size} dynamic config(s) cached before activation." }
+            cached.forEach { session.applyDynamicConfig(it) }
         }
         newPatch?.let { session.applyDynamicConfig(it) }
     }
@@ -239,7 +242,7 @@ internal class P2PMediaLoaderCore(
         }
         if (previous.status == P2PMediaLoaderStatus.IDLE) {
             logger.i { "Released before initialization — no session resources to clean up." }
-            pendingDynamicConfig.value = null
+            pendingDynamicConfigs.value = emptyList()
             coreScope.cancel()
             return
         }
@@ -253,7 +256,7 @@ internal class P2PMediaLoaderCore(
         logger.i { "Releasing P2PMediaLoaderCore resources..." }
 
         val sessionToDestroy = activeSession.exchange(null)
-        pendingDynamicConfig.value = null
+        pendingDynamicConfigs.value = emptyList()
 
         cleanupScope.launch {
             try {
