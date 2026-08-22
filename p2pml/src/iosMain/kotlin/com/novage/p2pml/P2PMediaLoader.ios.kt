@@ -107,6 +107,8 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(player: AVPlayer) {
         val provider = AVPlayerPlaybackProvider(player)
+        defaultProvider = provider
+
         try {
             core.initialize(provider, IosWebViewFactory())
         } catch (e: P2PMediaLoaderException) {
@@ -116,8 +118,6 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
             provider.release()
             throw e
         }
-
-        defaultProvider = provider
     }
 
     /**

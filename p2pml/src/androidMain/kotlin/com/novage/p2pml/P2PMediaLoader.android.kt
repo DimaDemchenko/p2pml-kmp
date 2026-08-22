@@ -116,6 +116,8 @@ class P2PMediaLoader @JvmOverloads constructor(
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(exoPlayer: ExoPlayer) {
         val provider = ExoPlayerPlaybackProvider(exoPlayer)
+        defaultProvider = provider
+
         try {
             core.initialize(provider, AndroidWebViewFactory(appContext))
         } catch (e: P2PMediaLoaderException) {
@@ -125,8 +127,6 @@ class P2PMediaLoader @JvmOverloads constructor(
             provider.release()
             throw e
         }
-
-        defaultProvider = provider
     }
 
     /**
