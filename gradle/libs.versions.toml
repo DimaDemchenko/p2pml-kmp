@@ -6,7 +6,7 @@ kotlin = "2.4.10"
 # Android SDKs
 android-compile-sdk = "37"
 android-min-sdk = "24"
-android-target-sdk = "36"
+android-target-sdk = "37"
 
 # Lint & Formatter
 spotless = "8.10.0"
