@@ -1,9 +1,6 @@
 import java.util.Base64
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
-import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -123,7 +120,9 @@ kotlin {
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(generatedSourceDir)
+            // Carries the task dependency: every compilation that consumes this source dir
+            // runs generateP2PAssets first, with no manual dependsOn wiring.
+            kotlin.srcDir(generateAssetsTask)
 
             dependencies {
                 implementation(kotlin("stdlib"))
@@ -151,20 +150,4 @@ kotlin {
 
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }
     }
-}
-
-tasks.withType<KotlinCompile>().configureEach {
-    dependsOn(generateAssetsTask)
-}
-
-tasks.withType<KotlinNativeCompile>().configureEach {
-    dependsOn(generateAssetsTask)
-}
-
-tasks.withType<KotlinCompileCommon>().configureEach {
-    dependsOn(generateAssetsTask)
-}
-
-tasks.matching { it.name == "prepareKotlinIdeaImport" }.configureEach {
-    dependsOn(generateAssetsTask)
 }
