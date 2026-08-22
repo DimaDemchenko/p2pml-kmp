@@ -142,7 +142,7 @@ class P2PMediaLoaderJava(private val loader: P2PMediaLoader) {
     fun createPlaybackUrl(manifestUrl: String): String = loader.createPlaybackUrl(manifestUrl)
 
     /** See [P2PMediaLoader.applyDynamicConfig]: partial patch; pre-initialization calls are last-wins. */
-    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = loader.applyDynamicConfig(dynamicCoreConfig)
+    fun applyDynamicConfig(config: DynamicCoreConfig) = loader.applyDynamicConfig(config)
 
     /**
      * Cancels all listener/state subscriptions and releases the underlying [P2PMediaLoader].

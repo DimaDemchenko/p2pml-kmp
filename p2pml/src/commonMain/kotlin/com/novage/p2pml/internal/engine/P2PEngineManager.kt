@@ -69,9 +69,9 @@ internal class P2PEngineManager(private val webView: HeadlessWebView, private va
         evaluate("$JS_BRIDGE.setManifestUrl(${json.encodeToString(manifestUrl)});")
     }
 
-    override fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
+    override fun applyDynamicConfig(config: DynamicCoreConfig) {
         logger.i { "Applying dynamic config" }
-        evaluate("$JS_BRIDGE.applyDynamicP2PCoreConfig(${CoreConfigJsMapper.toJsExpression(dynamicCoreConfig)});")
+        evaluate("$JS_BRIDGE.applyDynamicP2PCoreConfig(${CoreConfigJsMapper.toJsExpression(config)});")
     }
 
     override fun subscribeToP2PEvent(eventName: String) {

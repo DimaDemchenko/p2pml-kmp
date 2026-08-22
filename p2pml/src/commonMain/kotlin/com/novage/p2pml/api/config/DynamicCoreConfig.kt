@@ -1,5 +1,6 @@
 package com.novage.p2pml.api.config
 
+import com.novage.p2pml.api.config.CoreConfig.Companion.USE_ENGINE_DEFAULT
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -23,7 +24,7 @@ import kotlinx.serialization.Transient
  * ```swift
  * let config = DynamicCoreConfig()
  * config.isP2PDisabled = true
- * loader.applyDynamicConfig(dynamicCoreConfig: config)
+ * loader.applyDynamicConfig(config)
  * ```
  *
  * @see CoreConfig

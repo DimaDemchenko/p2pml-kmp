@@ -69,7 +69,7 @@ class SequenceStateTrackerTest {
         override fun sendStream(stream: UpdateStreamParams) = Unit
         override fun sendAllStreams(streams: List<Stream>) = Unit
         override fun setManifestUrl(manifestUrl: String) = Unit
-        override fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = Unit
+        override fun applyDynamicConfig(config: DynamicCoreConfig) = Unit
         override fun subscribeToP2PEvent(eventName: String) = Unit
         override fun unsubscribeFromP2PEvent(eventName: String) = Unit
     }

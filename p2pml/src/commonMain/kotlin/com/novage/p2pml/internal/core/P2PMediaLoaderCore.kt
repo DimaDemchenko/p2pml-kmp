@@ -184,7 +184,7 @@ internal class P2PMediaLoaderCore(
         return session.createPlaybackUrl(manifestUrl.encodeURLParameter())
     }
 
-    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
+    fun applyDynamicConfig(config: DynamicCoreConfig) {
         val currentStatus = _state.value.status
         if (currentStatus == P2PMediaLoaderStatus.FAILED || currentStatus == P2PMediaLoaderStatus.RELEASED) {
             logger.w { "Ignored dynamic config. Core state: $currentStatus." }
@@ -192,7 +192,7 @@ internal class P2PMediaLoaderCore(
         }
 
         if (currentStatus == P2PMediaLoaderStatus.IDLE || currentStatus == P2PMediaLoaderStatus.STARTING) {
-            pendingDynamicConfig.value = dynamicCoreConfig
+            pendingDynamicConfig.value = config
             if (_state.value.status == P2PMediaLoaderStatus.ACTIVE) {
                 activeSession.load()?.let { applyConfigPatches(it) }
             }
@@ -205,7 +205,7 @@ internal class P2PMediaLoaderCore(
             return
         }
 
-        applyConfigPatches(session, dynamicCoreConfig)
+        applyConfigPatches(session, config)
     }
 
     private fun applyConfigPatches(session: P2PSession, newPatch: DynamicCoreConfig? = null) {

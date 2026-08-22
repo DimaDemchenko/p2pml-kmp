@@ -328,7 +328,7 @@ class PlayerViewModel: ObservableObject {
         let config = DynamicCoreConfig()
         config.isP2PDisabled = !enabled
 
-        loader.applyDynamicConfig(dynamicCoreConfig: config)
+        loader.applyDynamicConfig(config)
     }
 
     private func releaseResources() {
