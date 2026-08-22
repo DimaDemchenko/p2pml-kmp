@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
- * Golden-payload contract tests for the engine event wire format (engine 3.0.1).
+ * Golden-payload contract tests for the engine event wire format (engine 4.0.0).
  *
  * The fixtures mirror the exact JSON the bridge page produces (formatEventPayload +
  * serializeJsError in src/assets/index.html) for the payload shapes the bundled engine
@@ -57,7 +57,6 @@ class EngineEventPayloadContractTest {
         router.handleMessage(
             """
             {"type":"onSegmentLoaded","payload":{
-                "segmentUrl":"https://cdn.example.com/seg42.ts",
                 "segment":{"runtimeId":"https://cdn.example.com/seg42.ts","externalId":42,
                     "url":"https://cdn.example.com/seg42.ts","startTime":10.0,"endTime":16.0},
                 "bytesLength":524288,
@@ -289,6 +288,66 @@ class EngineEventPayloadContractTest {
         val details = collected.single()
         assertEquals("aabbccdd", details.infoHash)
         assertEquals(JsError(message = "tracker unreachable", type = "announce-failed"), details.error)
+    }
+
+    @Test
+    fun decodesStreamRegistrationError() {
+        val collected = collect(events.onStreamRegistrationError)
+
+        router.handleMessage(
+            """
+            {"type":"onStreamRegistrationError","payload":{
+                "runtimeId":"V:0",
+                "streamType":"main",
+                "properties":{
+                    "bitrate":2400000,
+                    "codecs":"avc1.640028,mp4a.40.2",
+                    "width":1280,
+                    "height":720,
+                    "frameRate":"30",
+                    "videoRange":"SDR"},
+                "error":{"message":"Swarm ID is not resolvable"}}}
+            """.trimIndent()
+        )
+
+        assertEquals(1, collected.size)
+        val details = collected.single()
+        assertEquals("V:0", details.runtimeId)
+        assertEquals(StreamType.MAIN, details.streamType)
+        assertEquals(2400000, details.properties.bitrate)
+        assertEquals("avc1.640028,mp4a.40.2", details.properties.codecs)
+        assertEquals(1280, details.properties.width)
+        assertEquals(720, details.properties.height)
+        assertEquals("30", details.properties.frameRate)
+        assertEquals("SDR", details.properties.videoRange)
+        assertNull(details.properties.language)
+        assertEquals(JsError(message = "Swarm ID is not resolvable"), details.error)
+    }
+
+    @Test
+    fun decodesStreamRegistrationErrorForAudioRendition() {
+        val collected = collect(events.onStreamRegistrationError)
+
+        // Audio renditions carry a disjoint property set from variants; absent keys must decode
+        // to null rather than failing the whole payload.
+        router.handleMessage(
+            """
+            {"type":"onStreamRegistrationError","payload":{
+                "runtimeId":"A:audio-en",
+                "streamType":"secondary",
+                "properties":{"language":"en-US","channels":"6/JOC","name":"English"},
+                "error":{"message":"duplicate stream swarm ID","type":"registration-conflict"}}}
+            """.trimIndent()
+        )
+
+        assertEquals(1, collected.size)
+        val details = collected.single()
+        assertEquals(StreamType.SECONDARY, details.streamType)
+        assertEquals("en-US", details.properties.language)
+        assertEquals("6/JOC", details.properties.channels)
+        assertEquals("English", details.properties.name)
+        assertNull(details.properties.bitrate)
+        assertEquals("registration-conflict", details.error.type)
     }
 
     @Test

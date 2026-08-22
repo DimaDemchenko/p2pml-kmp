@@ -159,7 +159,7 @@
     </script>
 
     <script type="module">
-      import { Core, generateStreamShortId } from "p2p-media-loader-core";
+      import { Core } from "p2p-media-loader-core";
 
       class NativeBridge {
         constructor() {
@@ -321,6 +321,7 @@
             case "onSegmentError":
             case "onPeerError":
             case "onPeerConnectError":
+            case "onStreamRegistrationError":
               return { ...args[0], error: this.serializeJsError(args[0].error) };
             case "onTrackerWarning":
             case "onPeerWarning":
@@ -337,13 +338,9 @@
           if (!this.core) return;
 
           for (const stream of streams) {
-            const { runtimeId, type, ...streamProps } = stream;
-            const index = generateStreamShortId({
-              ...streamProps,
-              bitrate: streamProps.bitrate || 0,
-            });
+            const { runtimeId, type, ...properties } = stream;
 
-            this.core.addStreamIfNoneExists({ runtimeId, type, index });
+            this.core.addStreamIfNoneExists({ runtimeId, type, properties });
           }
         }
 

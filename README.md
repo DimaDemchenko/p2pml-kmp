@@ -2,7 +2,7 @@
 
 Kotlin Multiplatform SDK that adds peer-to-peer segment delivery to native HLS playback on
 Android and iOS, powered by [Novage p2p-media-loader](https://github.com/Novage/p2p-media-loader)
-(bundled engine: core 3.0.1).
+(bundled engine: core 4.0.0).
 
 ## How it works
 
@@ -76,10 +76,15 @@ engine applies its own defaults; see the class KDoc for the semantics.
 
 ## Events
 
-`loader.p2pEvents` exposes engine events as hot flows — segment lifecycle, peer and
-tracker activity, and per-chunk transfer stats. Collecting a flow subscribes the engine to that
-event; a flow nobody collects never emits. Every stream completes once the loader reaches a
-terminal state, so a Swift `for await` loop ends after `release()` instead of suspending forever.
+`loader.p2pEvents` exposes engine events as hot flows — segment lifecycle, peer and tracker
+activity, per-chunk transfer stats, and stream registration failures. Collecting a flow
+subscribes the engine to that event; a flow nobody collects never emits. Every stream completes
+once the loader reaches a terminal state, so a Swift `for await` loop ends after `release()`
+instead of suspending forever.
+
+A stream that fails to register stays unknown to the engine: it still plays, but over plain HTTP
+with no P2P sharing. `onStreamRegistrationError` is the only signal that this happened — worth
+collecting if you report P2P efficiency.
 
 ## Custom engine page
 

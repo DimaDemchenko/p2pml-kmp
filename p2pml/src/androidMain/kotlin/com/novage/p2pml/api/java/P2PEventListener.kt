@@ -10,6 +10,7 @@ import com.novage.p2pml.api.events.SegmentAbortDetails
 import com.novage.p2pml.api.events.SegmentErrorDetails
 import com.novage.p2pml.api.events.SegmentLoadDetails
 import com.novage.p2pml.api.events.SegmentStartDetails
+import com.novage.p2pml.api.events.StreamRegistrationErrorDetails
 import com.novage.p2pml.api.events.TrackerErrorDetails
 import com.novage.p2pml.api.events.TrackerWarningDetails
 
@@ -61,4 +62,10 @@ interface P2PEventListener {
 
     /** A tracker warning. See [TrackerWarningDetails]. */
     fun onTrackerWarning(details: TrackerWarningDetails) {}
+
+    /**
+     * A stream failed to register and is playing over HTTP without P2P.
+     * See [StreamRegistrationErrorDetails].
+     */
+    fun onStreamRegistrationError(details: StreamRegistrationErrorDetails) {}
 }

@@ -78,6 +78,8 @@ class P2PEvents internal constructor(
     private val peerWarning = jsonChannel<PeerWarningDetails>("onPeerWarning")
     private val trackerError = jsonChannel<TrackerErrorDetails>("onTrackerError")
     private val trackerWarning = jsonChannel<TrackerWarningDetails>("onTrackerWarning")
+    private val streamRegistrationError =
+        jsonChannel<StreamRegistrationErrorDetails>("onStreamRegistrationError", capacity = 16)
     private val chunkDownloaded = directChannel<ChunkDownloadedDetails>("onChunkDownloaded", capacity = 256)
     private val chunkUploaded = directChannel<ChunkUploadedDetails>("onChunkUploaded", capacity = 256)
 
@@ -85,7 +87,8 @@ class P2PEvents internal constructor(
         segmentLoaded, segmentStart, segmentError, segmentAbort,
         peerConnect, peerConnectError, peerClose, peerError, peerWarning,
         chunkDownloaded, chunkUploaded,
-        trackerError, trackerWarning
+        trackerError, trackerWarning,
+        streamRegistrationError
     )
 
     private val channelsByName: Map<String, EventChannel<*>> =
@@ -123,6 +126,13 @@ class P2PEvents internal constructor(
 
     /** A tracker warning. */
     val onTrackerWarning: Flow<TrackerWarningDetails> = trackerWarning.untilCoreShutdown()
+
+    /**
+     * A stream failed to register with the engine and is playing over HTTP without P2P.
+     * Not fatal: the loader stays active and the other streams keep sharing.
+     */
+    val onStreamRegistrationError: Flow<StreamRegistrationErrorDetails> =
+        streamRegistrationError.untilCoreShutdown()
 
     /** A chunk was downloaded (high-frequency — consume promptly if aggregating transfer stats). */
     val onChunkDownloaded: Flow<ChunkDownloadedDetails> = chunkDownloaded.untilCoreShutdown()

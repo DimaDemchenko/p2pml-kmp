@@ -41,5 +41,9 @@ enum class P2PEventType(
 
     TRACKER_ERROR({ listener, scope -> onTrackerError.onEach(listener::onTrackerError).launchIn(scope) }),
 
-    TRACKER_WARNING({ listener, scope -> onTrackerWarning.onEach(listener::onTrackerWarning).launchIn(scope) })
+    TRACKER_WARNING({ listener, scope -> onTrackerWarning.onEach(listener::onTrackerWarning).launchIn(scope) }),
+
+    STREAM_REGISTRATION_ERROR({ listener, scope ->
+        onStreamRegistrationError.onEach(listener::onStreamRegistrationError).launchIn(scope)
+    })
 }
