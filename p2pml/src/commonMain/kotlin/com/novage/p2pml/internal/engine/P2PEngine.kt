@@ -14,7 +14,7 @@ internal interface P2PEngine {
     fun sendStream(stream: UpdateStreamParams)
     fun sendAllStreams(streams: List<Stream>)
     fun setManifestUrl(manifestUrl: String)
-    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig)
+    fun applyDynamicConfig(config: DynamicCoreConfig)
 
     fun subscribeToP2PEvent(eventName: String)
     fun unsubscribeFromP2PEvent(eventName: String)

@@ -36,7 +36,7 @@ internal class RecordingP2PEngine : P2PEngine {
         calls += "setManifestUrl"
     }
 
-    override fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) {
+    override fun applyDynamicConfig(config: DynamicCoreConfig) {
         calls += "applyDynamicConfig"
     }
 

@@ -5,15 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
 /**
- * Sentinel value indicating "use the JS engine's built-in default."
- *
- * Numeric config properties default to this value. Properties equal to it are omitted
- * from the serialized JSON payload entirely, and the JS engine applies its own default.
- * Any other value — including other negative numbers — is sent to the engine as-is.
- */
-const val USE_ENGINE_DEFAULT = -1
-
-/**
  * Core P2P engine configuration passed to `P2PMediaLoader` at initialization.
  * Set only the properties you want to override; numeric properties left at
  * [USE_ENGINE_DEFAULT] and booleans that were never assigned are omitted during JSON
@@ -49,6 +40,18 @@ const val USE_ENGINE_DEFAULT = -1
  */
 @Serializable
 class CoreConfig {
+    companion object {
+        /**
+         * Sentinel value indicating "use the JS engine's built-in default."
+         *
+         * Numeric config properties on this class, [StreamConfig], [DynamicCoreConfig] and
+         * [DynamicStreamConfig] default to this value. Properties equal to it are omitted from the
+         * serialized JSON payload entirely, and the JS engine applies its own default. Any other
+         * value — including other negative numbers — is sent to the engine as-is.
+         */
+        const val USE_ENGINE_DEFAULT = -1
+    }
+
     var segmentMemoryStorageLimit: Int = USE_ENGINE_DEFAULT
 
     @Transient var customSegmentStorageFactoryJs: String? = null

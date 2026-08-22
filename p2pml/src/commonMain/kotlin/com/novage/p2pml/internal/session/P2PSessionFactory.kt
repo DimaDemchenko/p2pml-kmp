@@ -47,6 +47,8 @@ internal class P2PSessionFactory(
     }
 ) {
     companion object {
+        private const val SERVER_START_TIMEOUT_MS = 5_000L
+
         private const val WEBVIEW_LOAD_TIMEOUT_MS = 15_000L
 
         /**
@@ -125,7 +127,13 @@ internal class P2PSessionFactory(
         serverModule: ServerModule,
         urlFactory: LocalUrlFactory
     ) {
-        val port = withContext(Dispatchers.IO) { serverModule.start() }
+        val port = withStartupTimeout(
+            timeoutMs = SERVER_START_TIMEOUT_MS,
+            code = P2PMediaLoaderErrorCode.SERVER_START_FAILED,
+            message = "Local proxy server did not bind within ${SERVER_START_TIMEOUT_MS}ms."
+        ) {
+            withContext(Dispatchers.IO) { serverModule.start() }
+        }
         urlFactory.setPort(port)
 
         val engineFileUrl = customEngineUrl ?: buildEnginePageUrl(urlFactory)
@@ -158,12 +166,12 @@ internal class P2PSessionFactory(
      * cancelled (including an outer caller's withTimeout), rethrows that cancellation instead of
      * converting it into a fake engine failure.
      */
-    private suspend fun withStartupTimeout(
+    private suspend fun <T> withStartupTimeout(
         timeoutMs: Long,
         code: P2PMediaLoaderErrorCode,
         message: String,
-        block: suspend () -> Unit
-    ) = try {
+        block: suspend () -> T
+    ): T = try {
         withTimeout(timeoutMs) { block() }
     } catch (e: TimeoutCancellationException) {
         currentCoroutineContext().ensureActive()

@@ -9,6 +9,8 @@ import com.novage.p2pml.internal.core.P2PMediaLoaderCore
 import com.novage.p2pml.internal.playback.AVPlayerPlaybackProvider
 import com.novage.p2pml.internal.webview.IosWebViewFactory
 import kotlin.concurrent.Volatile
+import kotlin.experimental.ExperimentalObjCName
+import kotlin.native.ObjCName
 import kotlinx.coroutines.CancellationException
 import platform.AVFoundation.AVPlayer
 
@@ -57,14 +59,14 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     fun createPlaybackUrl(manifestUrl: String) = core.createPlaybackUrl(manifestUrl)
 
     /**
-     * Applies [dynamicCoreConfig] to the running engine as a partial patch: only explicitly set
+     * Applies [config] to the running engine as a partial patch: only explicitly set
      * properties are overridden, and successive calls accumulate in the engine.
      *
-     * Calls made before initialization completes are cached and applied once the loader becomes
-     * active; only the most recent pre-initialization config is kept — earlier ones are dropped,
-     * not merged. Calls after the loader has failed or been released are ignored.
+     * Calls made before initialization completes are queued and replayed in order once the loader
+     * becomes active. Calls after the loader has failed or been released are ignored.
      */
-    fun applyDynamicConfig(dynamicCoreConfig: DynamicCoreConfig) = core.applyDynamicConfig(dynamicCoreConfig)
+    @OptIn(ExperimentalObjCName::class)
+    fun applyDynamicConfig(@ObjCName(swiftName = "_") config: DynamicCoreConfig) = core.applyDynamicConfig(config)
 
     /**
      * Stops P2P streaming and tears down the local proxy, engine WebView and HTTP client.
@@ -107,6 +109,8 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
     @Throws(P2PMediaLoaderException::class, CancellationException::class)
     suspend fun initialize(player: AVPlayer) {
         val provider = AVPlayerPlaybackProvider(player)
+        defaultProvider = provider
+
         try {
             core.initialize(provider, IosWebViewFactory())
         } catch (e: P2PMediaLoaderException) {
@@ -116,8 +120,6 @@ class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: Str
             provider.release()
             throw e
         }
-
-        defaultProvider = provider
     }
 
     /**
