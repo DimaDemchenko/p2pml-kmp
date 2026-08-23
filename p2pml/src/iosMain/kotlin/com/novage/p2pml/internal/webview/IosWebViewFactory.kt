@@ -133,7 +133,6 @@ private class IosHeadlessWebView(events: P2PEvents, onFatalError: (P2PMediaLoade
         }
 
         view.stopLoading()
-        view.removeFromSuperview()
         view.navigationDelegate = null
 
         navigationDelegate = null
