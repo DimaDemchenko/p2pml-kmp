@@ -38,6 +38,12 @@ internal class SequenceStateTracker(
     private var catchUpThresholdSec: Double = DEFAULT_CATCH_UP_THRESHOLD_SEC
     private val isSuspended get() = forcedPlaybackPosition != null
 
+    /**
+     * Distance from the player's reported position to [forcedPlaybackPosition] on the previous tick,
+     * used to tell a real seek from a re-fetch. Reset when a suspension starts.
+     */
+    private var lastCatchUpDelta: Double = Double.POSITIVE_INFINITY
+
     private val trackStates = mutableMapOf<String, TrackState>()
 
     private data class TrackState(val lastId: Long, val lastStartTime: Double)
@@ -86,7 +92,27 @@ internal class SequenceStateTracker(
                     streamPosition
                 }
 
-                else -> forcedPos
+                // A seek converges: the player moves towards the target, so the gap shrinks every
+                // tick. A gap that is not shrinking means the request that looked like a seek was
+                // not one — AVPlayer re-fetches from the start of its buffer window after returning
+                // from the background, which sits behind the playhead. Holding the inferred
+                // position would then feed the engine a playhead seconds behind the player for the
+                // rest of the suspension, and it could never catch up because the player is moving
+                // away from it. Trust the player instead.
+                abs(streamPosition - forcedPos) >= lastCatchUpDelta -> {
+                    logger.i {
+                        "Seek target ($forcedPos) is not converging with the player " +
+                            "($streamPosition); the request was a re-fetch, not a seek. " +
+                            "Resuming standard tracking."
+                    }
+                    resumeStandardTrackingLocked()
+                    streamPosition
+                }
+
+                else -> {
+                    lastCatchUpDelta = abs(streamPosition - forcedPos)
+                    forcedPos
+                }
             }
 
             updateEnginePlaybackInfoSafely(effectivePosition, playerInfo.currentPlaybackSpeed)
@@ -133,6 +159,7 @@ internal class SequenceStateTracker(
     private fun suspendPollingLocked(position: Double, segmentDuration: Double) {
         forcedPlaybackPosition = position
         catchUpThresholdSec = segmentDuration
+        lastCatchUpDelta = Double.POSITIVE_INFINITY
 
         suspensionJob?.cancel()
         suspensionJob = scope.launch {

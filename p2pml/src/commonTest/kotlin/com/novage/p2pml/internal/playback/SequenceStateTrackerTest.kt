@@ -245,6 +245,67 @@ class SequenceStateTrackerTest {
         assertEquals(200.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
     }
 
+    /**
+     * AVPlayer re-fetches from the start of its buffer window after returning from the background,
+     * and that window sits behind the playhead. The request looks like a backwards seek, but the
+     * player never comes back to it — measured on an iPhone 14, the engine was told 0.0 while
+     * playback ran from 15s to 22s, for the full suspension, every time the app was foregrounded.
+     * A gap that grows instead of shrinking is the signal that the inference was wrong.
+     */
+    @Test
+    fun aTargetThePlayerIsMovingAwayFromIsAbandoned() = withTracker { f ->
+        f.source.register("seg10", externalId = 10, startTime = 40.0)
+        f.source.register("seg50", externalId = 50, startTime = 200.0)
+        f.source.bounds = TimelineBounds(start = 0.0, liveEdge = 300.0)
+
+        f.tracker.onSegmentRequested("seg50")
+        f.tracker.onSegmentRequested("seg10")
+        runCurrent()
+        f.engine.positions.clear()
+
+        // First tick has nothing to compare against, so the inferred target is still trusted.
+        f.tracker.onPlaybackInfoUpdated(live(position = 260.0, liveEdge = 300.0))
+        runCurrent()
+        assertEquals(40.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
+
+        // Second tick: the player has moved further away, so the target is abandoned.
+        f.tracker.onPlaybackInfoUpdated(live(position = 265.0, liveEdge = 300.0))
+        runCurrent()
+        assertEquals(265.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
+
+        // Standard tracking really has resumed — no residual pinning.
+        f.tracker.onPlaybackInfoUpdated(live(position = 270.0, liveEdge = 300.0))
+        runCurrent()
+        assertEquals(270.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
+    }
+
+    /** A real seek converges, so the target must be held for as long as the gap keeps shrinking. */
+    @Test
+    fun aTargetThePlayerIsConvergingOnIsHeldUntilCatchUp() = withTracker { f ->
+        f.source.register("seg10", externalId = 10, startTime = 40.0)
+        f.source.register("seg50", externalId = 50, startTime = 200.0)
+        f.source.bounds = TimelineBounds(start = 0.0, liveEdge = 300.0)
+
+        f.tracker.onSegmentRequested("seg10")
+        f.tracker.onSegmentRequested("seg50")
+        runCurrent()
+        f.engine.positions.clear()
+
+        // Gap 150, then 50: shrinking, so the 200.0 target stays in force.
+        f.tracker.onPlaybackInfoUpdated(live(position = 50.0, liveEdge = 300.0))
+        runCurrent()
+        assertEquals(200.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
+
+        f.tracker.onPlaybackInfoUpdated(live(position = 150.0, liveEdge = 300.0))
+        runCurrent()
+        assertEquals(200.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
+
+        // Inside the threshold: catch-up fires and the player's own position is reported.
+        f.tracker.onPlaybackInfoUpdated(live(position = 202.0, liveEdge = 300.0))
+        runCurrent()
+        assertEquals(202.0, assertNotNull(f.engine.lastPosition), TOLERANCE)
+    }
+
     @Test
     fun playerCatchingUpToTheSeekTargetResumesStandardTracking() = withTracker { f ->
         f.source.register("seg10", externalId = 10, startTime = 40.0)
