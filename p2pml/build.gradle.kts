@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.skie)
-    id("p2pml.quality")
+    id("buildlogic.quality")
 }
 
 skie {
