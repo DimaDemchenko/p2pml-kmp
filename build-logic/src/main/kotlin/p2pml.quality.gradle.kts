@@ -1,6 +1,4 @@
-import com.diffplug.gradle.spotless.SpotlessExtension
 import io.gitlab.arturbosch.detekt.Detekt
-import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 import org.gradle.api.artifacts.VersionCatalogsExtension
 
 plugins {
@@ -20,7 +18,7 @@ val ktlintVersion =
 // touching rootProject directly is what a cross-project configuration block does wrong.
 val detektConfig = isolated.rootProject.projectDirectory.file("detekt.yml")
 
-configure<SpotlessExtension> {
+spotless {
     kotlin {
         target("**/*.kt")
         targetExclude("**/generated/**/*.kt")
@@ -34,7 +32,7 @@ configure<SpotlessExtension> {
     }
 }
 
-configure<DetektExtension> {
+detekt {
     config.setFrom(detektConfig)
     buildUponDefaultConfig = true
 
