@@ -1,6 +1,7 @@
 import java.util.Base64
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -8,7 +9,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.skie)
     id("buildlogic.quality")
+    `maven-publish`
 }
+
+group = providers.gradleProperty("GROUP").get()
+version = providers.gradleProperty("VERSION_NAME").get()
 
 skie {
     features {
@@ -112,10 +117,16 @@ kotlin {
         }
     }
 
+    val xcframework = XCFramework("P2PML")
+
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "P2PML"
             isStatic = true
+            // Without this the bundle ID defaults to the bundle name ("P2PML"), which the
+            // linker warns about on every build and ships in the framework's Info.plist.
+            binaryOption("bundleId", "com.novage.p2pml")
+            xcframework.add(this)
         }
     }
 
@@ -150,5 +161,38 @@ kotlin {
         }
 
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }
+    }
+}
+
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name.set("p2pml")
+            description.set(
+                "Kotlin Multiplatform SDK that adds peer-to-peer segment delivery to native HLS " +
+                    "playback on Android and iOS."
+            )
+            url.set("https://github.com/DimaDemchenko/p2pml-kmp")
+
+            licenses {
+                license {
+                    name.set("The Apache License, Version 2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+
+            developers {
+                developer {
+                    id.set("DimaDemchenko")
+                    name.set("Dmytro Demchenko")
+                }
+            }
+
+            scm {
+                url.set("https://github.com/DimaDemchenko/p2pml-kmp")
+                connection.set("scm:git:https://github.com/DimaDemchenko/p2pml-kmp.git")
+                developerConnection.set("scm:git:ssh://git@github.com/DimaDemchenko/p2pml-kmp.git")
+            }
+        }
     }
 }
