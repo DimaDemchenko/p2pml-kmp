@@ -112,7 +112,7 @@ jobs:
 
           \`\`\`kotlin
           repositories { maven("https://jitpack.io") }
-          implementation("com.github.${{ github.repository_owner }}:p2pml-kmp:${{ inputs.version }}")
+          implementation("com.github.${{ github.repository_owner }}.${{ github.event.repository.name }}:p2pml:${{ inputs.version }}")
           \`\`\`
 
           XCFramework checksum: \`${{ env.checksum }}\`
