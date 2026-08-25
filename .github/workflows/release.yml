@@ -88,7 +88,11 @@ jobs:
           # Tolerant so a re-run after a failed publish does not abort here: the sed
           # rewrites above are idempotent, so the second run has nothing new to stage.
           git commit -m "release: ${{ inputs.version }}" || echo "already committed; re-run"
-          git push origin main
+          # main is PR-only under a ruleset, so the release commit gets its own branch.
+          # Nothing is lost: the tag is what both distributors resolve, so the commit
+          # never has to be an ancestor of main. Forced so a re-run can overwrite its
+          # own half-finished branch.
+          git push --force origin "HEAD:refs/heads/release/${{ inputs.version }}"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Publish the GitHub release
@@ -117,9 +121,24 @@ jobs:
           # --target creates the tag on this exact commit as part of creating the release,
           # so a failure here cannot leave a tag pointing at an unreleased commit.
           # No --generate-notes: gh documents prepending only via --notes, not --notes-file,
-          # and a flag conflict would fail after main was already pushed.
+          # and a flag conflict would fail after the commit was already pushed.
+          # A semver prerelease suffix (0.0.1-beta) must not be published as "Latest",
+          # or the repo page advertises a throwaway build as the current version.
+          case "${{ inputs.version }}" in
+            *-*) PRERELEASE=--prerelease ;;
+            *)   PRERELEASE= ;;
+          esac
+
           gh release create "${{ inputs.version }}" \
             P2PML.xcframework.zip \
             --target "${{ env.sha }}" \
             --title "${{ inputs.version }}" \
-            --notes-file release-notes.md
+            --notes-file release-notes.md \
+            $PRERELEASE
+
+      - name: Drop the release branch
+        run: |
+          # The tag now holds the commit, so the branch has served its purpose and the
+          # commit stays reachable without it. Deleting keeps the branch list clean.
+          # Non-fatal: the release is already published by this point.
+          git push origin --delete "release/${{ inputs.version }}" || true
