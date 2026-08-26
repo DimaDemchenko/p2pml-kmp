@@ -2,12 +2,12 @@
 
 [![Android](https://img.shields.io/badge/Android-minSdk%2024-3DDC84?logo=android&logoColor=white)](#requirements)
 [![iOS](https://img.shields.io/badge/iOS-15.0%2B-000000?logo=apple&logoColor=white)](#requirements)
-[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-blue.svg?logo=kotlin)](https://kotlinlang.org)
 [![p2p-media-loader](https://img.shields.io/badge/p2p--media--loader-v4.0.0-orange)](https://github.com/Novage/p2p-media-loader)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-blue.svg?logo=kotlin)](https://kotlinlang.org)
+[![Release](https://img.shields.io/github/v/release/DimaDemchenko/p2pml-kmp?label=release&color=blue)](https://github.com/DimaDemchenko/p2pml-kmp/releases/latest)
 [![JitPack](https://jitpack.io/v/DimaDemchenko/p2pml-kmp.svg)](https://jitpack.io/#DimaDemchenko/p2pml-kmp)
 [![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen.svg?logo=swift)](#installation)
 [![CI](https://img.shields.io/github/actions/workflow/status/DimaDemchenko/p2pml-kmp/pr.yml?branch=main&label=CI)](https://github.com/DimaDemchenko/p2pml-kmp/actions)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 Kotlin Multiplatform SDK that adds peer-to-peer segment delivery to native HLS playback on
 Android and iOS, powered by [Novage p2p-media-loader](https://github.com/Novage/p2p-media-loader)
