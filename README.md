@@ -1,5 +1,13 @@
 # p2pml-kmp
 
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-lightgrey)](#requirements)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-blue.svg?logo=kotlin)](https://kotlinlang.org)
+[![p2p-media-loader](https://img.shields.io/badge/p2p--media--loader-v4.0.0-orange)](https://github.com/Novage/p2p-media-loader)
+[![JitPack](https://jitpack.io/v/DimaDemchenko/p2pml-kmp.svg)](https://jitpack.io/#DimaDemchenko/p2pml-kmp)
+[![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen.svg?logo=swift)](#installation)
+[![CI](https://img.shields.io/github/actions/workflow/status/DimaDemchenko/p2pml-kmp/pr.yml?branch=main&label=CI)](https://github.com/DimaDemchenko/p2pml-kmp/actions)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 Kotlin Multiplatform SDK that adds peer-to-peer segment delivery to native HLS playback on
 Android and iOS, powered by [Novage p2p-media-loader](https://github.com/Novage/p2p-media-loader)
 (bundled engine: core 4.0.0).
@@ -24,10 +32,69 @@ URL directly — playback never depends on P2P.
 - **Android**: minSdk 24. Calling `initialize(exoPlayer)` requires your app to depend on
   `androidx.media3:media3-exoplayer` (1.10.1 or newer) — the library compiles against it but
   does not ship it. Apps that use a custom `PlaybackProvider` do not need media3 at all and
-  build cleanly without it.
+  build cleanly without it. P2P (WebRTC) traffic usually cannot reach other peers from an
+  Android emulator, whose virtual network sits behind NAT — verify peer connectivity on a
+  physical device.
 - **iOS**: AVPlayer is supported out of the box (the demo targets iOS 15.3+). Swift interop is
   generated with [SKIE](https://skie.touchlab.co/): suspend functions become `async`, flows
   become `AsyncSequence`.
+
+## Installation
+
+Android and iOS use different package managers, so the library ships through both. One tag
+produces both artifacts with the same version number.
+
+**Android — JitPack:**
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        maven("https://jitpack.io")
+    }
+}
+
+// build.gradle.kts
+implementation("com.github.DimaDemchenko.p2pml-kmp:p2pml:0.1.0")
+```
+
+The group id is `com.github.<owner>.<repo>` — JitPack's convention for multi-module projects,
+and not the same as the `com.github.<owner>:<repo>` form its front page suggests. This
+coordinate resolves through Gradle module metadata, so an Android app gets the AAR and a
+Kotlin Multiplatform project can depend on it from `commonMain`.
+
+**Android — required app configuration:**
+
+The loader serves the rewritten playlist and segments from a loopback HTTP server, so the
+player talks to `127.0.0.1` over cleartext. Android 9+ blocks that by default and the library
+ships no manifest of its own, so add both of these or playback never starts:
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.INTERNET" />
+
+<application android:networkSecurityConfig="@xml/network_security_config" ... >
+```
+
+```xml
+<!-- res/xml/network_security_config.xml -->
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
+```
+
+**iOS — Swift Package Manager:**
+
+```swift
+.package(url: "https://github.com/DimaDemchenko/p2pml-kmp.git", from: "0.1.0")
+```
+
+Resolve a tag, never a branch. The package is a binary target pointing at an XCFramework
+attached to each GitHub release, and only tags carry a checksum matching that release —
+`branch: "main"` will not resolve.
 
 ## Quick start
 
@@ -72,7 +139,9 @@ Java apps can use `P2PMediaLoaderJava`, a `CompletableFuture`/listener facade ov
 
 `CoreConfig` (at construction) and `DynamicCoreConfig` (at runtime via `applyDynamicConfig`)
 mirror the engine's configuration. Properties left unset are omitted from the payload and the
-engine applies its own defaults; see the class KDoc for the semantics.
+engine applies its own defaults; see the class KDoc for the semantics, and the engine's
+[CoreConfig reference](https://novage.github.io/p2p-media-loader/docs/latest/types/p2p-media-loader-core.CoreConfig.html)
+for what each one does.
 
 ## Events
 
@@ -100,7 +169,7 @@ hosted instead via `customEngineUrl`; it must implement this library version's b
 
 ## Status
 
-Pre-release. APIs may change without deprecation cycles until the first published version.
+Pre-1.0. APIs may change without deprecation cycles between minor versions.
 
 ## License
 
