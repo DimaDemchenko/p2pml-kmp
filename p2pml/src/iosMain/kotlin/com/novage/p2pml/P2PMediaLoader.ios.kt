@@ -33,6 +33,9 @@ import platform.AVFoundation.AVPlayer
  */
 class P2PMediaLoader(coreConfig: CoreConfig = CoreConfig(), customEngineUrl: String? = null) {
 
+    constructor() : this(CoreConfig())
+    constructor(coreConfig: CoreConfig) : this(coreConfig, null)
+
     private val core = P2PMediaLoaderCore(coreConfig, customEngineUrl)
 
     @Volatile
