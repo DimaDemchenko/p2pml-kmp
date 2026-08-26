@@ -1,4 +1,4 @@
-# p2pml-kmp
+# P2P Media Loader KMP
 
 [![Android](https://img.shields.io/badge/Android-minSdk%2024-3DDC84?logo=android&logoColor=white)](#requirements)
 [![iOS](https://img.shields.io/badge/iOS-15.0%2B-000000?logo=apple&logoColor=white)](#requirements)
@@ -9,17 +9,45 @@
 [![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen.svg?logo=swift)](#installation)
 [![CI](https://img.shields.io/github/actions/workflow/status/DimaDemchenko/p2pml-kmp/pr.yml?branch=main&label=CI)](https://github.com/DimaDemchenko/p2pml-kmp/actions)
 
-Kotlin Multiplatform SDK that adds peer-to-peer segment delivery to native HLS playback on
-Android and iOS, powered by [Novage p2p-media-loader](https://github.com/Novage/p2p-media-loader)
-(bundled engine: core 4.0.0).
+**Every viewer becomes part of your delivery network.** p2pml-kmp adds peer-to-peer segment
+delivery to the players you already use — ExoPlayer on Android, AVPlayer on iOS. Viewers
+watching the same HLS stream exchange segments over WebRTC, offloading your CDN exactly when
+demand peaks, and anything the swarm can't provide loads over plain HTTP — playback never
+depends on P2P.
+
+Powered by [Novage p2p-media-loader](https://github.com/Novage/p2p-media-loader)
+(bundled engine: core 4.0.0), brought to Kotlin Multiplatform.
+
+## Features
+
+- **Native players, unmodified** — hand ExoPlayer or AVPlayer one proxied URL; no custom
+  player stack, no forked media pipeline
+- **Automatic HTTP fallback** — P2P accelerates delivery but never gates it; if the loader
+  fails entirely, play the origin URL directly
+- **Live and VOD HLS**, including Low-Latency HLS handling
+- **Battle-tested engine** — the same p2p-media-loader core that powers Novage's web players
+- **First-class Swift** via [SKIE](https://skie.touchlab.co/): suspend functions become
+  `async`, flows become `AsyncSequence`
+- **Java-friendly** — a `CompletableFuture`/listener facade over the same core
 
 ## How it works
 
-The loader runs a loopback HTTP proxy (Ktor) and a headless WebView hosting the p2p-media-loader
+```text
+ExoPlayer / AVPlayer
+        │ plays the proxied manifest URL
+        ▼
+loopback proxy (Ktor) ── rewrites playlists, serves segments
+        │                        │
+        ▼                        ▼
+headless WebView          HTTP origin
+(p2p-media-loader          (fallback)
+ engine, WebRTC swarm)
+```
+
+The loader runs a loopback HTTP proxy and a headless WebView hosting the p2p-media-loader
 JS engine. You hand the player a proxied manifest URL; the proxy rewrites the HLS playlist so
 segment requests flow through it, serves segments from the P2P swarm (WebRTC) when peers have
-them, and falls back to plain HTTP when they don't. If the loader ever fails, play the origin
-URL directly — playback never depends on P2P.
+them, and falls back to plain HTTP when they don't.
 
 - HLS only (multivariant and media playlists, live and VOD). DASH is not supported.
 - Low-Latency HLS: blocking playlist reloads are relayed to the origin, delta updates are
@@ -33,12 +61,8 @@ URL directly — playback never depends on P2P.
 - **Android**: minSdk 24. Calling `initialize(exoPlayer)` requires your app to depend on
   `androidx.media3:media3-exoplayer` (1.10.1 or newer) — the library compiles against it but
   does not ship it. Apps that use a custom `PlaybackProvider` do not need media3 at all and
-  build cleanly without it. P2P (WebRTC) traffic usually cannot reach other peers from an
-  Android emulator, whose virtual network sits behind NAT — verify peer connectivity on a
-  physical device.
-- **iOS**: 15.0 or newer. AVPlayer is supported out of the box. Swift interop is
-  generated with [SKIE](https://skie.touchlab.co/): suspend functions become `async`, flows
-  become `AsyncSequence`.
+  build cleanly without it.
+- **iOS**: 15.0 or newer. AVPlayer is supported out of the box.
 
 ## Installation
 
@@ -64,11 +88,24 @@ and not the same as the `com.github.<owner>:<repo>` form its front page suggests
 coordinate resolves through Gradle module metadata, so an Android app gets the AAR and a
 Kotlin Multiplatform project can depend on it from `commonMain`.
 
-**Android — required app configuration:**
+**iOS — Swift Package Manager:**
 
-The loader serves the rewritten playlist and segments from a loopback HTTP server, so the
-player talks to `127.0.0.1` over cleartext. Android 9+ blocks that by default and the library
-ships no manifest of its own, so add both of these or playback never starts:
+```swift
+.package(url: "https://github.com/DimaDemchenko/p2pml-kmp.git", from: "0.1.0")
+```
+
+Resolve a tag, never a branch. The package is a binary target pointing at an XCFramework
+attached to each GitHub release, and only tags carry a checksum matching that release —
+`branch: "main"` will not resolve.
+
+## Platform setup
+
+The player fetches rewritten playlists and segments from the loader's loopback server over
+cleartext HTTP, and both platforms restrict cleartext by default — each needs one small,
+loopback-scoped exception. Nothing is opened to the outside world.
+
+**Android** — the library ships no manifest of its own, so the app must declare both of these
+or playback never starts on Android 9+:
 
 ```xml
 <!-- AndroidManifest.xml -->
@@ -87,17 +124,33 @@ ships no manifest of its own, so add both of these or playback never starts:
 </network-security-config>
 ```
 
-**iOS — Swift Package Manager:**
+**iOS** — add an App Transport Security exception for the loopback address to the app's
+`Info.plist` (this is exactly what the demo ships — scoped to `127.0.0.1`, not
+`NSAllowsArbitraryLoads`):
 
-```swift
-.package(url: "https://github.com/DimaDemchenko/p2pml-kmp.git", from: "0.1.0")
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>127.0.0.1</key>
+        <dict>
+            <key>NSExceptionAllowsInsecureHTTPLoads</key>
+            <true/>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+        </dict>
+    </dict>
+</dict>
 ```
 
-Resolve a tag, never a branch. The package is a binary target pointing at an XCFramework
-attached to each GitHub release, and only tags carry a checksum matching that release —
-`branch: "main"` will not resolve.
-
 ## Quick start
+
+> [!IMPORTANT]
+> P2P (WebRTC) usually cannot reach peers from an **Android emulator**, whose virtual network
+> sits behind NAT — streams still play over HTTP fallback, but you will see no P2P traffic.
+> Verify peer connectivity on a physical device. The iOS Simulator runs directly on the host
+> Mac's network and is not affected.
 
 **Android (Kotlin):**
 
@@ -122,7 +175,19 @@ avPlayer.replaceCurrentItem(with: AVPlayerItem(url: URL(string: url)!))
 // release() is non-suspending and safe to call from deinit
 ```
 
-Java apps can use `P2PMediaLoaderJava`, a `CompletableFuture`/listener facade over the same core.
+**Java** — `P2PMediaLoaderJava` wraps the same core behind `CompletableFuture`s and listener
+subscriptions:
+
+```java
+P2PMediaLoaderJava loader = new P2PMediaLoaderJava(new P2PMediaLoader(context));
+loader.initialize(exoPlayer).thenRun(() -> {
+    String url = loader.createPlaybackUrl("https://example.com/master.m3u8");
+    // hand url to ExoPlayer on the main thread
+});
+```
+
+Event listeners return `AutoCloseable` subscriptions and run on a background thread — switch
+to the main thread before touching UI.
 
 ### Lifecycle notes
 
@@ -156,17 +221,24 @@ A stream that fails to register stays unknown to the engine: it still plays, but
 with no P2P sharing. `onStreamRegistrationError` is the only signal that this happened — worth
 collecting if you report P2P efficiency.
 
+## Demos
+
+Two complete players ship in this repo — the fastest way to see the loader in action and the
+reference for every integration pattern above:
+
+- [`androidDemo`](androidDemo) — Compose + ExoPlayer. Open the project in Android Studio and
+  run it on a physical device.
+- [`iosDemo`](iosDemo) — SwiftUI + AVPlayer. Open `iosDemo/iosDemo.xcodeproj` in Xcode; a
+  build phase invokes Gradle to build the framework, so it just runs.
+
+Both demos show event collection, the background P2P-disable pattern, and HTTP fallback.
+
 ## Custom engine page
 
 By default the engine page and core bundle are served from bundled assets. A custom page can be
 hosted instead via `customEngineUrl`; it must implement this library version's bridge contract
 (readiness via `onWebViewLoaded`, `initP2P` acknowledged with `onCoreInitialized` /
 `onCoreInitFailed`). Build it from `p2pml/src/assets` to stay in sync.
-
-## Project layout
-
-- `p2pml` — the KMP library (`commonMain` / `androidMain` / `iosMain`)
-- `androidDemo`, `iosDemo` — demo players
 
 ## Status
 
