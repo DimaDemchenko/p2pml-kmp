@@ -59,7 +59,7 @@ them, and falls back to plain HTTP when they don't.
 ## Requirements
 
 - **Android**: minSdk 24. Calling `initialize(exoPlayer)` requires your app to depend on
-  `androidx.media3:media3-exoplayer` (1.10.1 or newer) — the library compiles against it but
+  `androidx.media3:media3-exoplayer` — the library compiles against 1.11.0 but
   does not ship it. Apps that use a custom `PlaybackProvider` do not need media3 at all and
   build cleanly without it.
 - **iOS**: 15.0 or newer. AVPlayer is supported out of the box.
@@ -75,6 +75,8 @@ produces both artifacts with the same version number.
 // settings.gradle.kts
 dependencyResolutionManagement {
     repositories {
+        google()
+        mavenCentral()
         maven("https://jitpack.io")
     }
 }
@@ -104,8 +106,9 @@ The player fetches rewritten playlists and segments from the loader's loopback s
 cleartext HTTP, and both platforms restrict cleartext by default — each needs one small,
 loopback-scoped exception. Nothing is opened to the outside world.
 
-**Android** — the library ships no manifest of its own, so the app must declare both of these
-or playback never starts on Android 9+:
+**Android** — the library ships no manifest of its own, so the app must declare both of these:
+the `INTERNET` permission (required on every Android version) and the cleartext exception
+(what Android 9+ blocks by default):
 
 ```xml
 <!-- AndroidManifest.xml -->
@@ -115,8 +118,8 @@ or playback never starts on Android 9+:
 ```
 
 ```xml
-<!-- res/xml/network_security_config.xml -->
 <?xml version="1.0" encoding="utf-8"?>
+<!-- res/xml/network_security_config.xml -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">127.0.0.1</domain>
@@ -181,8 +184,12 @@ subscriptions:
 ```java
 P2PMediaLoaderJava loader = new P2PMediaLoaderJava(new P2PMediaLoader(context));
 loader.initialize(exoPlayer).thenRun(() -> {
-    String url = loader.createPlaybackUrl("https://example.com/master.m3u8");
-    // hand url to ExoPlayer on the main thread
+    try {
+        String url = loader.createPlaybackUrl("https://example.com/master.m3u8");
+        // hand url to ExoPlayer on the main thread
+    } catch (P2PMediaLoaderException e) {
+        // fall back to the origin URL
+    }
 });
 ```
 
@@ -232,6 +239,7 @@ reference for every integration pattern above:
   build phase invokes Gradle to build the framework, so it just runs.
 
 Both demos show event collection, the background P2P-disable pattern, and HTTP fallback.
+The library itself lives in [`p2pml`](p2pml) (`commonMain` / `androidMain` / `iosMain`).
 
 ## Custom engine page
 
