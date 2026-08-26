@@ -1,6 +1,7 @@
 # p2pml-kmp
 
-[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-lightgrey)](#requirements)
+[![Android](https://img.shields.io/badge/Android-minSdk%2024-3DDC84?logo=android&logoColor=white)](#requirements)
+[![iOS](https://img.shields.io/badge/iOS-15.0%2B-000000?logo=apple&logoColor=white)](#requirements)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-blue.svg?logo=kotlin)](https://kotlinlang.org)
 [![p2p-media-loader](https://img.shields.io/badge/p2p--media--loader-v4.0.0-orange)](https://github.com/Novage/p2p-media-loader)
 [![JitPack](https://jitpack.io/v/DimaDemchenko/p2pml-kmp.svg)](https://jitpack.io/#DimaDemchenko/p2pml-kmp)
@@ -35,7 +36,7 @@ URL directly — playback never depends on P2P.
   build cleanly without it. P2P (WebRTC) traffic usually cannot reach other peers from an
   Android emulator, whose virtual network sits behind NAT — verify peer connectivity on a
   physical device.
-- **iOS**: AVPlayer is supported out of the box (the demo targets iOS 15.3+). Swift interop is
+- **iOS**: 15.0 or newer. AVPlayer is supported out of the box. Swift interop is
   generated with [SKIE](https://skie.touchlab.co/): suspend functions become `async`, flows
   become `AsyncSequence`.
 
