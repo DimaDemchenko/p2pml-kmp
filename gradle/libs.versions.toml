@@ -3,6 +3,10 @@
 agp = "9.3.1"
 kotlin = "2.4.10"
 
+# JDK used to compile. Pinned so every machine and CI compile against the same JDK;
+# the bytecode level is set separately by jvmTarget, which stays at 11.
+jdk = "21"
+
 # Android SDKs
 android-compile-sdk = "37"
 android-min-sdk = "24"
