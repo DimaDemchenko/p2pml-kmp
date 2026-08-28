@@ -8,6 +8,8 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(libs.versions.jdk.get().toInt())
+
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
     }

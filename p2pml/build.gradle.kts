@@ -90,6 +90,8 @@ val generateAssetsTask =
     }
 
 kotlin {
+    jvmToolchain(libs.versions.jdk.get().toInt())
+
     android {
         namespace = "com.novage.p2pml"
         compileSdk =
