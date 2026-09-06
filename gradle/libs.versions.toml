@@ -9,7 +9,7 @@ android-min-sdk = "24"
 android-target-sdk = "37"
 
 # Lint & Formatter
-spotless = "8.10.0"
+spotless = "8.10.1"
 ktlint = "1.8.0"
 detekt = "1.23.8"
 skie = "0.10.14"
