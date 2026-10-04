@@ -1,7 +1,7 @@
 [versions]
 # Platforms and Tools
 agp = "9.3.1"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 
 # Android SDKs
 android-compile-sdk = "37"
@@ -9,10 +9,10 @@ android-min-sdk = "24"
 android-target-sdk = "37"
 
 # Lint & Formatter
-spotless = "8.10.0"
+spotless = "8.10.3"
 ktlint = "1.8.0"
 detekt = "1.23.8"
-skie = "0.10.14"
+skie = "0.10.15"
 
 # Libraries
 androidx-navigation = "2.9.8"
@@ -22,10 +22,10 @@ androidx-lifecycle = "2.11.0"
 compose-bom = "2026.08.00"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
-ktor = "3.5.2"
+ktor = "3.6.0"
 material3 = "1.4.0"
 media3 = "1.11.0"
-slf4j = "2.0.18"
+slf4j = "2.0.20"
 
 [libraries]
 # AndroidX & Compose
